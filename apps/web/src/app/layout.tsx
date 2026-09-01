@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Manisa",
-  description: "Business Management Platform",
+  title: "Manisa — Business Management Platform",
+  description: "A focused platform for managing customers, appointments, services, payments, and business insights.",
 };
 
 export default function RootLayout({
