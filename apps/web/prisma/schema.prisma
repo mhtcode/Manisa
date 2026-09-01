@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+}
+
+enum Locale {
+  en
+  fa
+}
+
+enum Theme {
+  DARK
+  LIGHT
+  SYSTEM
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  PARTIALLY_PAID
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role      @default(ADMIN)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  settings     Settings?
+}
+
+model Settings {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  businessName String   @default("Manisa")
+  locale       Locale   @default(en)
+  theme        Theme    @default(DARK)
+  currency     String   @default("CAD") @db.VarChar(3)
+  timezone     String   @default("America/Toronto")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id                String        @id @default(cuid())
+  firstName         String
+  lastName          String?
+  displayName       String?
+  phone             String?
+  email             String?
+  address           String?
+  notes             String?
+  preferredLanguage Locale        @default(en)
+  active            Boolean       @default(true)
+  appointments      Appointment[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([firstName, lastName])
+  @@index([phone])
+  @@index([email])
+  @@index([active])
+}
+
+model Service {
+  id                     String        @id @default(cuid())
+  name                   String
+  description            String?
+  defaultDurationMinutes Int
+  defaultPrice           Decimal       @db.Decimal(12, 2)
+  currency               String        @default("CAD") @db.VarChar(3)
+  active                 Boolean       @default(true)
+  appointments           Appointment[]
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@index([name])
+  @@index([active])
+}
+
+model Appointment {
+  id                      String            @id @default(cuid())
+  customerId              String
+  serviceId               String
+  customer                Customer          @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  service                 Service           @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  serviceNameSnapshot     String
+  startAt                 DateTime          @db.Timestamptz(3)
+  expectedDurationMinutes Int
+  actualDurationMinutes   Int?
+  status                  AppointmentStatus @default(SCHEDULED)
+  expectedPrice           Decimal           @db.Decimal(12, 2)
+  finalPrice              Decimal?          @db.Decimal(12, 2)
+  currency                String            @default("CAD") @db.VarChar(3)
+  paymentStatus           PaymentStatus     @default(UNPAID)
+  notes                   String?
+  completionNotes         String?
+  calendarEventId         String?
+  calendarSyncError       String?
+  completedAt             DateTime?         @db.Timestamptz(3)
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  @@index([startAt])
+  @@index([customerId, startAt])
+  @@index([serviceId, startAt])
+  @@index([status, startAt])
+  @@index([paymentStatus])
+}

@@ -1,0 +1,2 @@
+export type CompletedRecord = { finalPrice: string | number | { toString(): string } | null; actualDurationMinutes: number | null };
+export function calculateWorkMetrics(records: CompletedRecord[]) { const revenue=records.reduce((sum,item)=>sum+Number(item.finalPrice||0),0); const minutes=records.reduce((sum,item)=>sum+(item.actualDurationMinutes||0),0); return { revenue, minutes, hours:minutes/60, hourlyIncome:minutes?revenue/(minutes/60):0 }; }
