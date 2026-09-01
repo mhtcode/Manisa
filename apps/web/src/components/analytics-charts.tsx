@@ -1,0 +1,8 @@
+"use client";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+type Point = { name: string; value: number };
+function Chart({ data, color }: { data: Point[]; color: string }) {
+  if (!data.length) return <div className="empty">Complete appointments to see this chart.</div>;
+  return <div className="h-64 w-full" aria-label="Business analytics chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 12, right: 8, left: -15, bottom: 0 }}><CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false}/><XAxis dataKey="name" tick={{ fill: "#7f8a9a", fontSize: 12 }} axisLine={false} tickLine={false}/><YAxis tick={{ fill: "#7f8a9a", fontSize: 12 }} axisLine={false} tickLine={false}/><Tooltip cursor={{ fill: "rgba(255,255,255,.03)" }} contentStyle={{ background: "#111821", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12 }}/><Bar dataKey="value" fill={color} radius={[6,6,0,0]}/></BarChart></ResponsiveContainer></div>;
+}
+export function AnalyticsCharts({ revenue, services }: { revenue: Point[]; services: Point[] }) { return <div className="grid gap-5 xl:grid-cols-2"><section className="panel"><div className="panel-header"><div><h2 className="font-medium">Revenue over time</h2><p className="mt-1 text-xs text-slate-500">Completed appointment revenue</p></div></div><div className="p-4"><Chart data={revenue} color="#5eead4"/></div></section><section className="panel"><div className="panel-header"><div><h2 className="font-medium">Revenue by service</h2><p className="mt-1 text-xs text-slate-500">Historical service snapshots</p></div></div><div className="p-4"><Chart data={services} color="#7dd3fc"/></div></section></div>; }

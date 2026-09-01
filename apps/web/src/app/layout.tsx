@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,12 +8,16 @@ export const metadata: Metadata = {
   description: "A focused platform for managing customers, appointments, services, payments, and business insights.",
 };
 
-export default function RootLayout({
+export const viewport = { themeColor: "#080b10", colorScheme: "dark" };
+
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const locale = (await cookies()).get("manisa_locale")?.value === "fa" ? "fa" : "en";
+  const theme = (await cookies()).get("manisa_theme")?.value || "dark";
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"} data-theme={theme}>
+      <body>{children}<ServiceWorkerRegistration /></body>
     </html>
   );
 }
