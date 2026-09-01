@@ -1,48 +1,101 @@
 # Manisa
 
-Manisa is a business-management web application for managing customers,
-appointments, services, payments, income, working hours, and business reporting.
+Manisa is a private, bilingual business-management application for a self-employed service provider. It manages customers, services, appointments, completion and payments, working hours, and database-derived business reporting.
 
-This repository is currently an initial application scaffold. It uses a modular
-monolith architecture with separate frontend and API applications in one repository.
+## Architecture
 
-## Technology
+The production application is a modular monolith in `apps/web`: Next.js App Router provides the UI, protected server components, server actions, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations. The original minimal FastAPI scaffold remains isolated in `apps/api` but is not required by the current application.
 
-- Frontend: Next.js, TypeScript, App Router, ESLint, and Tailwind CSS
-- Backend: Python, FastAPI, and Uvicorn
+Authentication uses Argon2id password hashes and signed, HTTP-only, same-site session cookies. Business timestamps are stored as PostgreSQL `timestamptz`; local input and display use `America/Toronto`. Money uses PostgreSQL `decimal(12,2)`, with historical service name and price values retained on appointments.
 
-## Repository structure
+## Requirements
 
-```text
-.
-├── apps
-│   ├── api        # FastAPI application
-│   └── web        # Next.js application
-├── docs           # Project documentation
-└── .github
-    └── workflows  # Reserved for future workflows
-```
+- Node.js 24
+- npm
+- Docker with Compose, or a compatible PostgreSQL 17 server
 
-## Run the frontend
-
-Node.js 20.9 or newer is required.
+## Local setup
 
 ```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+Replace `AUTH_SECRET` with output from `openssl rand -base64 32`. Set a development administrator email and a password of at least 12 characters in `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`.
+
+```bash
+docker compose up -d postgres
 cd apps/web
 npm install
+npm run db:generate
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000` and sign in with the seed administrator credentials from your local `.env`.
 
-## Run the backend
+## Useful commands
+
+From `apps/web`:
 
 ```bash
-cd apps/api
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
+npm run dev          # development server
+npm run build        # production build
+npm run start        # production server
+npm run lint         # ESLint
+npm run typecheck    # strict TypeScript validation
+npm test             # Vitest business tests
+npm run db:migrate   # create/apply a development migration
+npm run db:seed      # administrator and realistic demo-data seed
+npm run db:studio    # inspect data locally
 ```
 
-Open `http://127.0.0.1:8000/health` to verify the API.
+The liveness endpoint is `GET /api/health`. It deliberately does not disclose database or configuration details.
+
+## Demo experience
+
+The seed creates English and Persian customers, three services, and scheduled, completed, cancelled, paid, and unpaid appointments across multiple dates. Dashboard and report values always come from PostgreSQL records.
+
+## Persian, timezone, and accessibility
+
+The language setting switches between English and فارسی and changes direction between LTR and RTL. UI strings are centralized in `src/lib/i18n.ts`; names, notes, addresses, and search remain Unicode throughout. Canonical timestamps are never stored as Jalali strings. The UI uses semantic forms, visible focus states, text labels in addition to status color, and mobile-specific navigation.
+
+## Google Calendar
+
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_CALENDAR_ID` to expose configured status. The integration boundary is `src/server/google-calendar.ts`. OAuth connection and retry delivery are intentionally not enabled yet; core workflows do not depend on Google availability, and Manisa remains the source of truth.
+
+## PWA and offline behavior
+
+The app includes a manifest, icon, standalone metadata, and conservative service worker. Private customer, appointment, and report data is never cached. Offline navigation shows a static reconnection page instead of stale business records.
+
+## Docker
+
+`apps/web/Dockerfile` is a multi-stage standalone build running as a non-root user:
+
+```bash
+docker build -t manisa-web apps/web
+```
+
+Runtime secrets must be supplied as environment variables and are not copied into the image.
+
+## Project structure
+
+```text
+apps/web/
+├── prisma/              # schema, migration, and demo seed
+├── public/              # PWA assets and conservative service worker
+└── src/
+    ├── app/             # routes, protected pages, error/loading states
+    ├── components/      # reusable UI and forms
+    ├── lib/             # auth, validation, formatting, i18n, time
+    └── server/          # server actions, analytics, integrations
+```
+
+## Current limitations
+
+- Google Calendar has a safe integration boundary and configuration status, but OAuth connection and durable retry processing remain future work.
+- Web Push is not enabled; it requires a deliberate permission and delivery design.
+- The initial calendar is a responsive weekly view rather than a drag-and-drop scheduler.
+- The authorization model currently defines `ADMIN`; granular roles can be added when multiple users are introduced.
+
+The next production milestone is Google OAuth/calendar synchronization with durable retry tracking, followed by Playwright coverage of the seeded primary workflow.
