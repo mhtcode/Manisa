@@ -104,16 +104,16 @@ export function MobileNavigation({ locale, order = defaultMobileNavigation }: { 
         {order.map((key) => {
           if (key === "more") {
             const active = moreOpen || moreActive;
-            return <button aria-controls="mobile-more-navigation" aria-expanded={moreOpen} className={`mobile-nav-item relative flex min-h-[3.65rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 text-[10px] transition ${active ? "mobile-nav-item-active font-semibold text-teal-100" : "text-slate-400 active:bg-white/[0.065]"}`} key="more" onClick={() => setMoreOpen((open) => !open)} type="button">
-              <Ellipsis className={active ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={21} strokeWidth={active ? 2.35 : 1.85} />
-              <span className="w-full truncate px-0.5">More</span>
+            return <button aria-controls="mobile-more-navigation" aria-expanded={moreOpen} className={`mobile-nav-item relative flex min-h-[3.85rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1.3rem] px-1 py-1.5 transition ${active ? "mobile-nav-item-active text-teal-100" : "text-slate-400 active:bg-white/[0.065]"}`} key="more" onClick={() => setMoreOpen((open) => !open)} type="button">
+              <span className="mobile-nav-icon"><Ellipsis className={active ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={21} strokeWidth={active ? 2.35 : 1.85} /></span>
+              <span className="mobile-nav-label">More</span>
             </button>;
           }
           const [href, messageKey, Icon] = navigationItems[key];
           const active = !moreOpen && isActive(pathname, href);
-          return <Link aria-current={active ? "page" : undefined} className={`mobile-nav-item relative flex min-h-[3.65rem] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 text-[10px] transition ${active ? "mobile-nav-item-active font-semibold text-teal-100" : "text-slate-400 active:bg-white/[0.065]"}`} href={href} key={key} onClick={() => setMoreOpen(false)} prefetch={false}>
-            <Icon className={active ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={20} strokeWidth={active ? 2.35 : 1.85} />
-            <span className="w-full truncate px-0.5">{t[messageKey]}</span>
+          return <Link aria-current={active ? "page" : undefined} className={`mobile-nav-item relative flex min-h-[3.85rem] min-w-0 flex-col items-center justify-center gap-1 rounded-[1.3rem] px-1 py-1.5 transition ${active ? "mobile-nav-item-active text-teal-100" : "text-slate-400 active:bg-white/[0.065]"}`} href={href} key={key} onClick={() => setMoreOpen(false)} prefetch={false}>
+            <span className="mobile-nav-icon"><Icon className={active ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={20} strokeWidth={active ? 2.35 : 1.85} /></span>
+            <span className="mobile-nav-label">{t[messageKey]}</span>
           </Link>;
         })}
       </nav>
