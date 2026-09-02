@@ -31,8 +31,9 @@ Put the generated value in `AUTH_SECRET`, then open:
 - Web health: `http://localhost:3000/api/health`
 - API documentation: `http://localhost:8000/docs`
 - API health: `http://localhost:8000/health`
+- API database readiness: `http://localhost:8000/ready`
 
-The one-shot `web-init` container applies Prisma migrations and seeds the administrator plus demo data when the database is empty. Sign in using `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from `.env`. PostgreSQL is exposed only on the host loopback interface; the web and API ports bind to the local network by default so the responsive UI can be tested from another device.
+The one-shot `web-init` container applies Prisma migrations and seeds the administrator plus demo data when the database is empty. Sign in using `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from `.env`. PostgreSQL is exposed only on the host loopback interface; the web and API ports bind to the local network by default so the responsive UI can be tested from another device. `SESSION_COOKIE_SECURE=false` is required for plain HTTP access from a phone on the local network; set it to `true` when deploying behind HTTPS.
 
 Use `docker compose logs -f web api` to follow application logs and `docker compose down` to stop the stack while preserving its named database volume. `docker compose down -v` also deletes all database data.
 
@@ -116,7 +117,7 @@ compose.yaml             # web, API, initializer, and PostgreSQL stack
 
 - Google Calendar export import is available; OAuth connection and durable two-way synchronization remain future work.
 - Web Push is not enabled; it requires a deliberate permission and delivery design.
-- The responsive calendar supports day, week, month, and agenda views; drag-and-drop rescheduling remains future work.
+- The responsive calendar supports day, compact mobile week, month, and agenda views, plus two-finger or button zoom; drag-and-drop rescheduling remains future work.
 - The authorization model currently defines `ADMIN`; granular roles can be added when multiple users are introduced.
 
 The next production milestone is Google OAuth/calendar synchronization with durable retry tracking, followed by Playwright coverage of the seeded primary workflow.

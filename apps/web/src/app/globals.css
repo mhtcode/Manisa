@@ -33,5 +33,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .app-background { background-image: radial-gradient(circle at 70% 0%, rgba(45,212,191,.055), transparent 30rem); }
 .appointment-cta { color: #032522 !important; }
 .mobile-glass-nav { bottom: max(.75rem, env(safe-area-inset-bottom)); border: 1px solid rgba(255,255,255,.13); background: linear-gradient(180deg, rgba(18,27,37,.82), rgba(8,13,20,.76)); box-shadow: inset 0 1px rgba(255,255,255,.1), 0 16px 45px rgba(0,0,0,.48); -webkit-backdrop-filter: saturate(160%) blur(24px); backdrop-filter: saturate(160%) blur(24px); }
+.calendar-gesture-surface { touch-action: pan-x pan-y; overscroll-behavior: contain; }
 @media (max-width: 767px) { body { padding-bottom: 6.75rem; } }
 @media (prefers-color-scheme: light) { html[data-theme="system"] { color-scheme: light; filter: invert(.9) hue-rotate(180deg); } }

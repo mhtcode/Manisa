@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, addMonths, addWeeks, format, parseISO, startOfWeek, subDays, subMonths, subWeeks } from "date-fns";
 import {
   CalendarDays,
@@ -67,6 +67,15 @@ const eventColors = [
 const startHour = 7;
 const endHour = 22;
 const hours = Array.from({ length: endHour - startHour }, (_, index) => startHour + index);
+const minimumSlotHeight = 44;
+const maximumSlotHeight = 96;
+
+function touchDistance(touches: TouchList) {
+  const first = touches.item(0);
+  const second = touches.item(1);
+  if (!first || !second) return 0;
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+}
 
 function moveDate(dateKey: string, view: CalendarView, direction: -1 | 1) {
   const date = parseISO(dateKey);
@@ -90,6 +99,59 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   const [view, setView] = useState<CalendarView>(initialView);
   const [selectedKey, setSelectedKey] = useState(anchorKey);
   const [slotHeight, setSlotHeight] = useState(64);
+  const [compactScreen, setCompactScreen] = useState(false);
+  const gestureSurface = useRef<HTMLDivElement>(null);
+  const slotHeightRef = useRef(slotHeight);
+  const pinchStart = useRef<{ distance: number; height: number } | null>(null);
+  const suppressClick = useRef(false);
+  const suppressClickTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    slotHeightRef.current = slotHeight;
+  }, [slotHeight]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setCompactScreen(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const surface = gestureSurface.current;
+    if (!surface) return;
+    const start = (event: TouchEvent) => {
+      if (event.touches.length !== 2) return;
+      pinchStart.current = { distance: touchDistance(event.touches), height: slotHeightRef.current };
+      suppressClick.current = false;
+    };
+    const move = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !pinchStart.current) return;
+      const distance = touchDistance(event.touches);
+      if (!distance || !pinchStart.current.distance) return;
+      event.preventDefault();
+      const nextHeight = Math.round(pinchStart.current.height * (distance / pinchStart.current.distance));
+      if (Math.abs(nextHeight - pinchStart.current.height) > 3) suppressClick.current = true;
+      setSlotHeight(Math.min(maximumSlotHeight, Math.max(minimumSlotHeight, nextHeight)));
+    };
+    const end = () => {
+      pinchStart.current = null;
+      window.clearTimeout(suppressClickTimer.current);
+      suppressClickTimer.current = window.setTimeout(() => { suppressClick.current = false; }, 450);
+    };
+    surface.addEventListener("touchstart", start, { passive: true });
+    surface.addEventListener("touchmove", move, { passive: false });
+    surface.addEventListener("touchend", end, { passive: true });
+    surface.addEventListener("touchcancel", end, { passive: true });
+    return () => {
+      surface.removeEventListener("touchstart", start);
+      surface.removeEventListener("touchmove", move);
+      surface.removeEventListener("touchend", end);
+      surface.removeEventListener("touchcancel", end);
+      window.clearTimeout(suppressClickTimer.current);
+    };
+  }, []);
   const itemsByDay = useMemo(() => {
     const grouped = new Map<string, CalendarItem[]>();
     for (const item of items) grouped.set(item.dateKey, [...(grouped.get(item.dateKey) ?? []), item]);
@@ -97,7 +159,9 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   }, [items]);
   const selectedWeekStart = startOfWeek(parseISO(selectedKey), { weekStartsOn: 1 });
   const selectedWeekKeys = Array.from({ length: 7 }, (_, index) => format(addDays(selectedWeekStart, index), "yyyy-MM-dd"));
-  const visibleKeys = view === "day" ? [selectedKey] : selectedWeekKeys;
+  const selectedWeekIndex = Math.max(0, selectedWeekKeys.indexOf(selectedKey));
+  const compactStart = Math.min(4, Math.max(0, selectedWeekIndex - 1));
+  const visibleKeys = view === "day" ? [selectedKey] : compactScreen && view === "week" ? selectedWeekKeys.slice(compactStart, compactStart + 3) : selectedWeekKeys;
   const currentMonthKeys = new Set(days.filter((day) => day.isCurrentMonth).map((day) => day.key));
   const scopedItems = view === "day"
     ? items.filter((item) => item.dateKey === selectedKey)
@@ -149,26 +213,37 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
               ))}
             </div>
             <div className="flex items-center rounded-xl border border-white/9 bg-white/[0.035] p-1" title="Calendar zoom">
-              <button aria-label="Zoom out" className="flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:opacity-30" disabled={slotHeight === 48} onClick={() => setSlotHeight((height) => Math.max(48, height - 16))} type="button"><Minus size={15} /></button>
-              <span className="min-w-14 text-center text-[10px] font-medium uppercase tracking-wide text-slate-500">{slotHeight === 48 ? "Compact" : slotHeight === 64 ? "Comfort" : "Spacious"}</span>
-              <button aria-label="Zoom in" className="flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:opacity-30" disabled={slotHeight === 80} onClick={() => setSlotHeight((height) => Math.min(80, height + 16))} type="button"><Plus size={15} /></button>
+              <button aria-label="Zoom out" className="flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:opacity-30" disabled={slotHeight <= minimumSlotHeight} onClick={() => setSlotHeight((height) => Math.max(minimumSlotHeight, height - 12))} type="button"><Minus size={15} /></button>
+              <span className="min-w-14 text-center text-[10px] font-medium uppercase tracking-wide text-slate-500">{slotHeight <= 52 ? "Compact" : slotHeight >= 84 ? "Spacious" : "Comfort"}</span>
+              <button aria-label="Zoom in" className="flex size-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:opacity-30" disabled={slotHeight >= maximumSlotHeight} onClick={() => setSlotHeight((height) => Math.min(maximumSlotHeight, height + 12))} type="button"><Plus size={15} /></button>
             </div>
             <Link className="button h-11 min-h-11 px-3 sm:px-4" href={`/appointments/new?date=${selectedKey}`}><Plus size={16} /><span className="hidden sm:inline">Appointment</span></Link>
           </div>
         </div>
       </div>
 
-      {(view === "day" || view === "week") && (
-        <TimeGrid days={days} itemsByDay={itemsByDay} slotHeight={slotHeight} visibleKeys={visibleKeys} />
-      )}
-      {view === "month" && (
-        <MonthGrid days={days} itemsByDay={itemsByDay} selectedKey={selectedKey} setSelectedKey={setSelectedKey} slotHeight={slotHeight} />
-      )}
-      {view === "agenda" && <Agenda days={days} items={scopedItems} />}
+      <div
+        className="calendar-gesture-surface"
+        onClickCapture={(event) => {
+          if (!suppressClick.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+          suppressClick.current = false;
+        }}
+        ref={gestureSurface}
+      >
+        {(view === "day" || view === "week") && (
+          <TimeGrid days={days} itemsByDay={itemsByDay} slotHeight={slotHeight} visibleKeys={visibleKeys} />
+        )}
+        {view === "month" && (
+          <MonthGrid days={days} itemsByDay={itemsByDay} selectedKey={selectedKey} setSelectedKey={setSelectedKey} slotHeight={slotHeight} />
+        )}
+        {view === "agenda" && <Agenda days={days} items={scopedItems} />}
+      </div>
 
       <div className="flex items-center justify-between border-t border-white/8 px-4 py-3 text-xs text-slate-600 sm:px-5">
         <span>{scopedItems.length} scheduled in this calendar period</span>
-        <span className="flex items-center gap-1.5"><Clock3 size={13} /> Times shown in Toronto</span>
+        <span className="flex items-center gap-1.5"><Clock3 size={13} /><span className="hidden sm:inline">Times shown in Toronto</span><span className="sm:hidden">Pinch calendar to zoom</span></span>
       </div>
     </section>
   );
@@ -176,7 +251,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
 
 function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: CalendarDay[]; itemsByDay: Map<string, CalendarItem[]>; slotHeight: number; visibleKeys: string[] }) {
   const visibleDays = visibleKeys.map((key) => days.find((day) => day.key === key)).filter((day): day is CalendarDay => Boolean(day));
-  const minWidth = visibleDays.length === 1 ? 440 : 920;
+  const minWidth = visibleDays.length === 1 ? 0 : visibleDays.length <= 3 ? 380 : 920;
 
   return (
     <div className="max-h-[68vh] overflow-auto">
@@ -216,7 +291,7 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
 }
 
 function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }: { days: CalendarDay[]; itemsByDay: Map<string, CalendarItem[]>; selectedKey: string; setSelectedKey: (key: string) => void; slotHeight: number }) {
-  const maxItems = slotHeight === 48 ? 2 : slotHeight === 64 ? 3 : 4;
+  const maxItems = slotHeight <= 52 ? 2 : slotHeight < 84 ? 3 : 4;
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[720px]">

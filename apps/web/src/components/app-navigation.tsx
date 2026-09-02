@@ -65,6 +65,7 @@ export function DesktopNavigation({ locale }: { locale: AppLocale }) {
             }`}
             href={href}
             key={href}
+            prefetch={false}
           >
             <Icon className={active ? "text-teal-300" : "text-slate-500 group-hover:text-slate-300"} size={18} />
             {t[key]}
@@ -125,6 +126,7 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
                 href={href}
                 key={href}
                 onClick={() => setMoreOpen(false)}
+                prefetch={false}
               >
                 <span className={`flex size-9 items-center justify-center rounded-xl ${active ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-400"}`}>
                   <Icon size={18} />
@@ -148,6 +150,7 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
               href={href}
               key={href}
               onClick={() => setMoreOpen(false)}
+              prefetch={false}
             >
               {active && <span className="absolute top-1.5 h-0.5 w-5 rounded-full bg-teal-300 shadow-[0_0_10px_rgba(94,234,212,.85)]" />}
               <Icon className={active ? "text-teal-300" : "text-slate-400"} size={20} strokeWidth={active ? 2.3 : 1.8} />
