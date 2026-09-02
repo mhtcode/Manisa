@@ -5,4 +5,14 @@ import { customerName } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { toDateTimeInput } from "@/lib/time";
 import { updateAppointment } from "@/server/actions/appointments";
-export default async function EditAppointmentPage({ params }: { params: Promise<{id:string}> }) { const {id}=await params; const [appointment,customers,services]=await Promise.all([prisma.appointment.findUnique({where:{id}}),prisma.customer.findMany({where:{active:true}}),prisma.service.findMany({orderBy:{name:"asc"}})]); if(!appointment) notFound(); return <><PageHeading title="Edit appointment" description="Update scheduling and expected details."/><AppointmentForm action={updateAppointment.bind(null,id)} appointment={{...appointment,startAt:toDateTimeInput(appointment.startAt),expectedPrice:appointment.expectedPrice.toString()}} customers={customers.map((item)=>({id:item.id,name:customerName(item)}))} services={services.map((item)=>({id:item.id,name:item.name,duration:item.defaultDurationMinutes,price:item.defaultPrice.toString()}))}/></>; }
+
+export default async function EditAppointmentPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const [appointment, customers, services] = await Promise.all([
+    prisma.appointment.findUnique({ where: { id }, include: { serviceLines: { orderBy: { position: "asc" } } } }),
+    prisma.customer.findMany({ where: { active: true }, orderBy: { firstName: "asc" } }),
+    prisma.service.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] }),
+  ]);
+  if (!appointment) notFound();
+  return <><PageHeading title="Edit appointment" description="Update the customer, service bundle, or schedule."/><AppointmentForm action={updateAppointment.bind(null, id)} appointment={{ customerId: appointment.customerId, serviceIds: appointment.serviceLines.length ? appointment.serviceLines.map((line) => line.serviceId) : [appointment.serviceId], startAt: toDateTimeInput(appointment.startAt), expectedDurationMinutes: appointment.expectedDurationMinutes, expectedPrice: appointment.expectedPrice.toString(), notes: appointment.notes }} customers={customers.map((item) => ({ id: item.id, name: customerName(item), phone: item.phone, email: item.email }))} services={services.map((item) => ({ id: item.id, name: item.name, duration: item.defaultDurationMinutes, price: item.defaultPrice.toString(), currency: item.currency }))}/></>;
+}

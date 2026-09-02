@@ -1,21 +1,65 @@
-import Link from "next/link";
-import { addDays, startOfWeek } from "date-fns";
-import { formatInTimeZone } from "date-fns-tz";
+import { addDays, format, startOfMonth, startOfWeek } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { CalendarBoard, type CalendarView } from "@/components/calendar-board";
 import { PageHeading } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
 import { customerName } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
-export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ offset?: string }> }) {
-  const requested = Number((await searchParams).offset || 0);
-  const offset = Number.isFinite(requested) ? Math.max(-52, Math.min(52, requested)) : 0;
-  const start = addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), offset * 7);
-  const end = addDays(start, 7);
-  const appointments = await prisma.appointment.findMany({ where: { startAt: { gte: start, lt: end }, status: { not: "CANCELLED" } }, include: { customer: true }, orderBy: { startAt: "asc" } });
-  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
-  return <><PageHeading title="Calendar" description="A database-backed weekly view of scheduled work." actions={<><Link className="button-secondary" href={`/calendar?offset=${offset - 1}`}>Previous</Link><Link className="button-secondary" href="/calendar">Today</Link><Link className="button-secondary" href={`/calendar?offset=${offset + 1}`}>Next</Link></>}/><div className="grid gap-3 lg:grid-cols-7">{days.map((day) => {
-    const dateKey = formatInTimeZone(day, "America/Toronto", "yyyy-MM-dd");
-    const items = appointments.filter((item) => formatInTimeZone(item.startAt, "America/Toronto", "yyyy-MM-dd") === dateKey);
-    return <section className="panel min-h-40 p-3" key={day.toISOString()}><div className="border-b border-white/8 pb-3"><p className="text-xs uppercase tracking-wider text-slate-600">{new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "America/Toronto" }).format(day)}</p><p className="mt-1 text-lg font-semibold">{formatInTimeZone(day, "America/Toronto", "d")}</p></div><div className="mt-3 space-y-2">{items.map((item) => <Link href={`/appointments/${item.id}`} key={item.id} className="block rounded-xl border border-white/8 bg-white/[0.03] p-3 hover:border-teal-300/30"><p className="text-xs text-teal-300">{formatInTimeZone(item.startAt, "America/Toronto", "h:mm a")}</p><p className="mt-1 truncate text-sm font-medium">{customerName(item.customer)}</p><p className="mt-1 truncate text-xs text-slate-600">{item.serviceNameSnapshot}</p><div className="mt-2"><StatusBadge status={item.status}/></div></Link>)}</div></section>;
-  })}</div></>;
+const timeZone = "America/Toronto";
+const allowedViews = new Set<CalendarView>(["day", "week", "month", "agenda"]);
+
+function validDateKey(value?: string) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).valueOf());
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
+  const { date, view } = await searchParams;
+  const todayKey = formatInTimeZone(new Date(), timeZone, "yyyy-MM-dd");
+  const anchorKey = validDateKey(date) ? date! : todayKey;
+  const anchor = new Date(`${anchorKey}T12:00:00Z`);
+  const monthStart = startOfMonth(anchor);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const gridEnd = addDays(gridStart, 42);
+  const rangeStart = fromZonedTime(`${format(gridStart, "yyyy-MM-dd")}T00:00:00`, timeZone);
+  const rangeEnd = fromZonedTime(`${format(gridEnd, "yyyy-MM-dd")}T00:00:00`, timeZone);
+  const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "week";
+
+  const appointments = await prisma.appointment.findMany({
+    where: { startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
+    include: { customer: true },
+    orderBy: { startAt: "asc" },
+  });
+
+  const days = Array.from({ length: 42 }, (_, index) => {
+    const day = addDays(gridStart, index);
+    const key = format(day, "yyyy-MM-dd");
+    return {
+      key,
+      weekday: new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" }).format(day),
+      shortWeekday: new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" }).format(day),
+      dayNumber: format(day, "d"),
+      monthLabel: new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(day),
+      isCurrentMonth: day.getUTCMonth() === anchor.getUTCMonth(),
+      isToday: key === todayKey,
+    };
+  });
+  const serviceColors = new Map<string, number>();
+  const items = appointments.map((item) => {
+    if (!serviceColors.has(item.serviceNameSnapshot)) serviceColors.set(item.serviceNameSnapshot, serviceColors.size);
+    const hour = Number(formatInTimeZone(item.startAt, timeZone, "H"));
+    const minute = Number(formatInTimeZone(item.startAt, timeZone, "m"));
+    return {
+      id: item.id,
+      dateKey: formatInTimeZone(item.startAt, timeZone, "yyyy-MM-dd"),
+      time: formatInTimeZone(item.startAt, timeZone, "h:mm a"),
+      startMinutes: hour * 60 + minute,
+      durationMinutes: item.expectedDurationMinutes,
+      customer: customerName(item.customer),
+      service: item.serviceNameSnapshot,
+      status: item.status,
+      colorIndex: serviceColors.get(item.serviceNameSnapshot) ?? 0,
+    };
+  });
+
+  return <><PageHeading title="Calendar" description="Plan your studio schedule across day, week, month, or agenda views."/><CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} monthTitle={new Intl.DateTimeFormat("en-CA", { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/></>;
 }
