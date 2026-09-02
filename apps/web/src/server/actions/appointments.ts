@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { customerName } from "@/lib/format";
+import { PhotoUploadError, prepareAppointmentPhotos, removePreparedPhotos } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, appointmentsOverlap, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate, parseBusinessDateTime } from "@/lib/time";
@@ -119,20 +120,50 @@ export async function completeAppointment(id: string, formData: FormData) {
   const actualDurationMinutes = actualLines.reduce((sum, line) => sum + line.actualDurationMinutes, 0);
   const finalPrice = actualLines.reduce((sum, line) => sum + Number(line.finalPrice), 0).toFixed(2);
   const primaryService = orderedServices[0];
-  await prisma.appointment.update({ where: { id }, data: {
-    status: "COMPLETED",
-    completedAt: new Date(),
-    paymentStatus: data.paymentStatus,
-    completionNotes: data.completionNotes,
-    actualDurationMinutes,
-    finalPrice,
-    serviceId: primaryService.id,
-    serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
-    currency: primaryService.currency,
-    actualServiceLines: { deleteMany: {}, create: actualLines },
-  } });
-  revalidatePath("/dashboard"); revalidatePath("/reports"); revalidatePath("/appointments"); revalidatePath("/working-hours"); revalidatePath(`/appointments/${id}`);
+  let photos;
+  try { photos = await prepareAppointmentPhotos(id, formData); }
+  catch (error) { return { error: error instanceof PhotoUploadError ? error.message : "The photos could not be uploaded." }; }
+  try {
+    await prisma.appointment.update({ where: { id }, data: {
+      status: "COMPLETED",
+      completedAt: new Date(),
+      paymentStatus: data.paymentStatus,
+      completionNotes: data.completionNotes,
+      actualDurationMinutes,
+      finalPrice,
+      serviceId: primaryService.id,
+      serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
+      currency: primaryService.currency,
+      actualServiceLines: { deleteMany: {}, create: actualLines },
+      photos: { create: photos },
+    } });
+  } catch (error) {
+    await removePreparedPhotos(photos);
+    throw error;
+  }
+  revalidatePath("/dashboard"); revalidatePath("/reports"); revalidatePath("/appointments"); revalidatePath("/working-hours"); revalidatePath("/gallery"); revalidatePath(`/appointments/${id}`);
   redirect(`/appointments/${id}`);
+}
+
+export async function addAppointmentPhotos(id: string, _previous: { error?: string; success?: string } | null, formData: FormData) {
+  await requireUser();
+  const appointment = await prisma.appointment.findUnique({ where: { id }, select: { status: true } });
+  if (!appointment) return { error: "Appointment not found." };
+  if (appointment.status !== "COMPLETED") return { error: "Photos can only be added to a finalized appointment." };
+
+  let photos;
+  try {
+    photos = await prepareAppointmentPhotos(id, formData);
+    if (!photos.length) return { error: "Choose at least one photo to upload." };
+  } catch (error) {
+    return { error: error instanceof PhotoUploadError ? error.message : "The photos could not be uploaded." };
+  }
+
+  try { await prisma.appointmentPhoto.createMany({ data: photos.map((photo) => ({ ...photo, appointmentId: id })) }); }
+  catch (error) { await removePreparedPhotos(photos); throw error; }
+  revalidatePath(`/appointments/${id}`);
+  revalidatePath("/gallery");
+  return { success: `${photos.length} ${photos.length === 1 ? "photo" : "photos"} added.`, resetKey: photos[0].imagePath };
 }
 
 export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO_SHOW" | "CONFIRMED") {

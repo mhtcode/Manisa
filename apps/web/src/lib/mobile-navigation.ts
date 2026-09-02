@@ -1,4 +1,4 @@
-export const mobileNavigationKeys = ["dashboard", "appointments", "calendar", "customers", "services", "reports", "workingHours", "settings", "more"] as const;
+export const mobileNavigationKeys = ["dashboard", "appointments", "calendar", "customers", "gallery", "services", "reports", "workingHours", "settings", "more"] as const;
 export type MobileNavigationKey = typeof mobileNavigationKeys[number];
 
 export const defaultMobileNavigation: MobileNavigationKey[] = ["dashboard", "appointments", "calendar", "more"];
@@ -8,6 +8,7 @@ export const mobileNavigationLabels: Record<MobileNavigationKey, string> = {
   appointments: "Appointments",
   calendar: "Calendar",
   customers: "Customers",
+  gallery: "Gallery",
   services: "Services",
   reports: "Reports",
   workingHours: "Working Hours",

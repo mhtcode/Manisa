@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { AlertTriangle, BadgeCheck, Check, Palette, Scissors, Sparkles } from "lucide-react";
+import { PhotoUploadField } from "@/components/photo-upload-field";
 
 type ServiceOption = {
   id: string;
@@ -101,6 +102,8 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
         <div className="grid grid-cols-2 gap-4 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3"><div><p className="text-[10px] uppercase tracking-wider text-emerald-200/55">Total time</p><p className="mt-1 font-semibold text-emerald-100">{totals.duration} min</p></div><div><p className="text-[10px] uppercase tracking-wider text-emerald-200/55">Total income</p><p className="mt-1 font-semibold text-emerald-100">{new Intl.NumberFormat("en-CA", { style: "currency", currency: selectedServices[0]?.currency || "CAD" }).format(totals.price)}</p></div></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="completionNotes">Completion notes</label><textarea className="field min-h-28" id="completionNotes" name="completionNotes" defaultValue={completionNotes || ""}/></div>
       </div>
+
+      <div className="mt-5"><PhotoUploadField disabled={isSubmitting}/></div>
 
       {actionState?.error && <div className="mt-5 flex items-start gap-2 rounded-xl border border-rose-400/25 bg-rose-400/8 p-3 text-sm text-rose-200" role="alert"><AlertTriangle className="mt-0.5 shrink-0" size={16}/>{actionState.error}</div>}
       <div className="mt-7 flex flex-wrap justify-end gap-3"><Link className="button-secondary" href={`/appointments/${appointmentId}`}>Cancel</Link><button className="button" disabled={!selectedServices.length || isSubmitting}><BadgeCheck size={17}/>{isSubmitting ? "Finalizing…" : "Finalize appointment"}</button></div>

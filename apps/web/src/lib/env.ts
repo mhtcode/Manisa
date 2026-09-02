@@ -7,6 +7,7 @@ const serverEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALENDAR_ID: z.string().default("primary"),
+  UPLOADS_DIR: z.string().min(1).optional(),
 });
 
 export function getServerEnv() {
@@ -17,6 +18,7 @@ export function getServerEnv() {
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || undefined,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || undefined,
     GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
+    UPLOADS_DIR: process.env.UPLOADS_DIR || undefined,
   });
 }
 

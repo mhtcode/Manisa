@@ -119,6 +119,7 @@ model Appointment {
   service                 Service                    @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   serviceLines            AppointmentService[]
   actualServiceLines      AppointmentActualService[]
+  photos                  AppointmentPhoto[]
   serviceNameSnapshot     String
   startAt                 DateTime                   @db.Timestamptz(3)
   expectedDurationMinutes Int
@@ -177,4 +178,20 @@ model AppointmentActualService {
   @@unique([appointmentId, serviceId])
   @@index([appointmentId, position])
   @@index([serviceId])
+}
+
+model AppointmentPhoto {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  originalName  String
+  imagePath     String      @unique
+  thumbnailPath String      @unique
+  width         Int
+  height        Int
+  sizeBytes     Int
+  createdAt     DateTime    @default(now())
+
+  @@index([appointmentId, createdAt])
+  @@index([createdAt])
 }
