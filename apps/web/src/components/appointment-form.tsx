@@ -34,8 +34,8 @@ export function AppointmentForm({ action, customers, services, appointment, init
   const [serviceIds, setServiceIds] = useState<string[]>(initialServices);
   const [serviceColors, setServiceColors] = useState<Record<string, string>>(appointment?.serviceColors || {});
   const initialSelectedServices = services.filter((service) => initialServices.includes(service.id));
-  const [duration, setDuration] = useState(appointment?.expectedDurationMinutes || initialSelectedServices.reduce((sum, service) => sum + service.duration, 0) || 60);
-  const [price, setPrice] = useState(appointment?.expectedPrice || initialSelectedServices.reduce((sum, service) => sum + Number(service.price), 0).toFixed(2) || "0.00");
+  const [duration, setDuration] = useState(appointment?.expectedDurationMinutes || initialSelectedServices.reduce((sum, service) => sum + service.duration, 0));
+  const [price, setPrice] = useState(appointment?.expectedPrice || (initialSelectedServices.length ? initialSelectedServices.reduce((sum, service) => sum + Number(service.price), 0).toFixed(2) : ""));
   const [date, setDate] = useState(initialDateTime.split("T")[0] || "");
   const [time, setTime] = useState(initialDateTime.split("T")[1]?.slice(0, 5) || "09:00");
   const [availability, setAvailability] = useState<{ state: "idle" | "checking" | "available" | "conflict"; key?: string; message?: string; conflictId?: string }>({ state: "idle" });
@@ -98,7 +98,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
     const nextServices = services.filter((service) => nextIds.includes(service.id));
     setServiceIds(nextIds);
     setDuration(nextServices.reduce((sum, service) => sum + service.duration, 0));
-    setPrice(nextServices.reduce((sum, service) => sum + Number(service.price), 0).toFixed(2));
+    setPrice(nextServices.length ? nextServices.reduce((sum, service) => sum + Number(service.price), 0).toFixed(2) : "");
     const service = services.find((item) => item.id === id);
     if (!serviceIds.includes(id) && service?.supportsColor && !serviceColors[id]) setServiceColors((colors) => ({ ...colors, [id]: "#D36B85" }));
   }
@@ -155,8 +155,8 @@ export function AppointmentForm({ action, customers, services, appointment, init
           <div className="grid gap-4 sm:grid-cols-2">
             <div><label className="label" htmlFor="appointment-date">Date *</label><input className="field h-12" id="appointment-date" onChange={(event) => setDate(event.target.value)} required type="date" value={date} /></div>
             <div><label className="label" htmlFor="appointment-time">Start time *</label><input className="field h-12" id="appointment-time" onChange={(event) => setTime(event.target.value)} required type="time" value={time} /></div>
-            <div><label className="label" htmlFor="expectedDurationMinutes">Estimated duration</label><div className="relative"><Clock3 className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} /><input className="field h-12 ps-10" id="expectedDurationMinutes" min="5" name="expectedDurationMinutes" onChange={(event) => setDuration(Number(event.target.value))} required step="5" type="number" value={duration} /></div></div>
-            <div><label className="label" htmlFor="expectedPrice">Estimated price</label><div className="relative"><DollarSign className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} /><input className="field h-12 ps-10" id="expectedPrice" inputMode="decimal" name="expectedPrice" onChange={(event) => setPrice(event.target.value)} required value={price} /></div></div>
+            <div><label className="label" htmlFor="expectedDurationMinutes">Estimated duration</label><div className="relative"><Clock3 className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} /><input className="field h-12 ps-10" id="expectedDurationMinutes" min="5" name="expectedDurationMinutes" onChange={(event) => setDuration(Number(event.target.value))} placeholder="60" required step="5" type="number" value={duration || ""} /></div></div>
+            <div><label className="label" htmlFor="expectedPrice">Estimated price</label><div className="relative"><DollarSign className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={17} /><input className="field h-12 ps-10" id="expectedPrice" inputMode="decimal" name="expectedPrice" onChange={(event) => setPrice(event.target.value)} placeholder="0.00" required value={price} /></div></div>
             <div className={`sm:col-span-2 flex items-start gap-3 rounded-xl border px-3.5 py-3 text-sm ${currentAvailability.state === "conflict" ? "border-rose-400/25 bg-rose-400/8 text-rose-200" : currentAvailability.state === "available" ? "border-emerald-400/20 bg-emerald-400/8 text-emerald-200" : "border-white/8 bg-white/[0.025] text-slate-400"}`} role="status">
               {currentAvailability.state === "checking" ? <LoaderCircle className="mt-0.5 shrink-0 animate-spin" size={17}/> : currentAvailability.state === "conflict" ? <AlertTriangle className="mt-0.5 shrink-0" size={17}/> : <CircleCheck className="mt-0.5 shrink-0" size={17}/>}<span className="leading-5">{currentAvailability.message}{currentAvailability.conflictId && <Link className="ms-1 font-semibold underline underline-offset-2" href={`/appointments/${currentAvailability.conflictId}`}>View conflict</Link>}</span>
             </div>

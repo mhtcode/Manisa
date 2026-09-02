@@ -30,7 +30,7 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
   const [serviceIds, setServiceIds] = useState(scheduledIds);
   const [lines, setLines] = useState<Record<string, LineValue>>(() => Object.fromEntries(services.map((service) => {
     const scheduled = scheduledLines.find((line) => line.serviceId === service.id);
-    return [service.id, { duration: scheduled?.duration || service.duration, price: scheduled?.price || service.price, color: scheduled?.selectedColor || "#D36B85" }];
+    return [service.id, { duration: 0, price: "", color: scheduled?.selectedColor || "#D36B85" }];
   })));
   const [actionState, formAction, isSubmitting] = useActionState<ActionResult, FormData>(async (_previous, formData) => (await action(formData)) ?? null, null);
   const groups = [
@@ -87,8 +87,8 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
         {selectedServices.map((service) => <div className="rounded-xl border border-white/8 bg-black/10 p-3.5" key={service.id}>
           <p className="mb-3 text-sm font-medium text-slate-200" dir="auto">{service.name}</p>
           <div className={`grid gap-3 ${service.supportsColor ? "grid-cols-[1fr_1fr_auto]" : "grid-cols-2"}`}>
-            <div><label className="label text-xs" htmlFor={`duration-${service.id}`}>Minutes</label><input className="field" id={`duration-${service.id}`} min="1" name={`actualDuration_${service.id}`} onChange={(event) => updateLine(service.id, { duration: Number(event.target.value) })} required type="number" value={lines[service.id]?.duration || ""}/></div>
-            <div><label className="label text-xs" htmlFor={`price-${service.id}`}>Final price</label><input className="field" id={`price-${service.id}`} inputMode="decimal" name={`actualPrice_${service.id}`} onChange={(event) => updateLine(service.id, { price: event.target.value })} required value={lines[service.id]?.price || ""}/></div>
+            <div><label className="label text-xs" htmlFor={`duration-${service.id}`}>Minutes</label><input className="field" id={`duration-${service.id}`} min="1" name={`actualDuration_${service.id}`} onChange={(event) => updateLine(service.id, { duration: Number(event.target.value) })} placeholder={String(service.duration)} required type="number" value={lines[service.id]?.duration || ""}/></div>
+            <div><label className="label text-xs" htmlFor={`price-${service.id}`}>Final price</label><input className="field" id={`price-${service.id}`} inputMode="decimal" name={`actualPrice_${service.id}`} onChange={(event) => updateLine(service.id, { price: event.target.value })} placeholder={service.price} required value={lines[service.id]?.price || ""}/></div>
             {service.supportsColor && <div><label className="label text-xs" htmlFor={`color-${service.id}`}>Color</label><input aria-label={`Actual color for ${service.name}`} className="h-[42px] w-12 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1" id={`color-${service.id}`} name={`serviceColor_${service.id}`} onChange={(event) => updateLine(service.id, { color: event.target.value.toUpperCase() })} type="color" value={lines[service.id]?.color || "#D36B85"}/></div>}
           </div>
           <input name="actualServiceIds" type="hidden" value={service.id}/>

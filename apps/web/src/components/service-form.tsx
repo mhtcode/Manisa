@@ -36,12 +36,12 @@ export function ServiceForm({ action, service }: { action: (data: FormData) => v
         </div>
         <div>
           <label className="label" htmlFor="defaultDurationMinutes">Default duration (minutes)</label>
-          <input className="field" id="defaultDurationMinutes" name="defaultDurationMinutes" type="number" min="5" step="5" defaultValue={service?.defaultDurationMinutes || 60} required />
+          <input className="field" id="defaultDurationMinutes" name="defaultDurationMinutes" type="number" min="5" step="5" defaultValue={service?.defaultDurationMinutes} placeholder="60" required />
         </div>
         <div>
           <label className="label" htmlFor="defaultPrice">Default price</label>
           <div className="flex gap-2">
-            <input className="field" id="defaultPrice" name="defaultPrice" inputMode="decimal" defaultValue={service?.defaultPrice.toString() || "0.00"} required />
+            <input className="field" id="defaultPrice" name="defaultPrice" inputMode="decimal" defaultValue={service?.defaultPrice.toString()} placeholder="0.00" required />
             <select className="field max-w-24" name="currency" defaultValue={service?.currency || "CAD"}><option>CAD</option><option>USD</option></select>
           </div>
         </div>
