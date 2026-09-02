@@ -62,7 +62,9 @@ The language setting switches between English and فارسی and changes directi
 
 ## Google Calendar
 
-Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_CALENDAR_ID` to expose configured status. The integration boundary is `src/server/google-calendar.ts`. OAuth connection and retry delivery are intentionally not enabled yet; core workflows do not depend on Google availability, and Manisa remains the source of truth.
+Settings includes a safe historical importer for Google Calendar `.ics` exports. Event titles must use `Customer name | Service name`; optional `Phone:` and `Email:` lines may be included in the event description. Missing customers and services are created, repeat imports are deduplicated, and imported visits are tagged `historical · unreported` so they never affect income or working-hour totals.
+
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_CALENDAR_ID` to expose live-integration configuration status. OAuth connection and retry delivery are intentionally not enabled yet; core workflows do not depend on Google availability, and Manisa remains the source of truth.
 
 ## PWA and offline behavior
 
@@ -93,9 +95,9 @@ apps/web/
 
 ## Current limitations
 
-- Google Calendar has a safe integration boundary and configuration status, but OAuth connection and durable retry processing remain future work.
+- Google Calendar export import is available; OAuth connection and durable two-way synchronization remain future work.
 - Web Push is not enabled; it requires a deliberate permission and delivery design.
-- The initial calendar is a responsive weekly view rather than a drag-and-drop scheduler.
+- The responsive calendar supports day, week, month, and agenda views; drag-and-drop rescheduling remains future work.
 - The authorization model currently defines `ADMIN`; granular roles can be added when multiple users are introduced.
 
 The next production milestone is Google OAuth/calendar synchronization with durable retry tracking, followed by Playwright coverage of the seeded primary workflow.

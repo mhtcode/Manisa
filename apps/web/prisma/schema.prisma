@@ -26,6 +26,7 @@ enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
   COMPLETED
+  HISTORICAL
   CANCELLED
   NO_SHOW
 }
@@ -117,7 +118,7 @@ model Appointment {
   paymentStatus           PaymentStatus     @default(UNPAID)
   notes                   String?
   completionNotes         String?
-  calendarEventId         String?
+  calendarEventId         String?           @unique
   calendarSyncError       String?
   completedAt             DateTime?         @db.Timestamptz(3)
   createdAt               DateTime          @default(now())

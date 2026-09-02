@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CalendarDays, Check, CircleCheck, Clock3, DollarSign, LoaderCircle, Search, Scissors, Sparkles, UserRound } from "lucide-react";
 import { checkAppointmentAvailability } from "@/server/actions/appointments";
 
@@ -30,6 +30,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
   const [customerId, setCustomerId] = useState(initialCustomer);
   const [customerQuery, setCustomerQuery] = useState(customers.find((customer) => customer.id === initialCustomer)?.name || "");
   const [customerOpen, setCustomerOpen] = useState(false);
+  const customerPickerRef = useRef<HTMLDivElement>(null);
   const [serviceIds, setServiceIds] = useState<string[]>(initialServices);
   const initialSelectedServices = services.filter((service) => initialServices.includes(service.id));
   const [duration, setDuration] = useState(appointment?.expectedDurationMinutes || initialSelectedServices.reduce((sum, service) => sum + service.duration, 0) || 60);
@@ -67,6 +68,25 @@ export function AppointmentForm({ action, customers, services, appointment, init
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [appointment?.id, availabilityKey, date, duration, time]);
 
+  useEffect(() => {
+    function closeWhenOutside(event: Event) {
+      if (!customerPickerRef.current?.contains(event.target as Node)) setCustomerOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setCustomerOpen(false);
+    }
+    document.addEventListener("pointerdown", closeWhenOutside);
+    document.addEventListener("click", closeWhenOutside);
+    document.addEventListener("focusin", closeWhenOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeWhenOutside);
+      document.removeEventListener("click", closeWhenOutside);
+      document.removeEventListener("focusin", closeWhenOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, []);
+
   function toggleService(id: string) {
     const nextIds = serviceIds.includes(id) ? serviceIds.filter((serviceId) => serviceId !== id) : [...serviceIds, id];
     const nextServices = services.filter((service) => nextIds.includes(service.id));
@@ -80,13 +100,13 @@ export function AppointmentForm({ action, customers, services, appointment, init
       <div className="space-y-5">
         <section className="panel p-5 sm:p-6">
           <div className="mb-5 flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-300/10 text-teal-300"><UserRound size={19} /></span><div><h2 className="font-semibold text-white">Who is this appointment for?</h2><p className="mt-1 text-sm text-slate-500">Start typing a name, phone number, or email.</p></div></div>
-          <div className="relative">
-            <div className={`flex items-center gap-3 rounded-xl border bg-[#090e15] px-3.5 transition ${customerOpen ? "border-teal-300/50 ring-2 ring-teal-300/8" : "border-white/10"}`}>
+          <div className="relative" ref={customerPickerRef}>
+            <div className={`flex items-center gap-3 rounded-xl border bg-[#090e15] px-3.5 transition ${customerOpen ? "border-white/20 bg-[#0b1119] shadow-[0_0_0_3px_rgba(148,163,184,.055)]" : "border-white/10"}`}>
               <Search className="shrink-0 text-slate-500" size={18} />
               <input aria-autocomplete="list" aria-controls="appointment-customer-results" aria-expanded={customerOpen} autoComplete="off" className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600" dir="auto" onChange={(event) => { setCustomerQuery(event.target.value); setCustomerId(""); setCustomerOpen(true); }} onFocus={() => setCustomerOpen(true)} placeholder="Search customers…" role="combobox" value={customerQuery} />
               {selectedCustomer && <Check className="text-teal-300" size={18} />}
             </div>
-            {customerOpen && <div className="absolute inset-x-0 top-[calc(100%+.5rem)] z-30 overflow-hidden rounded-2xl border border-white/10 bg-[#101720] p-1.5 shadow-[0_22px_60px_rgba(0,0,0,.55)]" id="appointment-customer-results" role="listbox">
+            {customerOpen && <div className="absolute inset-x-0 top-[calc(100%+.5rem)] z-30 max-h-[min(28rem,60vh)] overflow-y-auto rounded-2xl border border-white/10 bg-[#101720] p-1.5 shadow-[0_22px_60px_rgba(0,0,0,.55)]" id="appointment-customer-results" role="listbox">
               {filteredCustomers.map((customer) => <button aria-selected={customer.id === customerId} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition hover:bg-white/[0.055]" key={customer.id} onClick={() => { setCustomerId(customer.id); setCustomerQuery(customer.name); setCustomerOpen(false); }} role="option" type="button"><span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/[0.055] text-sm font-semibold text-slate-300">{customer.name.slice(0, 1).toLocaleUpperCase()}</span><span className="min-w-0"><span className="block truncate text-sm font-medium text-white" dir="auto">{customer.name}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{customer.phone || customer.email || "No contact details"}</span></span></button>)}
               {!filteredCustomers.length && <div className="px-3 py-4 text-center text-sm text-slate-500">No matching customers.</div>}
               <Link className="mt-1 flex items-center justify-center rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-sm font-medium text-teal-300 hover:bg-teal-300/[0.05]" href="/customers/new">+ Create a new customer</Link>

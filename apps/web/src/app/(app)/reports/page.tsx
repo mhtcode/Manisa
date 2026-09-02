@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { parseBusinessDateTime } from "@/lib/time";
 
-const statuses = ["SCHEDULED", "CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
+const statuses = ["SCHEDULED", "CONFIRMED", "COMPLETED", "HISTORICAL", "CANCELLED", "NO_SHOW"] as const;
 const payments = ["UNPAID", "PAID", "PARTIALLY_PAID"] as const;
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; serviceId?: string; status?: string; paymentStatus?: string }> }) {
