@@ -292,9 +292,31 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
 
 function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }: { days: CalendarDay[]; itemsByDay: Map<string, CalendarItem[]>; selectedKey: string; setSelectedKey: (key: string) => void; slotHeight: number }) {
   const maxItems = slotHeight <= 52 ? 2 : slotHeight < 84 ? 3 : 4;
+  const selectedDay = days.find((day) => day.key === selectedKey);
+  const selectedItems = itemsByDay.get(selectedKey) ?? [];
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[720px]">
+    <>
+      <div className="md:hidden">
+        <div className="grid grid-cols-7 border-b border-white/8 bg-white/[0.018] px-1">
+          {days.slice(0, 7).map((day) => <div className="py-2.5 text-center text-[9px] font-semibold uppercase tracking-wide text-slate-600" key={day.weekday}>{day.shortWeekday.slice(0, 1)}</div>)}
+        </div>
+        <div className="grid grid-cols-7 p-1.5">
+          {days.map((day) => {
+            const dayItems = itemsByDay.get(day.key) ?? [];
+            const selected = day.key === selectedKey;
+            return <button aria-label={`${day.weekday}, ${day.monthLabel} ${day.dayNumber}, ${dayItems.length} appointments`} className={`flex min-h-14 flex-col items-center rounded-xl py-1.5 transition active:scale-95 ${!day.isCurrentMonth ? "opacity-30" : ""} ${selected ? "bg-teal-300/12" : "active:bg-white/[0.06]"}`} key={day.key} onClick={() => setSelectedKey(day.key)} type="button">
+              <span className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-white/10 text-teal-200" : "text-slate-300"}`}>{day.dayNumber}</span>
+              <span className="mt-1 flex h-1.5 items-center justify-center gap-0.5">{dayItems.slice(0, 3).map((item) => <span className={`size-1.5 rounded-full ${item.colorIndex % 4 === 0 ? "bg-teal-300" : item.colorIndex % 4 === 1 ? "bg-sky-300" : item.colorIndex % 4 === 2 ? "bg-violet-300" : "bg-rose-300"}`} key={item.id}/>)}</span>
+            </button>;
+          })}
+        </div>
+        <div className="border-t border-white/8 px-3 py-4">
+          <div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">{selectedDay ? `${selectedDay.weekday}, ${selectedDay.monthLabel} ${selectedDay.dayNumber}` : "Selected day"}</p><p className="mt-0.5 text-xs text-slate-600">{selectedItems.length} appointments</p></div><Link className="button-secondary h-9 min-h-9 px-3" href={`/appointments/new?date=${selectedKey}`}><Plus size={14}/>Add</Link></div>
+          <div className="space-y-2">{selectedItems.map((item) => <Link className={`flex items-center gap-3 rounded-xl border p-3 ${eventColors[item.colorIndex % eventColors.length]}`} href={`/appointments/${item.id}`} key={item.id}><span className="text-xs font-semibold">{item.time}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.customer}</span><span className="block truncate text-[11px] opacity-65">{item.service} · {item.durationMinutes} min</span></span></Link>)}{!selectedItems.length && <Link className="flex min-h-20 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm text-slate-500" href={`/appointments/new?date=${selectedKey}`}>No appointments · tap to add</Link>}</div>
+        </div>
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <div className="min-w-[720px]">
         <div className="grid grid-cols-7 border-b border-white/8 bg-white/[0.018]">
           {days.slice(0, 7).map((day) => <div className="border-e border-white/8 px-3 py-2.5 text-center text-[10px] font-medium uppercase tracking-[0.13em] text-slate-600 last:border-e-0" key={day.weekday}>{day.weekday}</div>)}
         </div>
@@ -313,8 +335,9 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             );
           })}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

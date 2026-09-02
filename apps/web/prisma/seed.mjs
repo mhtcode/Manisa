@@ -24,6 +24,31 @@ async function main() {
   });
   await prisma.settings.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
 
+  const serviceCatalog = [
+    { id: "seed_nail_manicure", name: "مانیکور روسی", description: "Russian manicure and detailed cuticle preparation", category: "NAIL", defaultDurationMinutes: 60, defaultPrice: "55.00", supportsColor: false },
+    { id: "seed_nail_gel_polish", name: "ژلیش دست", description: "Gel polish for natural fingernails", category: "NAIL", defaultDurationMinutes: 60, defaultPrice: "65.00", supportsColor: true },
+    { id: "seed_nail_acrylic", name: "کاشت پودر (اکریلیک)", description: "Full acrylic nail extension set", category: "NAIL", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
+    { id: "seed_nail_polygel", name: "کاشت ژل و پلی‌ژل", description: "Flexible gel or polygel nail extension set", category: "NAIL", defaultDurationMinutes: 120, defaultPrice: "120.00", supportsColor: true },
+    { id: "seed_nail_laminate", name: "لمینت و استحکام‌سازی", description: "Natural nail overlay and strengthening", category: "NAIL", defaultDurationMinutes: 90, defaultPrice: "85.00", supportsColor: true },
+    { id: "seed_nail_refill", name: "ترمیم کاشت", description: "Refill, rebalance, and shape existing extensions", category: "NAIL", defaultDurationMinutes: 90, defaultPrice: "80.00", supportsColor: true },
+    { id: "seed_nail_art", name: "طراحی ناخن", description: "French, chrome, baby boomer, minimalist, or custom nail art", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_nail_art_french", name: "فرنچ کلاسیک و رنگی", description: "Classic white, colored, reverse, or micro French finish", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_nail_art_chrome", name: "کروم و افکت آینه‌ای", description: "Chrome powder and reflective mirror-effect nail art", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "30.00", supportsColor: true },
+    { id: "seed_nail_art_baby_boomer", name: "بیبی بومر", description: "Soft gradient French design", category: "NAIL", defaultDurationMinutes: 45, defaultPrice: "35.00", supportsColor: true },
+    { id: "seed_nail_art_minimal", name: "طراحی مینیمال و لاین‌آرت", description: "Fine lines, dots, negative space, and minimalist details", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_hair_cut", name: "کوتاهی و کوپ مو", description: "Consultation-led classic or modern haircut", category: "HAIR", defaultDurationMinutes: 60, defaultPrice: "70.00", supportsColor: false },
+    { id: "seed_hair_style", name: "براشینگ و حالت‌دهی", description: "Blow-dry and professional styling", category: "HAIR", defaultDurationMinutes: 60, defaultPrice: "60.00", supportsColor: false },
+    { id: "seed_hair_root", name: "رنگ ریشه", description: "Root color refresh", category: "HAIR", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
+    { id: "seed_hair_full_color", name: "رنگ کامل مو", description: "Full-length custom hair color", category: "HAIR", defaultDurationMinutes: 180, defaultPrice: "180.00", supportsColor: true },
+    { id: "seed_hair_balayage", name: "بالیاژ، آمبره و سامبره", description: "Dimensional lightening and blended color techniques", category: "HAIR", defaultDurationMinutes: 240, defaultPrice: "280.00", supportsColor: true },
+    { id: "seed_hair_keratin", name: "کراتین و احیای مو", description: "Smoothing and restorative hair treatment", category: "HAIR", defaultDurationMinutes: 210, defaultPrice: "250.00", supportsColor: false },
+  ];
+  const services = [];
+  for (const data of serviceCatalog) {
+    const { id, ...values } = data;
+    services.push(await prisma.service.upsert({ where: { id }, update: values, create: data }));
+  }
+
   if (await prisma.customer.count()) return;
 
   const customers = [];
@@ -31,12 +56,6 @@ async function main() {
     const [firstName, lastName, preferredLanguage] = names[i];
     customers.push(await prisma.customer.create({ data: { firstName, lastName, preferredLanguage, phone: `+1 416 555 01${String(i).padStart(2, "0")}`, notes: i % 3 === 0 ? "Prefers afternoon appointments" : null } }));
   }
-
-  const services = await Promise.all([
-    prisma.service.create({ data: { name: "Consultation", description: "Personal consultation session", defaultDurationMinutes: 60, defaultPrice: "95.00" } }),
-    prisma.service.create({ data: { name: "خدمات ویژه", description: "جلسه خدمات کامل", defaultDurationMinutes: 90, defaultPrice: "145.00" } }),
-    prisma.service.create({ data: { name: "Follow-up", description: "Short follow-up appointment", defaultDurationMinutes: 45, defaultPrice: "70.00" } }),
-  ]);
 
   const now = new Date();
   for (let i = -38; i <= 14; i += 2) {
@@ -56,6 +75,8 @@ async function main() {
       finalPrice: past && !cancelled ? finalPrice.toFixed(2) : null,
       paymentStatus: past && !cancelled ? (i % 6 === 0 ? "UNPAID" : "PAID") : "UNPAID",
       completedAt: past && !cancelled ? new Date(startAt.getTime() + service.defaultDurationMinutes * 60_000) : null,
+      serviceLines: { create: { serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice } },
+      actualServiceLines: past && !cancelled ? { create: { serviceId: service.id, serviceNameSnapshot: service.name, actualDurationMinutes: service.defaultDurationMinutes + (i % 4) * 5, finalPrice: finalPrice.toFixed(2) } } : undefined,
     } });
   }
 }

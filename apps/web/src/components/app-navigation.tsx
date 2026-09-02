@@ -8,10 +8,10 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   Clock3,
+  Ellipsis,
   LayoutDashboard,
-  Scissors,
+  SwatchBook,
   Settings2,
-  Sparkles,
   UsersRound,
   X,
 } from "lucide-react";
@@ -26,7 +26,7 @@ const primaryItems = [
 ] as const;
 
 const secondaryItems = [
-  ["/services", "services", Scissors],
+  ["/services", "services", SwatchBook],
   ["/reports", "reports", ChartNoAxesCombined],
   ["/working-hours", "workingHours", Clock3],
   ["/settings", "settings", Settings2],
@@ -140,7 +140,7 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
 
       <nav aria-label="Mobile navigation" className="mobile-glass-nav fixed inset-x-3 z-50 grid grid-cols-5 px-2 py-2 md:hidden">
         {primaryItems.map(([href, key, Icon]) => {
-          const active = isActive(pathname, href);
+          const active = !moreOpen && isActive(pathname, href);
           return (
             <Link
               aria-current={active ? "page" : undefined}
@@ -168,7 +168,7 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
           type="button"
         >
           {(moreOpen || moreActive) && <span className="absolute top-1.5 h-0.5 w-5 rounded-full bg-teal-300 shadow-[0_0_10px_rgba(94,234,212,.85)]" />}
-          <Sparkles className={moreOpen || moreActive ? "text-teal-300" : "text-slate-400"} size={20} strokeWidth={moreOpen || moreActive ? 2.3 : 1.8} />
+          <Ellipsis className={moreOpen || moreActive ? "text-teal-300" : "text-slate-400"} size={21} strokeWidth={moreOpen || moreActive ? 2.3 : 1.8} />
           <span>More</span>
         </button>
       </nav>

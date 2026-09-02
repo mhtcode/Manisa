@@ -12,14 +12,14 @@ import { archiveCustomer } from "@/server/actions/customers";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const customer = await prisma.customer.findUnique({ where: { id }, include: { appointments: { include: { serviceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
+  const customer = await prisma.customer.findUnique({ where: { id }, include: { appointments: { include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
   if (!customer) notFound();
   const now = new Date();
   const insights = buildCustomerInsights(customer.appointments.map((appointment) => ({
     actualDurationMinutes: appointment.actualDurationMinutes,
     finalPrice: appointment.finalPrice?.toString() || null,
     paymentStatus: appointment.paymentStatus,
-    serviceNames: appointment.serviceLines.length ? appointment.serviceLines.map((line) => line.serviceNameSnapshot) : [appointment.serviceNameSnapshot],
+    serviceNames: appointment.status === "COMPLETED" && appointment.actualServiceLines.length ? appointment.actualServiceLines.map((line) => line.serviceNameSnapshot) : appointment.serviceLines.length ? appointment.serviceLines.map((line) => line.serviceNameSnapshot) : [appointment.serviceNameSnapshot],
     startAt: appointment.startAt,
     status: appointment.status,
   })), now);

@@ -20,12 +20,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const paymentStatus = payments.find((value) => value === filters.paymentStatus);
   const where: Prisma.AppointmentWhereInput = {
     startAt: { gte: from, lte: to },
-    ...(filters.serviceId ? { OR: [{ serviceId: filters.serviceId }, { serviceLines: { some: { serviceId: filters.serviceId } } }] } : {}),
+    ...(filters.serviceId ? { AND: [{ OR: [
+      { status: "COMPLETED", actualServiceLines: { some: { serviceId: filters.serviceId } } },
+      { status: "COMPLETED", actualServiceLines: { none: {} }, OR: [{ serviceId: filters.serviceId }, { serviceLines: { some: { serviceId: filters.serviceId } } }] },
+      { status: { not: "COMPLETED" }, OR: [{ serviceId: filters.serviceId }, { serviceLines: { some: { serviceId: filters.serviceId } } }] },
+    ] }] } : {}),
     ...(status ? { status } : {}),
     ...(paymentStatus ? { paymentStatus } : {}),
   };
   const [appointments, services, newCustomers] = await Promise.all([
-    prisma.appointment.findMany({ where, include: { serviceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } }),
+    prisma.appointment.findMany({ where, include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } }),
     prisma.service.findMany({ where: { active: true }, orderBy: { name: "asc" } }),
     prisma.customer.count({ where: { createdAt: { gte: from, lte: to } } }),
   ]);
@@ -34,7 +38,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const minutes = completed.reduce((sum, appointment) => sum + (appointment.actualDurationMinutes || 0), 0);
   const serviceMap = new Map<string, number>();
   completed.forEach((appointment) => {
-    const lines = appointment.serviceLines.length ? appointment.serviceLines : [{ serviceNameSnapshot: appointment.serviceNameSnapshot, price: appointment.finalPrice || appointment.expectedPrice }];
+    const lines = appointment.actualServiceLines.length ? appointment.actualServiceLines.map((line) => ({ serviceNameSnapshot: line.serviceNameSnapshot, price: line.finalPrice })) : [{ serviceNameSnapshot: appointment.serviceNameSnapshot, price: appointment.finalPrice || appointment.expectedPrice }];
     lines.forEach((line) => serviceMap.set(line.serviceNameSnapshot, (serviceMap.get(line.serviceNameSnapshot) || 0) + Number(line.price)));
   });
   const serviceData = [...serviceMap].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);

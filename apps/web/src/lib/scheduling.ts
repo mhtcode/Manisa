@@ -10,3 +10,11 @@ export function appointmentsOverlap(
 
   return firstStart < secondEnd && firstEnd > secondStart;
 }
+
+export function appointmentExpectedEnd(startAt: Date, expectedDurationMinutes: number) {
+  return new Date(startAt.getTime() + expectedDurationMinutes * 60_000);
+}
+
+export function canFinalizeAppointment(status: string, startAt: Date, expectedDurationMinutes: number, now = new Date()) {
+  return status === "CONFIRMED" && appointmentExpectedEnd(startAt, expectedDurationMinutes) <= now;
+}

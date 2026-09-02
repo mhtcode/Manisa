@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { appointmentsOverlap } from "@/lib/scheduling";
+import { appointmentExpectedEnd, appointmentsOverlap, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate, parseBusinessDateTime } from "@/lib/time";
 import { appointmentSchema, completionSchema } from "@/lib/validation";
 
@@ -21,6 +21,12 @@ async function findConflict(startAt: Date, duration: number, excludeId?: string)
 
 function conflictMessage(conflict: NonNullable<Awaited<ReturnType<typeof findConflict>>>, timezone: string) {
   return `${customerName(conflict.customer)} already has ${conflict.serviceNameSnapshot} scheduled for ${formatBusinessDate(conflict.startAt, "en", timezone)} (${conflict.expectedDurationMinutes} min). Choose another time.`;
+}
+
+function selectedColor(formData: FormData, serviceId: string, supportsColor: boolean) {
+  if (!supportsColor) return null;
+  const value = formData.get(`serviceColor_${serviceId}`);
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value) ? value.toUpperCase() : null;
 }
 
 export async function checkAppointmentAvailability(startAtInput: string, duration: number, excludeId?: string) {
@@ -56,7 +62,7 @@ export async function createAppointment(formData: FormData) {
     serviceId: primaryService.id,
     serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
     currency: primaryService.currency,
-    serviceLines: { create: orderedServices.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, position })) },
+    serviceLines: { create: orderedServices.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
   } });
   revalidatePath("/appointments");
   redirect(`/appointments/${appointment.id}`);
@@ -64,6 +70,8 @@ export async function createAppointment(formData: FormData) {
 
 export async function updateAppointment(id: string, formData: FormData) {
   const user = await requireUser();
+  const current = await prisma.appointment.findUnique({ where: { id }, select: { status: true } });
+  if (!current || !["SCHEDULED", "CONFIRMED"].includes(current.status)) return { error: "Only scheduled or confirmed appointments can be edited." };
   const data = appointmentSchema.parse({ ...Object.fromEntries(formData), serviceIds: formData.getAll("serviceIds") });
   const timezone = user.settings?.timezone || "America/Toronto";
   const startAt = parseBusinessDateTime(data.startAt, timezone);
@@ -82,7 +90,7 @@ export async function updateAppointment(id: string, formData: FormData) {
     serviceId: primaryService.id,
     serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
     currency: primaryService.currency,
-    serviceLines: { deleteMany: {}, create: orderedServices.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, position })) },
+    serviceLines: { deleteMany: {}, create: orderedServices.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
   } });
   revalidatePath(`/appointments/${id}`);
   redirect(`/appointments/${id}`);
@@ -90,20 +98,56 @@ export async function updateAppointment(id: string, formData: FormData) {
 
 export async function completeAppointment(id: string, formData: FormData) {
   await requireUser();
-  const data = completionSchema.parse(Object.fromEntries(formData));
-  await prisma.appointment.update({ where: { id }, data: { ...data, status: "COMPLETED", completedAt: new Date() } });
+  const data = completionSchema.parse({ ...Object.fromEntries(formData), actualServiceIds: formData.getAll("actualServiceIds") });
+  const appointment = await prisma.appointment.findUnique({ where: { id } });
+  if (!appointment) return { error: "Appointment not found." };
+  if (appointment.status !== "CONFIRMED") return { error: "Confirm this appointment before finalizing it." };
+  const expectedEnd = appointmentExpectedEnd(appointment.startAt, appointment.expectedDurationMinutes);
+  if (!canFinalizeAppointment(appointment.status, appointment.startAt, appointment.expectedDurationMinutes)) return { error: `This visit cannot be finalized until its estimated end time (${formatBusinessDate(expectedEnd, "en")}).` };
+  const services = await prisma.service.findMany({ where: { id: { in: data.actualServiceIds } } });
+  if (services.length !== data.actualServiceIds.length) return { error: "One or more actual services could not be found." };
+  const orderedServices = data.actualServiceIds.map((serviceId) => services.find((service) => service.id === serviceId)!);
+  if (new Set(orderedServices.map((service) => service.currency)).size > 1) return { error: "Actual services must use the same currency." };
+  const actualLines = [];
+  for (const [position, service] of orderedServices.entries()) {
+    const duration = Number(formData.get(`actualDuration_${service.id}`));
+    const price = formData.get(`actualPrice_${service.id}`);
+    if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return { error: `Enter a valid duration for ${service.name}.` };
+    if (typeof price !== "string" || !/^\d{1,10}(\.\d{1,2})?$/.test(price)) return { error: `Enter a valid final price for ${service.name}.` };
+    actualLines.push({ serviceId: service.id, serviceNameSnapshot: service.name, actualDurationMinutes: duration, finalPrice: price, selectedColor: selectedColor(formData, service.id, service.supportsColor), position });
+  }
+  const actualDurationMinutes = actualLines.reduce((sum, line) => sum + line.actualDurationMinutes, 0);
+  const finalPrice = actualLines.reduce((sum, line) => sum + Number(line.finalPrice), 0).toFixed(2);
+  const primaryService = orderedServices[0];
+  await prisma.appointment.update({ where: { id }, data: {
+    status: "COMPLETED",
+    completedAt: new Date(),
+    paymentStatus: data.paymentStatus,
+    completionNotes: data.completionNotes,
+    actualDurationMinutes,
+    finalPrice,
+    serviceId: primaryService.id,
+    serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
+    currency: primaryService.currency,
+    actualServiceLines: { deleteMany: {}, create: actualLines },
+  } });
   revalidatePath("/dashboard"); revalidatePath("/reports"); revalidatePath("/appointments"); revalidatePath("/working-hours"); revalidatePath(`/appointments/${id}`);
   redirect(`/appointments/${id}`);
 }
 
 export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO_SHOW" | "CONFIRMED") {
   await requireUser();
+  const appointment = await prisma.appointment.findUnique({ where: { id }, select: { status: true, startAt: true } });
+  if (!appointment) throw new Error("Appointment not found.");
+  if (status === "CONFIRMED" && appointment.status !== "SCHEDULED") throw new Error("Only scheduled appointments can be confirmed.");
+  if (status === "CANCELLED" && !["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw new Error("Only upcoming appointments can be cancelled.");
+  if (status === "NO_SHOW" && (!["SCHEDULED", "CONFIRMED"].includes(appointment.status) || appointment.startAt > new Date())) throw new Error("A future appointment cannot be marked as no-show.");
   await prisma.appointment.update({ where: { id }, data: { status } });
-  revalidatePath(`/appointments/${id}`); revalidatePath("/appointments");
+  revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/dashboard");
 }
 
 export async function markPaid(id: string) {
   await requireUser();
-  await prisma.appointment.update({ where: { id }, data: { paymentStatus: "PAID" } });
+  await prisma.appointment.updateMany({ where: { id, status: "COMPLETED" }, data: { paymentStatus: "PAID" } });
   revalidatePath(`/appointments/${id}`); revalidatePath("/dashboard");
 }
