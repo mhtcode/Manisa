@@ -4,7 +4,7 @@ Manisa is a private, bilingual business-management application for a self-employ
 
 ## Architecture
 
-The production application is a modular monolith in `apps/web`: Next.js App Router provides the UI, protected server components, server actions, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations. The original minimal FastAPI scaffold remains isolated in `apps/api` but is not required by the current application.
+The production application is a modular monolith. The Next.js application in `apps/web` provides the UI, protected server components, server actions, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations. The separately deployable FastAPI application in `apps/api` currently provides the API foundation and health endpoint; feature APIs can be added there without introducing microservices.
 
 Authentication uses Argon2id password hashes and signed, HTTP-only, same-site session cookies. Business timestamps are stored as PostgreSQL `timestamptz`; local input and display use `America/Toronto`. Money uses PostgreSQL `decimal(12,2)`, with historical service name and price values retained on appointments.
 
@@ -14,7 +14,29 @@ Authentication uses Argon2id password hashes and signed, HTTP-only, same-site se
 - npm
 - Docker with Compose, or a compatible PostgreSQL 17 server
 
-## Local setup
+## Run everything with Docker Compose
+
+Create a local environment file and replace every placeholder secret:
+
+```bash
+cp .env.example .env
+openssl rand -base64 32
+docker compose up --build -d
+docker compose ps
+```
+
+Put the generated value in `AUTH_SECRET`, then open:
+
+- Web application: `http://localhost:3000`
+- Web health: `http://localhost:3000/api/health`
+- API documentation: `http://localhost:8000/docs`
+- API health: `http://localhost:8000/health`
+
+The one-shot `web-init` container applies Prisma migrations and seeds the administrator plus demo data when the database is empty. Sign in using `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` from `.env`. PostgreSQL is exposed only on the host loopback interface; the web and API ports bind to the local network by default so the responsive UI can be tested from another device.
+
+Use `docker compose logs -f web api` to follow application logs and `docker compose down` to stop the stack while preserving its named database volume. `docker compose down -v` also deletes all database data.
+
+## Run in development mode
 
 ```bash
 cp apps/web/.env.example apps/web/.env
@@ -70,27 +92,24 @@ Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_CALENDAR_
 
 The app includes a manifest, icon, standalone metadata, and conservative service worker. Private customer, appointment, and report data is never cached. Offline navigation shows a static reconnection page instead of stale business records.
 
-## Docker
+## Container design
 
-`apps/web/Dockerfile` is a multi-stage standalone build running as a non-root user:
-
-```bash
-docker build -t manisa-web apps/web
-```
-
-Runtime secrets must be supplied as environment variables and are not copied into the image.
+Both application images run as non-root users and include health checks. The web image uses Next.js standalone output, the API filesystem is read-only at runtime, and PostgreSQL stores data in the existing `manisa_postgres_data` named volume. Runtime secrets are supplied through environment variables and are not copied into either image. Change the sample database password, administrator password, and authentication secret before using this configuration outside a local machine.
 
 ## Project structure
 
 ```text
-apps/web/
-├── prisma/              # schema, migration, and demo seed
-├── public/              # PWA assets and conservative service worker
-└── src/
-    ├── app/             # routes, protected pages, error/loading states
-    ├── components/      # reusable UI and forms
-    ├── lib/             # auth, validation, formatting, i18n, time
-    └── server/          # server actions, analytics, integrations
+apps/
+├── api/                 # FastAPI application and container image
+└── web/
+    ├── prisma/          # schema, migration, and demo seed
+    ├── public/          # PWA assets and conservative service worker
+    └── src/
+        ├── app/         # routes, protected pages, error/loading states
+        ├── components/  # reusable UI and forms
+        ├── lib/         # auth, validation, formatting, i18n, time
+        └── server/      # server actions, analytics, integrations
+compose.yaml             # web, API, initializer, and PostgreSQL stack
 ```
 
 ## Current limitations

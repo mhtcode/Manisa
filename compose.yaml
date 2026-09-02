@@ -1,18 +1,89 @@
+name: manisa
+
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: manisa-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: manisa
-      POSTGRES_USER: manisa
-      POSTGRES_PASSWORD: manisa
-    ports: ["5432:5432"]
-    volumes: ["manisa_postgres_data:/var/lib/postgresql/data"]
+      POSTGRES_DB: ${POSTGRES_DB:-manisa}
+      POSTGRES_USER: ${POSTGRES_USER:-manisa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-manisa}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - manisa_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U manisa -d manisa"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 12
+      start_period: 5s
+    stop_grace_period: 30s
+
+  web-init:
+    build:
+      context: ./apps/web
+      target: database
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@manisa.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-now-1234}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+      target: runner
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-change-this-local-auth-secret-before-production}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALENDAR_ID: ${GOOGLE_CALENDAR_ID:-primary}
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${WEB_PORT:-3000}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      web-init:
+        condition: service_completed_successfully
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   manisa_postgres_data:
