@@ -1,12 +1,11 @@
-import { addDays, format, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addYears, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { CalendarBoard, type CalendarView } from "@/components/calendar-board";
-import { PageHeading } from "@/components/page-heading";
 import { customerName } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 const timeZone = "America/Toronto";
-const allowedViews = new Set<CalendarView>(["day", "week", "month", "agenda"]);
+const allowedViews = new Set<CalendarView>(["day", "week", "month", "year", "agenda"]);
 
 function validDateKey(value?: string) {
   return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).valueOf());
@@ -18,11 +17,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const anchorKey = validDateKey(date) ? date! : todayKey;
   const anchor = new Date(`${anchorKey}T12:00:00Z`);
   const monthStart = startOfMonth(anchor);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const gridEnd = addDays(gridStart, 42);
-  const rangeStart = fromZonedTime(`${format(gridStart, "yyyy-MM-dd")}T00:00:00`, timeZone);
-  const rangeEnd = fromZonedTime(`${format(gridEnd, "yyyy-MM-dd")}T00:00:00`, timeZone);
-  const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "week";
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const yearStart = startOfYear(anchor);
+  const rangeGridStart = startOfWeek(yearStart, { weekStartsOn: 0 });
+  const rangeGridEnd = addDays(startOfWeek(addYears(yearStart, 1), { weekStartsOn: 0 }), 7);
+  const rangeStart = fromZonedTime(`${format(rangeGridStart, "yyyy-MM-dd")}T00:00:00`, timeZone);
+  const rangeEnd = fromZonedTime(`${format(rangeGridEnd, "yyyy-MM-dd")}T00:00:00`, timeZone);
+  const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "month";
 
   const appointments = await prisma.appointment.findMany({
     where: { startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
@@ -61,5 +62,5 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     };
   });
 
-  return <><PageHeading title="Calendar" description="Plan your studio schedule across day, week, month, or agenda views."/><CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} monthTitle={new Intl.DateTimeFormat("en-CA", { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/></>;
+  return <CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} key={`${anchorKey}:${initialView}`} monthTitle={new Intl.DateTimeFormat("en-CA", { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/>;
 }
