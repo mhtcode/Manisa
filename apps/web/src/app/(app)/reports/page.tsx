@@ -41,15 +41,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const monthData = new Map<string, number>();
   completed.forEach((appointment) => { const name = new Intl.DateTimeFormat("en", { month: "short", year: "2-digit" }).format(appointment.completedAt || appointment.startAt); monthData.set(name, (monthData.get(name) || 0) + Number(appointment.finalPrice || 0)); });
   const stats = [
-    { label: "Revenue", value: formatMoney(revenue), icon: Banknote, tone: "text-teal-300 bg-teal-300/10" },
-    { label: "Completed", value: String(completed.length), icon: CalendarCheck2, tone: "text-sky-300 bg-sky-300/10" },
+    { label: "Finalized revenue", value: formatMoney(revenue), icon: Banknote, tone: "text-teal-300 bg-teal-300/10" },
+    { label: "Finalized visits", value: String(completed.length), icon: CalendarCheck2, tone: "text-sky-300 bg-sky-300/10" },
     { label: "New customers", value: String(newCustomers), icon: UserPlus, tone: "text-violet-300 bg-violet-300/10" },
-    { label: "Working hours", value: `${(minutes / 60).toFixed(1)}h`, icon: Clock3, tone: "text-amber-300 bg-amber-300/10" },
-    { label: "Hourly income", value: formatMoney(minutes ? revenue / (minutes / 60) : 0), icon: TrendingUp, tone: "text-rose-300 bg-rose-300/10" },
+    { label: "Finalized hours", value: `${(minutes / 60).toFixed(1)}h`, icon: Clock3, tone: "text-amber-300 bg-amber-300/10" },
+    { label: "Actual hourly income", value: formatMoney(minutes ? revenue / (minutes / 60) : 0), icon: TrendingUp, tone: "text-rose-300 bg-rose-300/10" },
   ];
 
   return <>
-    <PageHeading title="Reports" description="A compact view of financial and operational performance."/>
+    <PageHeading title="Reports" description="Financial and time totals use finalized appointment actuals only."/>
     <details className="panel group mb-4 overflow-hidden">
       <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3.5 text-sm font-medium text-slate-200 sm:px-5"><span>Report filters</span><span className="text-xs font-normal text-slate-500 group-open:hidden">Tap to refine results</span><span className="hidden text-xs font-normal text-slate-500 group-open:inline">Hide filters</span></summary>
       <form className="grid gap-3 border-t border-white/8 p-4 sm:grid-cols-2 xl:grid-cols-6">

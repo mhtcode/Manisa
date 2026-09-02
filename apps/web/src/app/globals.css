@@ -17,10 +17,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .panel-header { @apply flex items-center justify-between border-b border-white/8 px-5 py-4 sm:px-6; }
   .page-title { @apply text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl; }
   .page-copy { @apply mt-1 text-sm leading-6 text-slate-400; }
-  .button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; background: #5eead4; color: #062f2b; box-shadow: inset 0 1px rgba(255,255,255,.45), 0 8px 24px rgba(45,212,191,.12); }
-  .button:hover { background: #99f6e4; color: #042f2e; }
-  .button-secondary { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/[0.08]; }
-  .button-danger { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-2 text-sm font-medium text-rose-300 transition hover:bg-rose-400/15; }
+  .button { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50; border-color: #99f6e4; background: linear-gradient(180deg, #6ee7d8, #45d7c5); color: #032522 !important; text-shadow: 0 1px rgba(255,255,255,.28); box-shadow: inset 0 1px rgba(255,255,255,.5), 0 8px 24px rgba(45,212,191,.16); }
+  .button:hover { border-color: #ccfbf1; background: linear-gradient(180deg, #99f6e4, #5eead4); color: #021c1a !important; }
+  .button-secondary { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #eef2f7; }
+  .button-secondary:hover { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.1); color: #fff; }
+  .button-danger { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition; border-color: rgba(251,113,133,.3); background: rgba(251,113,133,.12); color: #fecdd3; }
+  .button-danger:hover { background: rgba(251,113,133,.18); color: #fff1f2; }
   .field { @apply w-full rounded-xl border border-white/10 bg-[#0a0e14] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:border-teal-300/60 focus:outline-none; }
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
@@ -29,7 +31,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 .app-background { background-image: radial-gradient(circle at 70% 0%, rgba(45,212,191,.055), transparent 30rem); }
-.appointment-cta { color: #062f2b !important; text-shadow: none; }
+.appointment-cta { color: #032522 !important; }
 .mobile-glass-nav { bottom: max(.75rem, env(safe-area-inset-bottom)); border: 1px solid rgba(255,255,255,.13); background: linear-gradient(180deg, rgba(18,27,37,.82), rgba(8,13,20,.76)); box-shadow: inset 0 1px rgba(255,255,255,.1), 0 16px 45px rgba(0,0,0,.48); -webkit-backdrop-filter: saturate(160%) blur(24px); backdrop-filter: saturate(160%) blur(24px); }
 @media (max-width: 767px) { body { padding-bottom: 6.75rem; } }
 @media (prefers-color-scheme: light) { html[data-theme="system"] { color-scheme: light; filter: invert(.9) hue-rotate(180deg); } }
