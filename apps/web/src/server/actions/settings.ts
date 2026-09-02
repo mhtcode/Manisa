@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { requireUser } from "@/lib/auth";
 import { parseGoogleCalendarIcs } from "@/lib/google-calendar-import";
 import { secureCookiesEnabled } from "@/lib/env";
+import { mobileNavigationKeys } from "@/lib/mobile-navigation";
 import { prisma } from "@/lib/prisma";
 
 export type CalendarImportState = {
@@ -27,6 +28,15 @@ export async function updateSettings(formData: FormData) {
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
   (await cookies()).set("manisa_theme", theme.toLowerCase(), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
+  revalidatePath("/", "layout");
+}
+
+export async function updateMobileNavigation(formData: FormData) {
+  const user = await requireUser();
+  const items = formData.getAll("mobileNavItems").map(String);
+  const valid = items.length === 4 && new Set(items).size === 4 && items.includes("more") && items.every((item) => mobileNavigationKeys.includes(item as (typeof mobileNavigationKeys)[number]));
+  if (!valid) throw new Error("Choose three unique destinations and keep the More menu in the mobile navigation.");
+  await prisma.settings.upsert({ where: { userId: user.id }, create: { userId: user.id, mobileNavOrder: items.join(",") }, update: { mobileNavOrder: items.join(",") } });
   revalidatePath("/", "layout");
 }
 

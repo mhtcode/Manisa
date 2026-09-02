@@ -56,16 +56,17 @@ model User {
 }
 
 model Settings {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  businessName String   @default("Manisa")
-  locale       Locale   @default(en)
-  theme        Theme    @default(DARK)
-  currency     String   @default("CAD") @db.VarChar(3)
-  timezone     String   @default("America/Toronto")
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  businessName   String   @default("Manisa")
+  locale         Locale   @default(en)
+  theme          Theme    @default(DARK)
+  currency       String   @default("CAD") @db.VarChar(3)
+  timezone       String   @default("America/Toronto")
+  mobileNavOrder String   @default("dashboard,appointments,calendar,more")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Customer {
