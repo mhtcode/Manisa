@@ -138,22 +138,21 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
         </div>
       </div>}
 
-      <nav aria-label="Mobile navigation" className="mobile-glass-nav fixed inset-x-3 z-50 grid grid-cols-5 px-2 py-2 md:hidden">
+      <nav aria-label="Mobile navigation" className="mobile-glass-nav fixed inset-x-3 z-50 grid grid-cols-5 p-1.5 md:hidden">
         {primaryItems.map(([href, key, Icon]) => {
           const active = !moreOpen && isActive(pathname, href);
           return (
             <Link
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] transition ${
-                active ? "bg-teal-300/12 font-medium text-teal-200" : "text-slate-500 active:bg-white/[0.06]"
+              className={`mobile-nav-item relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-[1.45rem] px-1 text-[11px] transition ${
+                active ? "mobile-nav-item-active font-semibold text-teal-100" : "text-slate-400 active:bg-white/[0.065]"
               }`}
               href={href}
               key={href}
               onClick={() => setMoreOpen(false)}
               prefetch={false}
             >
-              {active && <span className="absolute top-1.5 h-0.5 w-5 rounded-full bg-teal-300 shadow-[0_0_10px_rgba(94,234,212,.85)]" />}
-              <Icon className={active ? "text-teal-300" : "text-slate-400"} size={20} strokeWidth={active ? 2.3 : 1.8} />
+              <Icon className={active ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={22} strokeWidth={active ? 2.35 : 1.85} />
               <span className="max-w-full truncate">{t[key]}</span>
             </Link>
           );
@@ -161,14 +160,13 @@ export function MobileNavigation({ locale }: { locale: AppLocale }) {
         <button
           aria-controls="mobile-more-navigation"
           aria-expanded={moreOpen}
-          className={`relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl px-1 text-[10px] transition ${
-            moreOpen || moreActive ? "bg-teal-300/12 font-medium text-teal-200" : "text-slate-500 active:bg-white/[0.06]"
+          className={`mobile-nav-item relative flex min-h-[4.15rem] flex-col items-center justify-center gap-1 rounded-[1.45rem] px-1 text-[11px] transition ${
+            moreOpen || moreActive ? "mobile-nav-item-active font-semibold text-teal-100" : "text-slate-400 active:bg-white/[0.065]"
           }`}
           onClick={() => setMoreOpen((open) => !open)}
           type="button"
         >
-          {(moreOpen || moreActive) && <span className="absolute top-1.5 h-0.5 w-5 rounded-full bg-teal-300 shadow-[0_0_10px_rgba(94,234,212,.85)]" />}
-          <Ellipsis className={moreOpen || moreActive ? "text-teal-300" : "text-slate-400"} size={21} strokeWidth={moreOpen || moreActive ? 2.3 : 1.8} />
+          <Ellipsis className={moreOpen || moreActive ? "text-teal-300 drop-shadow-[0_0_8px_rgba(94,234,212,.34)]" : "text-slate-400"} size={23} strokeWidth={moreOpen || moreActive ? 2.35 : 1.85} />
           <span>More</span>
         </button>
       </nav>
