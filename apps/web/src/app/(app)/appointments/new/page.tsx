@@ -10,7 +10,7 @@ export default async function NewAppointmentPage({ searchParams }: { searchParam
   const [{ customerId, date, time }, customers, services] = await Promise.all([
     searchParams,
     prisma.customer.findMany({ where: { active: true }, orderBy: { firstName: "asc" } }),
-    prisma.service.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
+    prisma.service.findMany({ where: { active: true, category: { active: true } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
   ]);
   const nextHour = addHours(new Date(), 1);
   const nextBusinessHour = Number(formatInTimeZone(nextHour, "America/Toronto", "H"));
@@ -20,5 +20,5 @@ export default async function NewAppointmentPage({ searchParams }: { searchParam
     ? `${date}T${/^\d{2}:\d{2}$/.test(time || "") ? time : "09:00"}`
     : fallback;
 
-  return <><PageHeading title="New appointment" description="Stage 1: choose the customer, services, and an available time to create the visit estimate."/><AppointmentForm action={createAppointment} initialCustomerId={customerId} initialStartAt={initialStartAt} customers={customers.map((item) => ({ id: item.id, name: customerName(item), phone: item.phone, email: item.email }))} services={services.map((item) => ({ id: item.id, name: item.name, duration: item.defaultDurationMinutes, price: item.defaultPrice.toString(), currency: item.currency, category: item.category, supportsColor: item.supportsColor }))}/></>;
+  return <><PageHeading title="New appointment" description="Stage 1: choose the customer, services, and an available time to create the visit estimate."/><AppointmentForm action={createAppointment} initialCustomerId={customerId} initialStartAt={initialStartAt} customers={customers.map((item) => ({ id: item.id, name: customerName(item), phone: item.phone, email: item.email }))} services={services.map((item) => ({ id: item.id, name: item.name, duration: item.defaultDurationMinutes, price: item.defaultPrice.toString(), currency: item.currency, category: { id: item.category.id, name: item.category.name, description: item.category.description, icon: item.category.icon, accentColor: item.category.accentColor }, supportsColor: item.supportsColor }))}/></>;
 }

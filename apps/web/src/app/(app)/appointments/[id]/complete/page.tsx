@@ -13,7 +13,7 @@ export default async function CompletePage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const item = await prisma.appointment.findUnique({ where: { id }, include: { serviceLines: { orderBy: { position: "asc" } } } });
   if (!item) notFound();
-  const services = await prisma.service.findMany({ where: { OR: [{ active: true }, { id: { in: item.serviceLines.map((line) => line.serviceId) } }] }, orderBy: [{ category: "asc" }, { name: "asc" }] });
+  const services = await prisma.service.findMany({ where: { OR: [{ active: true, category: { active: true } }, { id: { in: item.serviceLines.map((line) => line.serviceId) } }] }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] });
   const estimatedEnd = appointmentExpectedEnd(item.startAt, item.expectedDurationMinutes);
   const blockedReason = item.status !== "CONFIRMED"
     ? "This appointment must be confirmed before it can be finalized."

@@ -2,11 +2,20 @@
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import type { Prisma } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { parseGoogleCalendarIcs } from "@/lib/google-calendar-import";
 import { secureCookiesEnabled } from "@/lib/env";
 import { mobileNavigationKeys } from "@/lib/mobile-navigation";
 import { prisma } from "@/lib/prisma";
+
+const collectionKeys = ["appointments", "customers", "services", "gallery", "reportRecords"] as const;
+type CollectionKey = (typeof collectionKeys)[number];
+
+function preferenceObject(value: unknown): Prisma.InputJsonObject {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string | number | boolean] => ["string", "number", "boolean"].includes(typeof entry[1])));
+}
 
 export type CalendarImportState = {
   status: "idle" | "success" | "error";
@@ -40,6 +49,30 @@ export async function updateMobileNavigation(formData: FormData) {
   revalidatePath("/", "layout");
 }
 
+export async function updateCollectionView(page: CollectionKey, mode: "grid" | "list") {
+  const user = await requireUser();
+  if (!collectionKeys.includes(page) || !["grid", "list"].includes(mode)) throw new Error("Invalid collection preference.");
+  const current = preferenceObject(user.settings?.collectionViews);
+  await prisma.settings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, collectionViews: { ...current, [page]: mode } },
+    update: { collectionViews: { ...current, [page]: mode } },
+  });
+  revalidatePath("/", "layout");
+}
+
+export async function updateCollapsedSection(sectionId: string, collapsed: boolean) {
+  const user = await requireUser();
+  if (!/^[-_a-zA-Z0-9]{1,100}$/.test(sectionId)) throw new Error("Invalid section preference.");
+  const current = preferenceObject(user.settings?.collapsedSections);
+  await prisma.settings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, collapsedSections: { ...current, [sectionId]: collapsed } },
+    update: { collapsedSections: { ...current, [sectionId]: collapsed } },
+  });
+  revalidatePath("/services");
+}
+
 function normalized(value: string) {
   return value.normalize("NFKC").trim().toLocaleLowerCase();
 }
@@ -67,10 +100,16 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
   let result: { imported: number; duplicates: number };
   try {
     result = await prisma.$transaction(async (transaction) => {
-    const [customers, services, existingAppointments] = await Promise.all([
+    const [customers, services, existingAppointments, otherCategory] = await Promise.all([
       transaction.customer.findMany({ select: { id: true, firstName: true, lastName: true, displayName: true } }),
       transaction.service.findMany({ select: { id: true, name: true } }),
       transaction.appointment.findMany({ where: { calendarEventId: { in: parsed.events.map((event) => event.sourceId) } }, select: { calendarEventId: true } }),
+      transaction.studioCategory.upsert({
+        where: { slug: "other" },
+        update: {},
+        create: { id: "studio_category_other", slug: "other", name: "Other services", description: "Additional and imported services", icon: "sparkles", accentColor: "#64748B", position: 999 },
+        select: { id: true },
+      }),
     ]);
     const customerIds = new Map(customers.map((customer) => [normalized(customer.displayName || [customer.firstName, customer.lastName].filter(Boolean).join(" ")), customer.id]));
     const serviceIds = new Map(services.map((service) => [normalized(service.name), service.id]));
@@ -90,7 +129,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
       const serviceKey = normalized(event.serviceName);
       let serviceId = serviceIds.get(serviceKey);
       if (!serviceId) {
-        const service = await transaction.service.create({ data: { name: event.serviceName, description: "Imported from Google Calendar; review pricing before future booking.", defaultDurationMinutes: event.durationMinutes, defaultPrice: 0, currency } });
+        const service = await transaction.service.create({ data: { name: event.serviceName, description: "Imported from Google Calendar; review pricing before future booking.", categoryId: otherCategory.id, defaultDurationMinutes: event.durationMinutes, defaultPrice: 0, currency } });
         serviceId = service.id;
         serviceIds.set(serviceKey, serviceId);
       }

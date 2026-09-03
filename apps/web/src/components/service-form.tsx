@@ -3,14 +3,16 @@ import Link from "next/link";
 type ServiceValue = {
   name: string;
   description: string | null;
-  category: "NAIL" | "HAIR" | "OTHER";
+  categoryId: string;
   supportsColor: boolean;
   defaultDurationMinutes: number;
   defaultPrice: { toString(): string };
   currency: string;
 };
 
-export function ServiceForm({ action, service }: { action: (data: FormData) => void | Promise<void>; service?: ServiceValue }) {
+type CategoryOption = { id: string; name: string; active: boolean };
+
+export function ServiceForm({ action, categories, service }: { action: (data: FormData) => void | Promise<void>; categories: CategoryOption[]; service?: ServiceValue }) {
   return (
     <form action={action} className="panel max-w-3xl p-5 sm:p-7">
       <div className="grid gap-5 sm:grid-cols-2">
@@ -19,11 +21,9 @@ export function ServiceForm({ action, service }: { action: (data: FormData) => v
           <input className="field" dir="auto" id="name" name="name" defaultValue={service?.name} required />
         </div>
         <div>
-          <label className="label" htmlFor="category">Studio area *</label>
-          <select className="field" id="category" name="category" defaultValue={service?.category || "NAIL"}>
-            <option value="NAIL">Nail studio</option>
-            <option value="HAIR">Hair studio</option>
-            <option value="OTHER">Other</option>
+          <label className="label" htmlFor="categoryId">Category *</label>
+          <select className="field" id="categoryId" name="categoryId" defaultValue={service?.categoryId || categories.find((category) => category.active)?.id} required>
+            {categories.map((category) => <option disabled={!category.active && category.id !== service?.categoryId} key={category.id} value={category.id}>{category.name}{category.active ? "" : " (archived)"}</option>)}
           </select>
         </div>
         <label className="mt-6 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3.5 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.045]">

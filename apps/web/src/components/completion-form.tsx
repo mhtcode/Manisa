@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { AlertTriangle, BadgeCheck, Check, Palette, Scissors, Sparkles } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check } from "lucide-react";
+import { CategoryIcon } from "@/components/category-icon";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
 type ServiceOption = {
   id: string;
   name: string;
-  category: "NAIL" | "HAIR" | "OTHER";
+  category: { id: string; name: string; icon: string };
   supportsColor: boolean;
   duration: number;
   price: string;
@@ -34,11 +35,7 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
     return [service.id, { duration: 0, price: "", color: scheduled?.selectedColor || "#D36B85" }];
   })));
   const [actionState, formAction, isSubmitting] = useActionState<ActionResult, FormData>(async (_previous, formData) => (await action(formData)) ?? null, null);
-  const groups = [
-    ["NAIL", "Nail studio"],
-    ["HAIR", "Hair studio"],
-    ["OTHER", "Other services"],
-  ] as const;
+  const groups = Array.from(new Map(services.map((service) => [service.category.id, service.category])).values());
   const selectedServices = services.filter((service) => serviceIds.includes(service.id));
   const totals = useMemo(() => selectedServices.reduce((result, service) => ({
     duration: result.duration + (lines[service.id]?.duration || 0),
@@ -61,17 +58,16 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
       </div>
 
       <div className="space-y-5">
-        {groups.map(([category, label]) => {
-          const categoryServices = services.filter((service) => service.category === category);
+        {groups.map((category) => {
+          const categoryServices = services.filter((service) => service.category.id === category.id);
           if (!categoryServices.length) return null;
-          const Icon = category === "HAIR" ? Scissors : category === "NAIL" ? Palette : Sparkles;
-          return <section key={category}>
-            <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.13em] text-slate-500"><Icon size={15}/>{label}</h3>
+          return <section key={category.id}>
+            <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[.13em] text-slate-500"><CategoryIcon name={category.icon} size={15}/>{category.name}</h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {categoryServices.map((service) => {
                 const selected = serviceIds.includes(service.id);
                 return <button aria-pressed={selected} className={`flex items-center gap-3 rounded-xl border p-3 text-start transition active:scale-[.99] ${selected ? "border-teal-300/35 bg-teal-300/[0.08]" : "border-white/8 bg-white/[0.02] hover:border-white/15"}`} key={service.id} onClick={() => toggleService(service)} type="button">
-                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><Icon size={16}/></span>
+                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><CategoryIcon name={category.icon} size={16}/></span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-slate-100" dir="auto">{service.name}</span><span className="block text-[11px] text-slate-600">Default {service.duration} min · {service.price}</span></span>
                   <span className={`flex size-5 items-center justify-center rounded-full border ${selected ? "border-teal-300 bg-teal-300 text-slate-950" : "border-white/15 text-transparent"}`}><Check size={12} strokeWidth={3}/></span>
                 </button>;

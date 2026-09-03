@@ -24,24 +24,33 @@ async function main() {
   });
   await prisma.settings.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
 
+  const categories = [
+    { id: "studio_category_nail", slug: "nail", name: "Nail studio", description: "Manicure, extensions, gel systems, strengthening, and nail art", icon: "nail", accentColor: "#A78BFA", position: 0 },
+    { id: "studio_category_hair", slug: "hair", name: "Hair studio", description: "Cuts, styling, custom color, balayage, and restorative treatments", icon: "scissors", accentColor: "#38BDF8", position: 1 },
+    { id: "studio_category_other", slug: "other", name: "Other services", description: "Additional services outside the main studio catalog", icon: "sparkles", accentColor: "#64748B", position: 2 },
+  ];
+  for (const category of categories) {
+    await prisma.studioCategory.upsert({ where: { id: category.id }, update: category, create: category });
+  }
+
   const serviceCatalog = [
-    { id: "seed_nail_manicure", name: "مانیکور روسی", description: "Russian manicure and detailed cuticle preparation", category: "NAIL", defaultDurationMinutes: 60, defaultPrice: "55.00", supportsColor: false },
-    { id: "seed_nail_gel_polish", name: "ژلیش دست", description: "Gel polish for natural fingernails", category: "NAIL", defaultDurationMinutes: 60, defaultPrice: "65.00", supportsColor: true },
-    { id: "seed_nail_acrylic", name: "کاشت پودر (اکریلیک)", description: "Full acrylic nail extension set", category: "NAIL", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
-    { id: "seed_nail_polygel", name: "کاشت ژل و پلی‌ژل", description: "Flexible gel or polygel nail extension set", category: "NAIL", defaultDurationMinutes: 120, defaultPrice: "120.00", supportsColor: true },
-    { id: "seed_nail_laminate", name: "لمینت و استحکام‌سازی", description: "Natural nail overlay and strengthening", category: "NAIL", defaultDurationMinutes: 90, defaultPrice: "85.00", supportsColor: true },
-    { id: "seed_nail_refill", name: "ترمیم کاشت", description: "Refill, rebalance, and shape existing extensions", category: "NAIL", defaultDurationMinutes: 90, defaultPrice: "80.00", supportsColor: true },
-    { id: "seed_nail_art", name: "طراحی ناخن", description: "French, chrome, baby boomer, minimalist, or custom nail art", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
-    { id: "seed_nail_art_french", name: "فرنچ کلاسیک و رنگی", description: "Classic white, colored, reverse, or micro French finish", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
-    { id: "seed_nail_art_chrome", name: "کروم و افکت آینه‌ای", description: "Chrome powder and reflective mirror-effect nail art", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "30.00", supportsColor: true },
-    { id: "seed_nail_art_baby_boomer", name: "بیبی بومر", description: "Soft gradient French design", category: "NAIL", defaultDurationMinutes: 45, defaultPrice: "35.00", supportsColor: true },
-    { id: "seed_nail_art_minimal", name: "طراحی مینیمال و لاین‌آرت", description: "Fine lines, dots, negative space, and minimalist details", category: "NAIL", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
-    { id: "seed_hair_cut", name: "کوتاهی و کوپ مو", description: "Consultation-led classic or modern haircut", category: "HAIR", defaultDurationMinutes: 60, defaultPrice: "70.00", supportsColor: false },
-    { id: "seed_hair_style", name: "براشینگ و حالت‌دهی", description: "Blow-dry and professional styling", category: "HAIR", defaultDurationMinutes: 60, defaultPrice: "60.00", supportsColor: false },
-    { id: "seed_hair_root", name: "رنگ ریشه", description: "Root color refresh", category: "HAIR", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
-    { id: "seed_hair_full_color", name: "رنگ کامل مو", description: "Full-length custom hair color", category: "HAIR", defaultDurationMinutes: 180, defaultPrice: "180.00", supportsColor: true },
-    { id: "seed_hair_balayage", name: "بالیاژ، آمبره و سامبره", description: "Dimensional lightening and blended color techniques", category: "HAIR", defaultDurationMinutes: 240, defaultPrice: "280.00", supportsColor: true },
-    { id: "seed_hair_keratin", name: "کراتین و احیای مو", description: "Smoothing and restorative hair treatment", category: "HAIR", defaultDurationMinutes: 210, defaultPrice: "250.00", supportsColor: false },
+    { id: "seed_nail_manicure", name: "مانیکور روسی", description: "Russian manicure and detailed cuticle preparation", categoryId: "studio_category_nail", defaultDurationMinutes: 60, defaultPrice: "55.00", supportsColor: false },
+    { id: "seed_nail_gel_polish", name: "ژلیش دست", description: "Gel polish for natural fingernails", categoryId: "studio_category_nail", defaultDurationMinutes: 60, defaultPrice: "65.00", supportsColor: true },
+    { id: "seed_nail_acrylic", name: "کاشت پودر (اکریلیک)", description: "Full acrylic nail extension set", categoryId: "studio_category_nail", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
+    { id: "seed_nail_polygel", name: "کاشت ژل و پلی‌ژل", description: "Flexible gel or polygel nail extension set", categoryId: "studio_category_nail", defaultDurationMinutes: 120, defaultPrice: "120.00", supportsColor: true },
+    { id: "seed_nail_laminate", name: "لمینت و استحکام‌سازی", description: "Natural nail overlay and strengthening", categoryId: "studio_category_nail", defaultDurationMinutes: 90, defaultPrice: "85.00", supportsColor: true },
+    { id: "seed_nail_refill", name: "ترمیم کاشت", description: "Refill, rebalance, and shape existing extensions", categoryId: "studio_category_nail", defaultDurationMinutes: 90, defaultPrice: "80.00", supportsColor: true },
+    { id: "seed_nail_art", name: "طراحی ناخن", description: "French, chrome, baby boomer, minimalist, or custom nail art", categoryId: "studio_category_nail", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_nail_art_french", name: "فرنچ کلاسیک و رنگی", description: "Classic white, colored, reverse, or micro French finish", categoryId: "studio_category_nail", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_nail_art_chrome", name: "کروم و افکت آینه‌ای", description: "Chrome powder and reflective mirror-effect nail art", categoryId: "studio_category_nail", defaultDurationMinutes: 30, defaultPrice: "30.00", supportsColor: true },
+    { id: "seed_nail_art_baby_boomer", name: "بیبی بومر", description: "Soft gradient French design", categoryId: "studio_category_nail", defaultDurationMinutes: 45, defaultPrice: "35.00", supportsColor: true },
+    { id: "seed_nail_art_minimal", name: "طراحی مینیمال و لاین‌آرت", description: "Fine lines, dots, negative space, and minimalist details", categoryId: "studio_category_nail", defaultDurationMinutes: 30, defaultPrice: "25.00", supportsColor: true },
+    { id: "seed_hair_cut", name: "کوتاهی و کوپ مو", description: "Consultation-led classic or modern haircut", categoryId: "studio_category_hair", defaultDurationMinutes: 60, defaultPrice: "70.00", supportsColor: false },
+    { id: "seed_hair_style", name: "براشینگ و حالت‌دهی", description: "Blow-dry and professional styling", categoryId: "studio_category_hair", defaultDurationMinutes: 60, defaultPrice: "60.00", supportsColor: false },
+    { id: "seed_hair_root", name: "رنگ ریشه", description: "Root color refresh", categoryId: "studio_category_hair", defaultDurationMinutes: 120, defaultPrice: "110.00", supportsColor: true },
+    { id: "seed_hair_full_color", name: "رنگ کامل مو", description: "Full-length custom hair color", categoryId: "studio_category_hair", defaultDurationMinutes: 180, defaultPrice: "180.00", supportsColor: true },
+    { id: "seed_hair_balayage", name: "بالیاژ، آمبره و سامبره", description: "Dimensional lightening and blended color techniques", categoryId: "studio_category_hair", defaultDurationMinutes: 240, defaultPrice: "280.00", supportsColor: true },
+    { id: "seed_hair_keratin", name: "کراتین و احیای مو", description: "Smoothing and restorative hair treatment", categoryId: "studio_category_hair", defaultDurationMinutes: 210, defaultPrice: "250.00", supportsColor: false },
   ];
   const services = [];
   for (const data of serviceCatalog) {

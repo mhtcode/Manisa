@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CalendarDays, Check, CircleCheck, Clock3, DollarSign, LoaderCircle, Palette, Search, Scissors, Sparkles, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, CircleCheck, Clock3, DollarSign, LoaderCircle, Search, Sparkles, UserRound } from "lucide-react";
+import { CategoryIcon } from "@/components/category-icon";
 import { checkAppointmentAvailability } from "@/server/actions/appointments";
 
 type Option = { id: string; name: string; phone?: string | null; email?: string | null };
-type ServiceOption = Option & { duration: number; price: string; currency: string; category: "NAIL" | "HAIR" | "OTHER"; supportsColor: boolean };
+type ServiceCategoryOption = { id: string; name: string; description: string | null; icon: string; accentColor: string };
+type ServiceOption = Option & { duration: number; price: string; currency: string; category: ServiceCategoryOption; supportsColor: boolean };
 type AppointmentValue = { id: string; customerId: string; serviceIds: string[]; serviceColors: Record<string, string>; startAt: string; expectedDurationMinutes: number; expectedPrice: string; notes?: string | null };
 type ActionResult = { error: string } | null;
 
@@ -53,11 +55,8 @@ export function AppointmentForm({ action, customers, services, appointment, init
     if (!query) return customers.slice(0, 8);
     return customers.filter((customer) => [customer.name, customer.phone, customer.email].some((value) => value?.toLocaleLowerCase().includes(query))).slice(0, 8);
   }, [customerQuery, customers]);
-  const serviceGroups = [
-    { category: "NAIL" as const, label: "Nail studio", description: "Manicure, extensions, gel, and nail art" },
-    { category: "HAIR" as const, label: "Hair studio", description: "Cuts, styling, color, and treatments" },
-    { category: "OTHER" as const, label: "Other services", description: "Additional studio work" },
-  ].map((group) => ({ ...group, services: services.filter((service) => service.category === group.category) })).filter((group) => group.services.length);
+  const serviceGroups = Array.from(new Map(services.map((service) => [service.category.id, service.category])).values())
+    .map((category) => ({ ...category, services: services.filter((service) => service.category.id === category.id) }));
 
   useEffect(() => {
     if (!availabilityKey) return;
@@ -126,17 +125,16 @@ export function AppointmentForm({ action, customers, services, appointment, init
         <section className="panel p-5 sm:p-6">
           <div className="mb-5 flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-300"><Sparkles size={19} /></span><div><h2 className="font-semibold text-white">Choose one or more services</h2><p className="mt-1 text-sm text-slate-500">These defaults create the Stage 1 estimate. Actual time and income are entered after the visit.</p></div></div>
           <div className="space-y-5">
-            {serviceGroups.map((group) => <div key={group.category}>
+            {serviceGroups.map((group) => <div key={group.id}>
               <div className="mb-2.5 flex items-center gap-2">
-                {group.category === "HAIR" ? <Scissors className="text-sky-300" size={16} /> : group.category === "NAIL" ? <Palette className="text-fuchsia-300" size={16} /> : <Sparkles className="text-violet-300" size={16} />}
-                <div><h3 className="text-sm font-semibold text-slate-200">{group.label}</h3><p className="text-[11px] text-slate-600">{group.description}</p></div>
+                <CategoryIcon name={group.icon} size={16}/>
+                <div><h3 className="text-sm font-semibold text-slate-200">{group.name}</h3><p className="text-[11px] text-slate-600">{group.description || "Studio services"}</p></div>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {group.services.map((service) => {
                   const selected = serviceIds.includes(service.id);
-                  const Icon = service.category === "HAIR" ? Scissors : service.category === "NAIL" ? Palette : Sparkles;
                   return <div className={`overflow-hidden rounded-2xl border transition ${selected ? "border-teal-300/35 bg-teal-300/[0.075]" : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"}`} key={service.id}>
-                    <button aria-pressed={selected} className="flex w-full items-center gap-3 p-3.5 text-start active:scale-[.99]" onClick={() => toggleService(service.id)} type="button"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><Icon size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-white" dir="auto">{service.name}</span><span className="mt-1 block text-xs text-slate-500">{service.duration} min · {money(service.price, service.currency)}</span></span><span className={`flex size-5 items-center justify-center rounded-full border ${selected ? "border-teal-300 bg-teal-300 text-slate-950" : "border-white/15 text-transparent"}`}><Check size={13} strokeWidth={3} /></span></button>
+                    <button aria-pressed={selected} className="flex w-full items-center gap-3 p-3.5 text-start active:scale-[.99]" onClick={() => toggleService(service.id)} type="button"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><CategoryIcon name={service.category.icon} size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-white" dir="auto">{service.name}</span><span className="mt-1 block text-xs text-slate-500">{service.duration} min · {money(service.price, service.currency)}</span></span><span className={`flex size-5 items-center justify-center rounded-full border ${selected ? "border-teal-300 bg-teal-300 text-slate-950" : "border-white/15 text-transparent"}`}><Check size={13} strokeWidth={3} /></span></button>
                     {selected && service.supportsColor && <div className="flex items-center gap-2 border-t border-white/8 px-3.5 py-3">
                       <input aria-label={`Choose color for ${service.name}`} className="h-8 w-10 cursor-pointer rounded-lg border border-white/10 bg-transparent p-0.5" name={`serviceColor_${service.id}`} onChange={(event) => setServiceColors((colors) => ({ ...colors, [service.id]: event.target.value.toUpperCase() }))} type="color" value={serviceColors[service.id] || "#D36B85"} />
                       <span className="min-w-0 flex-1 text-xs text-slate-400">Chosen color</span>

@@ -37,36 +37,33 @@ enum PaymentStatus {
   PARTIALLY_PAID
 }
 
-enum ServiceCategory {
-  NAIL
-  HAIR
-  OTHER
-}
-
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String
-  passwordHash String
-  role         Role      @default(ADMIN)
-  active       Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  settings     Settings?
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  passwordHash        String
+  role                Role                 @default(ADMIN)
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  settings            Settings?
+  instagramConnection InstagramConnection?
 }
 
 model Settings {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  businessName   String   @default("Manisa")
-  locale         Locale   @default(en)
-  theme          Theme    @default(DARK)
-  currency       String   @default("CAD") @db.VarChar(3)
-  timezone       String   @default("America/Toronto")
-  mobileNavOrder String   @default("dashboard,appointments,calendar,more")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  businessName      String   @default("Manisa")
+  locale            Locale   @default(en)
+  theme             Theme    @default(DARK)
+  currency          String   @default("CAD") @db.VarChar(3)
+  timezone          String   @default("America/Toronto")
+  mobileNavOrder    String   @default("report,calendar,gallery,settings")
+  collectionViews   Json     @default("{}")
+  collapsedSections Json     @default("{}")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Customer {
@@ -88,6 +85,23 @@ model Customer {
   @@index([phone])
   @@index([email])
   @@index([active])
+  @@index([createdAt])
+}
+
+model StudioCategory {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  icon        String    @default("sparkles")
+  accentColor String    @default("#4F8CFF") @db.VarChar(7)
+  position    Int       @default(0)
+  active      Boolean   @default(true)
+  services    Service[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active, position])
 }
 
 model Service {
@@ -97,7 +111,8 @@ model Service {
   defaultDurationMinutes    Int
   defaultPrice              Decimal                    @db.Decimal(12, 2)
   currency                  String                     @default("CAD") @db.VarChar(3)
-  category                  ServiceCategory            @default(OTHER)
+  categoryId                String
+  category                  StudioCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   supportsColor             Boolean                    @default(false)
   active                    Boolean                    @default(true)
   appointments              Appointment[]
@@ -108,7 +123,7 @@ model Service {
 
   @@index([name])
   @@index([active])
-  @@index([category, active])
+  @@index([categoryId, active])
 }
 
 model Appointment {
@@ -141,6 +156,7 @@ model Appointment {
   @@index([customerId, startAt])
   @@index([serviceId, startAt])
   @@index([status, startAt])
+  @@index([status, completedAt])
   @@index([paymentStatus])
 }
 
@@ -190,8 +206,44 @@ model AppointmentPhoto {
   width         Int
   height        Int
   sizeBytes     Int
+  featuredAt    DateTime?
   createdAt     DateTime    @default(now())
 
   @@index([appointmentId, createdAt])
+  @@index([featuredAt])
   @@index([createdAt])
+}
+
+model InstagramConnection {
+  id                   String          @id @default(cuid())
+  userId               String          @unique
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instagramUserId      String
+  username             String?
+  encryptedAccessToken String
+  tokenExpiresAt       DateTime?
+  lastSyncedAt         DateTime?
+  lastError            String?
+  posts                InstagramPost[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+model InstagramPost {
+  id              String              @id @default(cuid())
+  connectionId    String
+  connection      InstagramConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  remoteMediaId   String              @unique
+  caption         String?
+  mediaType       String
+  permalink       String
+  publishedAt     DateTime
+  cachedImagePath String              @unique
+  active          Boolean             @default(true)
+  syncedAt        DateTime            @default(now())
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([active, publishedAt])
+  @@index([connectionId, publishedAt])
 }

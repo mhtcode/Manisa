@@ -44,7 +44,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
       include: { appointment: { include: { customer: true, actualServiceLines: { orderBy: { position: "asc" } } } } },
     }),
     prisma.customer.findMany({ where: { appointments: { some: { photos: { some: {} } } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
-    prisma.service.findMany({ where: { actualAppointmentServices: { some: { appointment: { photos: { some: {} } } } } }, orderBy: [{ category: "asc" }, { name: "asc" }] }),
+    prisma.service.findMany({ where: { actualAppointmentServices: { some: { appointment: { photos: { some: {} } } } } }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
   ]);
   const hasMore = results.length > PAGE_SIZE;
   const photos = results.slice(0, PAGE_SIZE);
