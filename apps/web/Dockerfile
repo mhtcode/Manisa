@@ -5,6 +5,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 FROM node:24-alpine AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_BUSINESS_ADDRESS="Toronto, Ontario"
+ARG NEXT_PUBLIC_INSTAGRAM_URL=""
+ENV NEXT_PUBLIC_BUSINESS_ADDRESS=$NEXT_PUBLIC_BUSINESS_ADDRESS
+ENV NEXT_PUBLIC_INSTAGRAM_URL=$NEXT_PUBLIC_INSTAGRAM_URL
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build

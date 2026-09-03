@@ -1,6 +1,6 @@
 # Manisa
 
-Manisa is a private, bilingual business-management application for a self-employed service provider. It manages customers, services, appointments, completion and payments, working hours, and database-derived business reporting.
+Manisa is a mobile-first, bilingual studio platform with a public portfolio and a private management application. It manages customers, modular service categories, appointments, completion and payments, Gallery media, working hours, and database-derived business reporting.
 
 ## Architecture
 
@@ -27,7 +27,8 @@ docker compose ps
 
 Put the generated value in `AUTH_SECRET`, then open:
 
-- Web application: `http://localhost:3000`
+- Public website: `http://localhost:3000`
+- Private reporting: `http://localhost:3000/report`
 - Web health: `http://localhost:3000/api/health`
 - API documentation: `http://localhost:8000/docs`
 - API health: `http://localhost:8000/health`
@@ -77,11 +78,29 @@ The liveness endpoint is `GET /api/health`. It deliberately does not disclose da
 
 ## Demo experience
 
-The seed creates English and Persian customers, three services, and scheduled, completed, cancelled, paid, and unpaid appointments across multiple dates. Dashboard and report values always come from PostgreSQL records.
+The seed creates English and Persian customers, modular nail and hair service categories, and scheduled, completed, cancelled, paid, and unpaid appointments across multiple dates. The canonical Report values always come from PostgreSQL records; legacy Dashboard, Reports, and Working Hours routes redirect there.
 
 ## Persian, timezone, and accessibility
 
-The language setting switches between English and فارسی and changes direction between LTR and RTL. UI strings are centralized in `src/lib/i18n.ts`; names, notes, addresses, and search remain Unicode throughout. Canonical timestamps are never stored as Jalali strings. The UI uses semantic forms, visible focus states, text labels in addition to status color, and mobile-specific navigation.
+The language setting switches between English and فارسی and changes direction between LTR and RTL. UI strings are centralized in `src/lib/i18n.ts`; names, notes, addresses, and search remain Unicode throughout. Canonical timestamps are never stored as Jalali strings. The UI uses semantic forms, visible focus states, text labels in addition to status color, a customizable four-item bottom navigation, and guarded page-swipe navigation.
+
+## Gallery and public landing page
+
+Finalized appointments can store optional optimized WebP photos in the persistent `manisa_uploads` volume. Staff can filter the private Gallery by customer and delivered service, choose grid or list view, and explicitly feature individual photos. Only featured thumbnails are served by public media routes; public responses do not include customer or appointment identity. Removing the Featured flag unpublishes the database-backed URL immediately.
+
+The public landing page reads active service categories and selected Gallery work from PostgreSQL. Configure `NEXT_PUBLIC_BUSINESS_ADDRESS` and `NEXT_PUBLIC_INSTAGRAM_URL` for the public contact details.
+
+## Instagram Professional integration
+
+Create a Meta app with Instagram Login, add this exact OAuth callback, and request only `instagram_business_basic`:
+
+```text
+https://your-domain.example/api/integrations/instagram/callback
+```
+
+Set `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URI`, and a separately generated `INTEGRATION_ENCRYPTION_KEY`. The redirect URI must use public HTTPS. Then open **Settings → Instagram** and connect an Instagram Business or Creator account. A linked Facebook Page is not required for the Instagram Login flow.
+
+Manisa encrypts the long-lived access token with AES-256-GCM, validates signed OAuth state against a short-lived HTTP-only cookie, requests read-only access, and caches optimized covers locally. Landing-page requests use the cache and schedule a background refresh when it is older than 15 minutes; a failed refresh keeps the last successful feed online. Disconnecting removes the connection and unpublishes cached database records.
 
 ## Google Calendar
 
@@ -118,6 +137,7 @@ compose.yaml             # web, API, initializer, and PostgreSQL stack
 - Google Calendar export import is available; OAuth connection and durable two-way synchronization remain future work.
 - Web Push is not enabled; it requires a deliberate permission and delivery design.
 - The responsive calendar supports day, compact mobile week, month, and agenda views, plus two-finger or button zoom; drag-and-drop rescheduling remains future work.
+- Instagram requires a Meta app, a Professional account, and a publicly reachable HTTPS OAuth callback; it is hidden gracefully when not configured.
 - The authorization model currently defines `ADMIN`; granular roles can be added when multiple users are introduced.
 
 The next production milestone is Google OAuth/calendar synchronization with durable retry tracking, followed by Playwright coverage of the seeded primary workflow.

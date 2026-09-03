@@ -182,3 +182,14 @@ export async function markPaid(id: string) {
   await prisma.appointment.updateMany({ where: { id, status: "COMPLETED" }, data: { paymentStatus: "PAID" } });
   revalidatePath(`/appointments/${id}`); revalidatePath("/report");
 }
+
+export async function setAppointmentPhotoFeatured(photoId: string, featured: boolean) {
+  await requireUser();
+  const result = await prisma.appointmentPhoto.updateMany({
+    where: { id: photoId, appointment: { status: "COMPLETED" } },
+    data: { featuredAt: featured ? new Date() : null },
+  });
+  if (!result.count) throw new Error("Only photos from finalized appointments can be featured.");
+  revalidatePath("/gallery");
+  revalidatePath("/");
+}

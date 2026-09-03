@@ -8,6 +8,10 @@ const serverEnvSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALENDAR_ID: z.string().default("primary"),
   UPLOADS_DIR: z.string().min(1).optional(),
+  INSTAGRAM_APP_ID: z.string().min(1).optional(),
+  INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
+  INSTAGRAM_REDIRECT_URI: z.string().url().optional(),
+  INTEGRATION_ENCRYPTION_KEY: z.string().min(32).optional(),
 });
 
 export function getServerEnv() {
@@ -19,6 +23,10 @@ export function getServerEnv() {
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || undefined,
     GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
     UPLOADS_DIR: process.env.UPLOADS_DIR || undefined,
+    INSTAGRAM_APP_ID: process.env.INSTAGRAM_APP_ID || undefined,
+    INSTAGRAM_APP_SECRET: process.env.INSTAGRAM_APP_SECRET || undefined,
+    INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || undefined,
+    INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY || undefined,
   });
 }
 
@@ -29,4 +37,9 @@ export function secureCookiesEnabled() {
 
 export function googleCalendarConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+}
+
+export function instagramConfigured() {
+  const env = getServerEnv();
+  return Boolean(env.INSTAGRAM_APP_ID && env.INSTAGRAM_APP_SECRET && env.INSTAGRAM_REDIRECT_URI?.startsWith("https://") && env.INTEGRATION_ENCRYPTION_KEY);
 }

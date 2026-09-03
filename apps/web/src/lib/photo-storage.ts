@@ -28,12 +28,17 @@ function photoFiles(formData: FormData) {
   return formData.getAll("appointmentPhotos").filter((value): value is File => typeof value !== "string" && typeof value.arrayBuffer === "function" && value.size > 0);
 }
 
-function absolutePhotoPath(relativePath: string) {
-  return path.join(/* turbopackIgnore: true */ uploadsRoot(), ...relativePath.split("/"));
+export function absoluteUploadPath(relativePath: string) {
+  const segments = relativePath.split("/");
+  if (!segments.length || segments.some((segment) => !/^[a-zA-Z0-9._-]+$/.test(segment))) throw new Error("Invalid upload path.");
+  const root = uploadsRoot();
+  const resolved = path.resolve(root, ...segments);
+  if (!resolved.startsWith(`${root}${path.sep}`)) throw new Error("Invalid upload path.");
+  return resolved;
 }
 
 export async function removePreparedPhotos(photos: PreparedAppointmentPhoto[]) {
-  await Promise.all(photos.flatMap((photo) => [photo.imagePath, photo.thumbnailPath].map((filePath) => unlink(absolutePhotoPath(filePath)).catch(() => undefined))));
+  await Promise.all(photos.flatMap((photo) => [photo.imagePath, photo.thumbnailPath].map((filePath) => unlink(absoluteUploadPath(filePath)).catch(() => undefined))));
 }
 
 export async function prepareAppointmentPhotos(appointmentId: string, formData: FormData) {
@@ -42,7 +47,7 @@ export async function prepareAppointmentPhotos(appointmentId: string, formData: 
   if (files.length > MAX_PHOTOS_PER_UPLOAD) throw new PhotoUploadError(`Choose no more than ${MAX_PHOTOS_PER_UPLOAD} photos at once.`);
 
   const directory = path.join("appointments", appointmentId);
-  await mkdir(absolutePhotoPath(directory), { recursive: true });
+  await mkdir(absoluteUploadPath(directory), { recursive: true });
   const prepared: PreparedAppointmentPhoto[] = [];
 
   try {
@@ -58,10 +63,10 @@ export async function prepareAppointmentPhotos(appointmentId: string, formData: 
       const image = sharp(input, { failOn: "error", limitInputPixels: 40_000_000 }).rotate();
       let imageInfo;
       try {
-        imageInfo = await image.clone().resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toFile(absolutePhotoPath(imagePath));
-        await image.clone().resize({ width: 640, height: 480, fit: "cover", position: "attention", withoutEnlargement: false }).webp({ quality: 76, effort: 4 }).toFile(absolutePhotoPath(thumbnailPath));
+        imageInfo = await image.clone().resize({ width: 1920, height: 1920, fit: "inside", withoutEnlargement: true }).webp({ quality: 82, effort: 4 }).toFile(absoluteUploadPath(imagePath));
+        await image.clone().resize({ width: 640, height: 480, fit: "cover", position: "attention", withoutEnlargement: false }).webp({ quality: 76, effort: 4 }).toFile(absoluteUploadPath(thumbnailPath));
       } catch (error) {
-        await Promise.all([imagePath, thumbnailPath].map((filePath) => unlink(absolutePhotoPath(filePath)).catch(() => undefined)));
+        await Promise.all([imagePath, thumbnailPath].map((filePath) => unlink(absoluteUploadPath(filePath)).catch(() => undefined)));
         throw error;
       }
 
