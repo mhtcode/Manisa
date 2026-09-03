@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { Plus, SwatchBook } from "lucide-react";
-import { CategoryIcon } from "@/components/category-icon";
+import { CollapsibleCategory } from "@/components/collapsible-category";
 import { PageHeading } from "@/components/page-heading";
+import { ViewModeToggle } from "@/components/view-mode-toggle";
+import { requireUser } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
+import { collectionView, sectionCollapsed } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 import { toggleService } from "@/server/actions/services";
 
 export default async function ServicesPage() {
+  const user = await requireUser();
+  const view = collectionView(user.settings?.collectionViews, "services", "grid");
   const categories = await prisma.studioCategory.findMany({
     where: { OR: [{ active: true }, { services: { some: {} } }] },
     include: {
@@ -22,15 +27,10 @@ export default async function ServicesPage() {
   });
 
   return <>
-    <PageHeading title="Service catalog" description="Organize every studio category, service default, color choice, and actual performance." actions={<Link className="button" href="/services/new"><Plus size={17}/>New service</Link>}/>
-    <div className="space-y-7">
-      {categories.map((category) => <section key={category.id}>
-        <div className="mb-3 flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl" style={{ backgroundColor: `${category.accentColor}1A`, color: category.accentColor }}><CategoryIcon name={category.icon} size={19}/></span>
-          <div><h2 className="font-semibold text-white">{category.name}</h2><p className="mt-0.5 text-xs text-slate-500">{category.description || "Custom studio category"}</p></div>
-          <span className="ms-auto rounded-full border border-white/8 bg-white/[0.03] px-2.5 py-1 text-xs text-slate-500">{category.services.length}</span>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <PageHeading title="Service catalog" description="Organize every studio category, service default, color choice, and actual performance." actions={<><ViewModeToggle initialMode={view} page="services"/><Link className="button" href="/services/new"><Plus size={17}/>New service</Link></>}/>
+    <div className="space-y-4">
+      {categories.map((category) => <CollapsibleCategory accentColor={category.accentColor} count={category.services.length} description={category.description || "Custom studio category"} icon={category.icon} initialCollapsed={sectionCollapsed(user.settings?.collapsedSections, `service-category-${category.id}`)} key={category.id} name={category.name} sectionId={`service-category-${category.id}`}>
+        <div className={view === "grid" ? "grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "space-y-3"}>
           {category.services.map((service) => {
             const revenue = service.actualAppointmentServices.reduce((sum, line) => sum + Number(line.finalPrice), 0) + service.appointments.reduce((sum, appointment) => sum + Number(appointment.finalPrice || 0), 0);
             const minutes = service.actualAppointmentServices.reduce((sum, line) => sum + line.actualDurationMinutes, 0) + service.appointments.reduce((sum, appointment) => sum + (appointment.actualDurationMinutes || 0), 0);
@@ -44,7 +44,7 @@ export default async function ServicesPage() {
           })}
           {!category.services.length && <div className="panel empty md:col-span-2 xl:col-span-3">No services in this category yet.</div>}
         </div>
-      </section>)}
+      </CollapsibleCategory>)}
     </div>
     {!categories.length && <div className="panel empty">Create a category in Settings before adding services.</div>}
   </>;

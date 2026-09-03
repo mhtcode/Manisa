@@ -141,7 +141,7 @@ export async function completeAppointment(id: string, formData: FormData) {
     await removePreparedPhotos(photos);
     throw error;
   }
-  revalidatePath("/dashboard"); revalidatePath("/reports"); revalidatePath("/appointments"); revalidatePath("/working-hours"); revalidatePath("/gallery"); revalidatePath(`/appointments/${id}`);
+  revalidatePath("/report"); revalidatePath("/appointments"); revalidatePath("/gallery"); revalidatePath(`/appointments/${id}`);
   redirect(`/appointments/${id}`);
 }
 
@@ -174,11 +174,11 @@ export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO
   if (status === "CANCELLED" && !["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw new Error("Only upcoming appointments can be cancelled.");
   if (status === "NO_SHOW" && (!["SCHEDULED", "CONFIRMED"].includes(appointment.status) || appointment.startAt > new Date())) throw new Error("A future appointment cannot be marked as no-show.");
   await prisma.appointment.update({ where: { id }, data: { status } });
-  revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/dashboard");
+  revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/report");
 }
 
 export async function markPaid(id: string) {
   await requireUser();
   await prisma.appointment.updateMany({ where: { id, status: "COMPLETED" }, data: { paymentStatus: "PAID" } });
-  revalidatePath(`/appointments/${id}`); revalidatePath("/dashboard");
+  revalidatePath(`/appointments/${id}`); revalidatePath("/report");
 }

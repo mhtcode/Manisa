@@ -1,24 +1,44 @@
-import { CalendarImportForm } from "@/components/calendar-import-form";
-import { MobileNavigationSettings } from "@/components/mobile-navigation-settings";
+import Link from "next/link";
+import { CalendarClock, CalendarSync, ChevronRight, Images, Instagram, Layers3, Palette, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, UserRound, UsersRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
-import { googleCalendarConfigured } from "@/lib/env";
-import { parseMobileNavigation } from "@/lib/mobile-navigation";
-import { updateSettings } from "@/server/actions/settings";
+import { prisma } from "@/lib/prisma";
+
+const groups = [
+  {
+    title: "Manage",
+    items: [
+      ["/appointments", "Appointments", "Schedule, confirm, finalize, and review visits", CalendarClock],
+      ["/customers", "Customers", "Profiles, visit history, preferences, and insights", UsersRound],
+      ["/services", "Services", "Pricing, duration, colors, and performance", SwatchBook],
+      ["/settings/categories", "Categories", "Create, reorder, archive, and organize studio areas", Layers3],
+      ["/gallery", "Gallery", "Organize visit photos and choose featured work", Images],
+    ],
+  },
+  {
+    title: "Studio settings",
+    items: [
+      ["/settings/business", "Business preferences", "Name, language, currency, timezone, and appearance", SlidersHorizontal],
+      ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
+      ["/settings/calendar-import", "Calendar import", "Bring historical Google Calendar appointments into Manisa", CalendarSync],
+      ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
+      ["/settings/business#appearance", "Appearance", "Dark, light, or system theme", Palette],
+      ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
+    ],
+  },
+] as const;
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const settings = user.settings;
-  const configured = googleCalendarConfigured();
+  const categoryCount = await prisma.studioCategory.count({ where: { active: true } });
   return <>
-    <PageHeading title="Settings" description="Business preferences, imports, appearance, and integrations."/>
+    <PageHeading title="Settings" description="Your management hub for studio data, integrations, appearance, and access."/>
+    <section className="mb-5 overflow-hidden rounded-[1.35rem] border border-blue-400/15 bg-gradient-to-br from-[#13223e] to-[#0c1423] p-5 shadow-[0_18px_50px_rgba(0,0,0,.25)] sm:p-6">
+      <div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-full border border-blue-300/20 bg-blue-400/10 text-blue-200"><UserRound size={24}/></span><div className="min-w-0"><h2 className="truncate text-lg font-semibold text-white">{user.name}</h2><p className="mt-1 truncate text-sm text-slate-400">{user.email}</p><p className="mt-2 text-xs text-blue-300">Administrator · {categoryCount} active {categoryCount === 1 ? "category" : "categories"}</p></div></div>
+    </section>
     <div className="space-y-5">
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-        <form action={updateSettings} className="panel p-5 sm:p-7"><h2 className="font-medium">Business preferences</h2><div className="mt-6 grid gap-5 sm:grid-cols-2"><div className="sm:col-span-2"><label className="label" htmlFor="businessName">Business name</label><input className="field" id="businessName" name="businessName" defaultValue={settings?.businessName || "Manisa"}/></div><div><label className="label" htmlFor="locale">Language</label><select className="field" id="locale" name="locale" defaultValue={settings?.locale || "en"}><option value="en">English</option><option value="fa">فارسی</option></select></div><div><label className="label" htmlFor="theme">Appearance</label><select className="field" id="theme" name="theme" defaultValue={settings?.theme || "DARK"}><option value="DARK">Dark</option><option value="LIGHT">Light</option><option value="SYSTEM">System</option></select></div><div><label className="label" htmlFor="currency">Currency</label><select className="field" id="currency" name="currency" defaultValue={settings?.currency || "CAD"}><option>CAD</option><option>USD</option></select></div><div><label className="label">Business timezone</label><input className="field opacity-70" value={settings?.timezone || "America/Toronto"} readOnly/></div></div><button className="button mt-7">Save settings</button></form>
-        <div className="space-y-5"><section className="panel p-5 sm:p-6"><h2 className="font-medium">Profile & security</h2><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-slate-600">Name</dt><dd className="mt-1 text-slate-300">{user.name}</dd></div><div><dt className="text-slate-600">Email</dt><dd className="mt-1 text-slate-300">{user.email}</dd></div><div><dt className="text-slate-600">Role</dt><dd className="mt-1 text-slate-300">Administrator</dd></div></dl></section><section className="panel p-5 sm:p-6"><div className="flex items-center justify-between"><h2 className="font-medium">Google Calendar</h2><span className={`badge ${configured ? "border-amber-400/20 bg-amber-400/10 text-amber-300" : "border-white/10 text-slate-500"}`}>{configured ? "Credentials found" : "Not connected"}</span></div><p className="mt-4 text-sm leading-6 text-slate-500">Historical file import works without a live connection. Optional two-way synchronization remains separate from this importer.</p></section></div>
-      </div>
-      <MobileNavigationSettings initialOrder={parseMobileNavigation(settings?.mobileNavOrder)}/>
-      <CalendarImportForm/>
+      {groups.map((group) => <section key={group.title}><h2 className="mb-2 px-2 text-xs font-semibold uppercase tracking-[.16em] text-slate-500">{group.title}</h2><div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d131d] shadow-[0_16px_40px_rgba(0,0,0,.16)]">{group.items.map(([href, label, description, Icon], index) => <Link className={`group flex items-center gap-3 px-4 py-3.5 transition hover:bg-blue-500/[0.07] active:bg-blue-500/[0.12] sm:px-5 ${index ? "border-t border-white/8" : ""}`} href={href} key={href}><span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/12 bg-blue-500/8 text-blue-300"><Icon size={18}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-100">{label}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{description}</span></span><ChevronRight className="shrink-0 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-blue-300 rtl:rotate-180" size={18}/></Link>)}</div></section>)}
     </div>
+    <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600"><Sparkles size={13}/>Manisa studio management</div>
   </>;
 }

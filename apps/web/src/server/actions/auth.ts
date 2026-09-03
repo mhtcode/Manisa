@@ -16,7 +16,7 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
     return { error: "The email or password is incorrect." };
   }
   await createSession(user.id);
-  redirect("/dashboard");
+  redirect("/report");
 }
 
 export async function logout() {
