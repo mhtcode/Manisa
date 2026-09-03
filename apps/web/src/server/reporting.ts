@@ -4,6 +4,7 @@ import { subDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { prisma } from "@/lib/prisma";
 import { calculateCoreReportMetrics } from "@/lib/report-metrics";
+import { intlLocale, type AppLocale } from "@/lib/i18n";
 
 const validPresets = ["7", "30", "90", "ytd", "all", "custom"] as const;
 const validStatuses: AppointmentStatus[] = ["SCHEDULED", "CONFIRMED", "COMPLETED", "HISTORICAL", "CANCELLED", "NO_SHOW"];
@@ -50,13 +51,13 @@ function filteredWhere(start: Date, end: Date, query: ReportQuery): Prisma.Appoi
 
 type ReportAppointment = Prisma.AppointmentGetPayload<{ include: { customer: true; serviceLines: true; actualServiceLines: true } }>;
 
-function bucketKey(date: Date, days: number, timezone: string) {
-  if (days > 180) return formatInTimeZone(date, timezone, "yyyy-MM");
+function bucketKey(date: Date, days: number, timezone: string, locale: AppLocale) {
+  if (days > 180) return new Intl.DateTimeFormat(intlLocale(locale), { month: "short", year: "numeric", timeZone: timezone }).format(date);
   if (days > 31) return formatInTimeZone(date, timezone, "yyyy-'W'ww");
-  return formatInTimeZone(date, timezone, "MMM d");
+  return new Intl.DateTimeFormat(intlLocale(locale), { month: "short", day: "numeric", timeZone: timezone }).format(date);
 }
 
-function summarize(appointments: ReportAppointment[], newCustomers: number, returningCustomers: number, days: number, timezone: string) {
+function summarize(appointments: ReportAppointment[], newCustomers: number, returningCustomers: number, days: number, timezone: string, locale: AppLocale) {
   const completed = appointments.filter((appointment) => appointment.status === "COMPLETED");
   const chronological = [...completed].sort((a, b) => (a.completedAt || a.startAt).getTime() - (b.completedAt || b.startAt).getTime());
   const core = calculateCoreReportMetrics(appointments);
@@ -71,15 +72,15 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
   appointments.forEach((appointment) => outcomes.set(appointment.status, (outcomes.get(appointment.status) || 0) + 1));
   chronological.forEach((appointment) => {
     const date = appointment.completedAt || appointment.startAt;
-    const key = bucketKey(date, days, timezone);
+    const key = bucketKey(date, days, timezone, locale);
     const point = timeline.get(key) || { name: key, revenue: 0, visits: 0, hours: 0 };
     point.revenue += Number(appointment.finalPrice || 0); point.visits += 1; point.hours += (appointment.actualDurationMinutes || 0) / 60; timeline.set(key, point);
     payments.set(appointment.paymentStatus, (payments.get(appointment.paymentStatus) || 0) + Number(appointment.finalPrice || 0));
-    const weekday = formatInTimeZone(appointment.startAt, timezone, "EEE");
+    const weekday = new Intl.DateTimeFormat(intlLocale(locale), { weekday: "short", timeZone: timezone }).format(appointment.startAt);
     weekdays.set(weekday, (weekdays.get(weekday) || 0) + 1);
-    const hour = `${formatInTimeZone(appointment.startAt, timezone, "ha")}`;
+    const hour = new Intl.DateTimeFormat(intlLocale(locale), { hour: "numeric", timeZone: timezone }).format(appointment.startAt);
     hours.set(hour, (hours.get(hour) || 0) + 1);
-    const month = formatInTimeZone(date, timezone, "MMM yyyy");
+    const month = new Intl.DateTimeFormat(intlLocale(locale), { month: "short", year: "numeric", timeZone: timezone }).format(date);
     const work = monthlyHours.get(month) || { name: month, hours: 0, revenue: 0, visits: 0 };
     work.hours += (appointment.actualDurationMinutes || 0) / 60; work.revenue += Number(appointment.finalPrice || 0); work.visits += 1; monthlyHours.set(month, work);
     const lines = appointment.actualServiceLines.length ? appointment.actualServiceLines.map((line) => ({ id: line.serviceId || `removed:${line.serviceNameSnapshot}`, name: line.serviceNameSnapshot, revenue: Number(line.finalPrice), minutes: line.actualDurationMinutes })) : [{ id: appointment.serviceId || `removed:${appointment.serviceNameSnapshot}`, name: appointment.serviceNameSnapshot, revenue: Number(appointment.finalPrice || 0), minutes: appointment.actualDurationMinutes || 0 }];
@@ -98,7 +99,7 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
   };
 }
 
-export async function getReportData(query: ReportQuery, timezone: string) {
+export async function getReportData(query: ReportQuery, timezone: string, locale: AppLocale = "en") {
   const range = await reportRange(query, timezone);
   const now = new Date();
   const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
@@ -107,11 +108,11 @@ export async function getReportData(query: ReportQuery, timezone: string) {
   const include = { customer: true, serviceLines: { orderBy: { position: "asc" as const } }, actualServiceLines: { orderBy: { position: "asc" as const } } };
   const currentWhere = filteredWhere(range.start, range.end, query);
   const previousWhere = filteredWhere(range.previousStart, range.previousEnd, query);
-  const [current, previous, services, todayCount, upcoming, currentNewCustomers, previousNewCustomers] = await Promise.all([
+  const [current, previous, services, todayAppointments, upcoming, currentNewCustomers, previousNewCustomers] = await Promise.all([
     prisma.appointment.findMany({ where: currentWhere, include, orderBy: { startAt: "desc" } }),
     prisma.appointment.findMany({ where: previousWhere, include, orderBy: { startAt: "desc" } }),
     prisma.service.findMany({ where: { active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
-    prisma.appointment.count({ where: { deletedAt: null, startAt: { gte: todayStart, lte: todayEnd }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } } }),
+    prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: todayStart, lte: todayEnd }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } }, include: { customer: true }, orderBy: { startAt: "asc" } }),
     prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, include: { customer: true }, orderBy: { startAt: "asc" }, take: 5 }),
     prisma.customer.count({ where: { deletedAt: null, createdAt: { gte: range.start, lte: range.end } } }),
     prisma.customer.count({ where: { deletedAt: null, createdAt: { gte: range.previousStart, lte: range.previousEnd } } }),
@@ -124,9 +125,9 @@ export async function getReportData(query: ReportQuery, timezone: string) {
   ]);
   return {
     range,
-    current: summarize(current, currentNewCustomers, currentReturning.length, range.days, timezone),
-    previous: summarize(previous, previousNewCustomers, previousReturning.length, range.days, timezone),
-    overview: { todayCount, upcoming },
+    current: summarize(current, currentNewCustomers, currentReturning.length, range.days, timezone, locale),
+    previous: summarize(previous, previousNewCustomers, previousReturning.length, range.days, timezone, locale),
+    overview: { todayCount: todayAppointments.length, todayAppointments, upcoming },
     services,
     records: current.slice(0, 250),
     recordCount: current.length,

@@ -4,3 +4,51 @@ export const messages = {
 } as const;
 export type AppLocale = keyof typeof messages;
 export function getMessages(locale: AppLocale) { return messages[locale]; }
+
+const faPhrases: Record<string, string> = {
+  "Report": "گزارش", "Calendar": "تقویم", "Gallery": "گالری", "Settings": "تنظیمات", "Appointments": "قرارها", "Customers": "مشتریان", "Services": "خدمات",
+  "Today’s appointments": "قرارهای امروز", "Open calendar": "باز کردن تقویم", "Open calendar →": "باز کردن تقویم ←", "Next visits": "قرارهای بعدی", "View all": "مشاهده همه", "No upcoming appointments.": "قرار آینده‌ای وجود ندارد.",
+  "Analytics period": "بازه تحلیل", "7 days": "7 روز", "30 days": "30 روز", "90 days": "90 روز", "YTD": "از ابتدای سال", "All time": "همه زمان‌ها", "Custom": "سفارشی", "Filters and custom dates": "فیلترها و تاریخ‌های سفارشی",
+  "From": "از", "To": "تا", "Service": "خدمت", "Status": "وضعیت", "Payment": "پرداخت", "All services": "همه خدمات", "All statuses": "همه وضعیت‌ها", "All payments": "همه پرداخت‌ها", "Apply": "اعمال",
+  "Revenue": "درآمد", "Finalized visits": "قرارهای نهایی‌شده", "Actual hours": "ساعات واقعی", "Hourly income": "درآمد ساعتی", "Average ticket": "میانگین مبلغ", "Outstanding": "تسویه‌نشده", "New customers": "مشتریان جدید", "Returning": "مراجعه مجدد", "Cancellations": "لغوها", "No-shows": "عدم مراجعه",
+  "Performance over time": "عملکرد در طول زمان", "Service performance": "عملکرد خدمات", "Appointment outcomes": "نتیجه قرارها", "Payment distribution": "وضعیت پرداخت", "Busiest periods": "شلوغ‌ترین زمان‌ها", "Monthly working hours": "ساعات کاری ماهانه", "Weekdays": "روزهای هفته", "Start times": "زمان شروع", "Current": "بازه فعلی", "Previous": "بازه قبلی", "Visits": "قرارها", "Hours": "ساعات", "revenue": "درآمد", "visits": "قرارها", "hours": "ساعات",
+  "Filtered records": "سوابق فیلترشده", "No records match this report.": "سابقه‌ای با این گزارش مطابقت ندارد.", "Finalize appointments to populate this chart.": "برای نمایش نمودار، قرارها را نهایی کنید.",
+  "Manage": "مدیریت", "Customer referrals": "معرفی مشتریان", "Categories": "دسته‌بندی‌ها", "Studio profile & appearance": "پروفایل و ظاهر استودیو", "Navigation": "ناوبری", "Calendar import": "ورود تقویم", "Instagram": "اینستاگرام", "Profile & security": "پروفایل و امنیت", "Trash": "سطل زباله",
+  "Schedule, confirm, finalize, and review visits": "زمان‌بندی، تأیید، نهایی‌سازی و مرور قرارها", "Profiles, visit history, preferences, and insights": "پروفایل، تاریخچه مراجعه، ترجیحات و تحلیل‌ها", "Filter and explore the complete referral graph": "فیلتر و بررسی نمودار کامل معرفی مشتریان", "Pricing, duration, colors, and performance": "قیمت، مدت، رنگ‌ها و عملکرد", "Create, reorder, archive, and organize studio areas": "ساخت، مرتب‌سازی، بایگانی و سازمان‌دهی بخش‌ها", "Organize visit photos and choose featured work": "سازمان‌دهی تصاویر و انتخاب نمونه‌کارهای ویژه", "Name, language, currency, timezone, and theme": "نام، زبان، واحد پول، منطقه زمانی و پوسته", "Choose and reorder the four mobile destinations": "انتخاب و مرتب‌سازی چهار مقصد موبایل", "Bring earlier calendar or JSON appointments into Manisa": "ورود قرارهای قبلی از تقویم یا JSON", "Connect a Professional account and refresh public posts": "اتصال حساب حرفه‌ای و به‌روزرسانی پست‌های عمومی", "Administrator identity, access, and session details": "هویت مدیر، دسترسی و جزئیات نشست", "Restore deleted items for seven days or erase them now": "بازیابی موارد حذف‌شده تا هفت روز یا حذف فوری",
+  "Your single hub for studio data, integrations, appearance, access, and Trash.": "مرکز یکپارچه اطلاعات استودیو، اتصال‌ها، ظاهر، دسترسی و سطل زباله.", "Studio identity, language, financial defaults, and theme.": "هویت استودیو، زبان، تنظیمات مالی و پوسته.", "Choose the four most useful destinations and arrange them in swipe order.": "چهار مقصد پرکاربرد را انتخاب و به ترتیب حرکت انگشت مرتب کنید.", "Import earlier records without adding them to financial reports.": "ورود سوابق قبلی بدون افزودن به گزارش‌های مالی.",
+  "Today’s studio pulse and a complete view of finalized income, work, customers, and appointment outcomes.": "نمای کامل فعالیت امروز، درآمد نهایی، کارها، مشتریان و نتیجه قرارها.", "Current period with preceding-period comparison": "مقایسه بازه فعلی با بازه قبلی", "Tap a service below to filter detailed records": "برای فیلتر سوابق، یکی از خدمات را انتخاب کنید", "Distribution of every appointment state": "توزیع همه وضعیت‌های قرار", "Finalized revenue by payment status": "درآمد نهایی بر اساس وضعیت پرداخت", "Finalized visits by weekday and start time": "قرارهای نهایی‌شده بر اساس روز و ساعت شروع", "Actual finalized time, income, and visit count": "زمان واقعی، درآمد و تعداد مراجعه نهایی", "Scheduled and confirmed": "زمان‌بندی‌شده و تأییدشده",
+  "Choose and reorder four direct destinations.": "چهار مقصد مستقیم را انتخاب و مرتب کنید.", "Settings stays reachable:": "تنظیمات همیشه در دسترس است:", "the permanent Settings button in the top bar is available even when Settings is not one of these four slots.": "دکمه دائمی تنظیمات در نوار بالا حتی اگر تنظیمات جزو این چهار مورد نباشد در دسترس است.",
+  "Create missing categories, services, customers, and appointments in one transaction.": "دسته‌بندی‌ها، خدمات، مشتریان و قرارهای موجود را استفاده و موارد لازم را یکجا ایجاد می‌کند.", "The entire batch is validated first. If any row is invalid or saving fails, nothing is created. Reusing an externalId safely skips that appointment.": "ابتدا کل گروه بررسی می‌شود. اگر موردی نامعتبر باشد یا ذخیره‌سازی شکست بخورد، هیچ چیز ساخته نمی‌شود. استفاده دوباره از externalId آن قرار را با اطمینان رد می‌کند.", "Create customers, services, and visits from an exported calendar.": "ساخت مشتری، خدمت و مراجعه از تقویم خروجی.", "Safe reporting:": "گزارش‌دهی ایمن:", "Imported appointments are labeled Manually added and stay outside income and working-hour totals.": "قرارهای واردشده با برچسب افزوده‌شده دستی ثبت و از مجموع درآمد و ساعات کاری خارج می‌شوند.",
+  "SCHEDULED": "زمان‌بندی‌شده", "CONFIRMED": "تأییدشده", "COMPLETED": "نهایی‌شده", "HISTORICAL": "افزوده‌شده دستی", "CANCELLED": "لغوشده", "NO_SHOW": "عدم مراجعه", "UNPAID": "پرداخت‌نشده", "PAID": "پرداخت‌شده", "PARTIALLY_PAID": "پرداخت بخشی",
+  "Administrator": "مدیر", "active category": "دسته فعال", "active categories": "دسته فعال", "Manisa studio management": "مدیریت استودیو مانیسا",
+  "Mobile navigation": "ناوبری موبایل", "Save mobile navigation": "ذخیره ناوبری موبایل", "4 slots": "4 جایگاه", "Slot": "جایگاه", "Save settings": "ذخیره تنظیمات", "Business name": "نام کسب‌وکار", "Language": "زبان", "Appearance": "ظاهر", "Currency": "واحد پول", "Business timezone": "منطقه زمانی کسب‌وکار", "Dark": "تیره", "Light": "روشن", "System": "سیستم", "English": "انگلیسی",
+  "Import center": "مرکز ورود اطلاعات", "JSON batch import": "ورود گروهی JSON", "Google Calendar file": "فایل تقویم گوگل", "JSON file (optional)": "فایل JSON (اختیاری)", "Or paste JSON": "یا JSON را وارد کنید", "Accepted format": "قالب قابل قبول", "Import JSON batch": "ورود گروهی JSON", "Importing batch…": "در حال ورود گروه…", "Import appointments": "ورود قرارها", "Importing…": "در حال ورود…", "Manually added": "افزوده‌شده دستی", "Up to 200": "حداکثر 200 مورد", "Required event format": "قالب موردنیاز رویداد", "File import ready": "ورود فایل آماده است",
+  "Day": "روز", "Week": "هفته", "Month": "ماه", "Year": "سال", "Agenda": "فهرست", "Today": "امروز", "Compact": "فشرده", "Comfy": "راحت", "Large": "بزرگ", "Add": "افزودن", "Selected day": "روز انتخاب‌شده", "Available for appointments": "آماده ثبت قرار", "No appointments · tap to add": "قراری نیست · برای افزودن لمس کنید", "No appointments in this period.": "در این بازه قراری وجود ندارد.", "Schedule an appointment": "ثبت قرار", "Toronto time": "زمان تورنتو", "Studio calendar": "تقویم استودیو",
+  "New appointment": "قرار جدید", "New customer": "مشتری جدید", "New service": "خدمت جدید", "Search": "جستجو", "Save": "ذخیره", "Cancel": "لغو", "Edit": "ویرایش", "Complete": "تکمیل", "Sign out": "خروج", "Help": "راهنما",
+  "scheduled": "زمان‌بندی‌شده", "confirmed": "تأییدشده", "completed": "نهایی‌شده", "cancelled": "لغوشده", "no show": "عدم مراجعه", "unpaid": "پرداخت‌نشده", "paid": "پرداخت‌شده", "partially paid": "پرداخت بخشی", "manually added · unreported": "افزوده‌شده دستی · خارج از گزارش",
+};
+
+function latinDigits(value: string) {
+  return value.replace(/[۰-۹٠-٩]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩".indexOf(digit) % 10));
+}
+
+export function translateUiText(value: string, locale: AppLocale) {
+  if (locale !== "fa") return value;
+  const leading = value.match(/^\s*/)?.[0] || "";
+  const trailing = value.match(/\s*$/)?.[0] || "";
+  const core = value.trim();
+  let translated = faPhrases[core];
+  if (!translated) {
+    translated = core
+      .replace(/^Historical\b/i, "افزوده‌شده دستی")
+      .replace(/^Manually added\b/i, "افزوده‌شده دستی")
+      .replace(/compared with the preceding\s+(\d+)\s+days/gi, "در مقایسه با $1 روز قبل")
+      .replace(/showing up to\s+(\d+)\s+newest/gi, "نمایش حداکثر $1 مورد جدید")
+      .replace(/\bappointments?\b/gi, "قرار")
+      .replace(/\bresults?\b/gi, "نتیجه")
+      .replace(/\bvs previous\b/gi, "نسبت به قبل");
+  }
+  return `${leading}${latinDigits(translated)}${trailing}`;
+}
+
+export function intlLocale(locale: AppLocale) { return locale === "fa" ? "fa-IR-u-ca-gregory-nu-latn" : "en-CA"; }

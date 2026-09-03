@@ -1,10 +1,11 @@
 import { addDays, addYears, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { CalendarBoard, type CalendarView } from "@/components/calendar-board";
+import { requireUser } from "@/lib/auth";
 import { customerName } from "@/lib/format";
+import { intlLocale } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 
-const timeZone = "America/Toronto";
 const allowedViews = new Set<CalendarView>(["day", "week", "month", "year", "agenda"]);
 
 function validDateKey(value?: string) {
@@ -13,6 +14,9 @@ function validDateKey(value?: string) {
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
   const { date, view } = await searchParams;
+  const user = await requireUser();
+  const timeZone = user.settings?.timezone || "America/Toronto";
+  const locale = user.settings?.locale || "en";
   const todayKey = formatInTimeZone(new Date(), timeZone, "yyyy-MM-dd");
   const anchorKey = validDateKey(date) ? date! : todayKey;
   const anchor = new Date(`${anchorKey}T12:00:00Z`);
@@ -36,10 +40,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     const key = format(day, "yyyy-MM-dd");
     return {
       key,
-      weekday: new Intl.DateTimeFormat("en", { weekday: "long", timeZone: "UTC" }).format(day),
-      shortWeekday: new Intl.DateTimeFormat("en", { weekday: "short", timeZone: "UTC" }).format(day),
+      weekday: new Intl.DateTimeFormat(intlLocale(locale), { weekday: "long", timeZone: "UTC" }).format(day),
+      shortWeekday: new Intl.DateTimeFormat(intlLocale(locale), { weekday: "short", timeZone: "UTC" }).format(day),
       dayNumber: format(day, "d"),
-      monthLabel: new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(day),
+      monthLabel: new Intl.DateTimeFormat(intlLocale(locale), { month: "short", timeZone: "UTC" }).format(day),
       isCurrentMonth: day.getUTCMonth() === anchor.getUTCMonth(),
       isToday: key === todayKey,
     };
@@ -62,5 +66,5 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     };
   });
 
-  return <CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} key={`${anchorKey}:${initialView}`} monthTitle={new Intl.DateTimeFormat("en-CA", { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/>;
+  return <CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} key={`${anchorKey}:${initialView}`} locale={locale} monthTitle={new Intl.DateTimeFormat(intlLocale(locale), { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/>;
 }

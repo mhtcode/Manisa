@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { intlLocale, type AppLocale } from "@/lib/i18n";
 
 export type CalendarView = "day" | "week" | "month" | "year" | "agenda";
 
@@ -49,6 +50,7 @@ type CalendarBoardProps = {
   items: CalendarItem[];
   monthTitle: string;
   todayKey: string;
+  locale: AppLocale;
 };
 
 const views: { key: CalendarView; label: string; icon: typeof CalendarDays }[] = [
@@ -87,18 +89,18 @@ function moveDate(dateKey: string, view: CalendarView, direction: -1 | 1) {
   return format(direction === 1 ? addMonths(date, 1) : subMonths(date, 1), "yyyy-MM-dd");
 }
 
-function periodTitle(view: CalendarView, anchorKey: string, monthTitle: string, days: CalendarDay[], weekKeys: string[]) {
+function periodTitle(view: CalendarView, anchorKey: string, monthTitle: string, days: CalendarDay[], weekKeys: string[], locale: AppLocale) {
   if (view === "month" || view === "agenda") return monthTitle;
   if (view === "year") return format(parseISO(anchorKey), "yyyy");
   if (view === "day") {
-    return new Intl.DateTimeFormat("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(parseISO(anchorKey));
+    return new Intl.DateTimeFormat(intlLocale(locale), { weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }).format(parseISO(anchorKey));
   }
   const first = days.find((day) => day.key === weekKeys[0]);
   const last = days.find((day) => day.key === weekKeys.at(-1));
   return first && last ? `${first.monthLabel} ${first.dayNumber} – ${last.monthLabel} ${last.dayNumber}` : monthTitle;
 }
 
-export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle, todayKey }: CalendarBoardProps) {
+export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle, todayKey, locale }: CalendarBoardProps) {
   const router = useRouter();
   const [view, setView] = useState<CalendarView>(initialView);
   const [selectedKey, setSelectedKey] = useState(anchorKey);
@@ -175,7 +177,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
       : view === "year"
         ? items.filter((item) => item.dateKey.startsWith(selectedKey.slice(0, 4)))
         : items.filter((item) => currentMonthKeys.has(item.dateKey));
-  const currentTitle = periodTitle(view, selectedKey, monthTitle, days, visibleKeys);
+  const currentTitle = periodTitle(view, selectedKey, monthTitle, days, visibleKeys, locale);
 
   function navigate(direction: -1 | 1) {
     const date = moveDate(selectedKey, view, direction);
@@ -200,7 +202,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   }
 
   return (
-    <section className="-mx-5 -mt-2 overflow-hidden border-y border-white/9 bg-[#0b1017] shadow-[0_24px_70px_rgba(0,0,0,.24)] md:mx-0 md:mt-0 md:rounded-[1.4rem] md:border-x">
+    <section className="-mx-4 -mt-2 min-w-0 overflow-hidden border-y border-white/9 bg-[#0b1017] shadow-[0_24px_70px_rgba(0,0,0,.24)] sm:-mx-5 md:mx-0 md:mt-0 md:rounded-[1.4rem] md:border-x">
       <div className="border-b border-white/9 bg-[#080b10] px-3 py-3 sm:p-5">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
           <button aria-label="Previous period" className="flex size-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(-1)} type="button"><ChevronLeft size={19} /></button>
@@ -264,7 +266,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
         {view === "month" && (
           <MonthGrid days={days} itemsByDay={itemsByDay} selectedKey={selectedKey} setSelectedKey={setSelectedKey} slotHeight={slotHeight} />
         )}
-        {view === "year" && <YearGrid anchorKey={selectedKey} itemsByDay={itemsByDay} onSelectMonth={openMonth} todayKey={todayKey} />}
+        {view === "year" && <YearGrid anchorKey={selectedKey} itemsByDay={itemsByDay} locale={locale} onSelectMonth={openMonth} todayKey={todayKey} />}
         {view === "agenda" && <Agenda days={days} items={scopedItems} />}
       </div>
 
@@ -374,7 +376,7 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
   );
 }
 
-function YearGrid({ anchorKey, itemsByDay, onSelectMonth, todayKey }: { anchorKey: string; itemsByDay: Map<string, CalendarItem[]>; onSelectMonth: (key: string) => void; todayKey: string }) {
+function YearGrid({ anchorKey, itemsByDay, onSelectMonth, todayKey, locale }: { anchorKey: string; itemsByDay: Map<string, CalendarItem[]>; onSelectMonth: (key: string) => void; todayKey: string; locale: AppLocale }) {
   const year = Number(anchorKey.slice(0, 4));
   const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
   const months = Array.from({ length: 12 }, (_, monthIndex) => {
@@ -387,8 +389,8 @@ function YearGrid({ anchorKey, itemsByDay, onSelectMonth, todayKey }: { anchorKe
   });
 
   return <div className="grid grid-cols-2 gap-2 bg-[#080b10] p-2 sm:gap-3 sm:p-4 lg:grid-cols-3 2xl:grid-cols-4">
-    {months.map(({ appointmentCount, monthDate, monthDays, monthIndex }) => <button aria-label={`Open ${format(monthDate, "MMMM yyyy")}, ${appointmentCount} appointments`} className="min-w-0 rounded-xl border border-white/8 bg-[#10151c] p-2.5 text-start transition hover:border-teal-300/25 hover:bg-[#121a22] active:scale-[.99] sm:p-3" key={monthIndex} onClick={() => onSelectMonth(format(monthDate, "yyyy-MM-dd"))} type="button">
-      <span className="mb-2 flex items-center justify-between gap-2"><strong className="text-xs font-semibold text-slate-100 sm:text-sm">{format(monthDate, "MMMM")}</strong><span className="text-[9px] font-medium text-slate-600">{appointmentCount || "—"}</span></span>
+    {months.map(({ appointmentCount, monthDate, monthDays, monthIndex }) => <button aria-label={`Open ${new Intl.DateTimeFormat(intlLocale(locale), { month: "long", year: "numeric" }).format(monthDate)}, ${appointmentCount} appointments`} className="min-w-0 rounded-xl border border-white/8 bg-[#10151c] p-2.5 text-start transition hover:border-teal-300/25 hover:bg-[#121a22] active:scale-[.99] sm:p-3" key={monthIndex} onClick={() => onSelectMonth(format(monthDate, "yyyy-MM-dd"))} type="button">
+      <span className="mb-2 flex items-center justify-between gap-2"><strong className="text-xs font-semibold text-slate-100 sm:text-sm">{new Intl.DateTimeFormat(intlLocale(locale), { month: "long" }).format(monthDate)}</strong><span className="text-[9px] font-medium text-slate-600">{appointmentCount || "—"}</span></span>
       <span aria-hidden="true" className="grid grid-cols-7 text-center">{weekdays.map((weekday, index) => <span className={`pb-1 text-[7px] font-semibold ${index === 0 ? "text-rose-400/55" : "text-slate-700"}`} key={`${weekday}-${index}`}>{weekday}</span>)}</span>
       <span aria-hidden="true" className="grid grid-cols-7 gap-y-0.5 text-center">{monthDays.map((day) => {
         const key = format(day, "yyyy-MM-dd");

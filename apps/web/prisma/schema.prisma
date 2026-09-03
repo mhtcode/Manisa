@@ -41,13 +41,27 @@ model User {
   id                  String               @id @default(cuid())
   email               String               @unique
   name                String
-  passwordHash        String
+  passwordHash        String?
+  googleSubject       String?              @unique
   role                Role                 @default(ADMIN)
   active              Boolean              @default(true)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   settings            Settings?
   instagramConnection InstagramConnection?
+  notificationReceipts NotificationReceipt[]
+}
+
+model NotificationReceipt {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId, readAt])
 }
 
 model Settings {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, Palette, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,11 +19,10 @@ const groups = [
   {
     title: "Settings",
     items: [
-      ["/settings/business", "Studio profile", "Name, language, currency, timezone, and appearance", SlidersHorizontal],
+      ["/settings/business", "Studio profile & appearance", "Name, language, currency, timezone, and theme", SlidersHorizontal],
       ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
-      ["/settings/calendar-import", "Calendar import", "Bring historical Google Calendar appointments into Manisa", CalendarSync],
+      ["/settings/calendar-import", "Calendar import", "Bring earlier calendar or JSON appointments into Manisa", CalendarSync],
       ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
-      ["/settings/business#appearance", "Appearance", "Dark, light, or system theme", Palette],
       ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
       ["/settings/trash", "Trash", "Restore deleted items for seven days or erase them now", Trash2],
     ],
