@@ -12,7 +12,7 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Enter a valid email and password." };
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user || !user.active || !(await argon2.verify(user.passwordHash, parsed.data.password))) {
+  if (!user || !user.active || !user.passwordHash || !(await argon2.verify(user.passwordHash, parsed.data.password))) {
     return { error: "The email or password is incorrect." };
   }
   await createSession(user.id);

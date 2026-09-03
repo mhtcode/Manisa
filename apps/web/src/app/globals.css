@@ -30,6 +30,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .button-danger { @apply inline-flex min-h-10 select-none items-center justify-center gap-2 rounded-[11px] border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45; border-color: rgba(251,113,133,.3); background: linear-gradient(180deg, rgba(251,113,133,.15), rgba(251,113,133,.1)); color: #fecdd3; box-shadow: inset 0 1px rgba(255,255,255,.05); transition: transform 120ms ease, background 160ms ease, border-color 160ms ease; }
   .button-danger:hover:not(:disabled) { background: rgba(251,113,133,.2); color: #fff1f2; transform: translateY(-1px); }
   .button-danger:active:not(:disabled) { transform: translateY(1px) scale(.985); }
+  .icon-button { @apply inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-[#10203a] text-blue-200 transition disabled:cursor-not-allowed disabled:opacity-45; box-shadow: inset 0 1px rgba(255,255,255,.07); }
+  .icon-button:hover:not(:disabled) { border-color: rgba(96,165,250,.42); background: #162b4a; color: white; }
+  .icon-button:active:not(:disabled) { transform: scale(.96); }
   .quick-action { @apply inline-flex min-h-10 select-none items-center gap-2 rounded-[11px] border pe-3 ps-2 text-sm font-semibold text-blue-50 shadow-[inset_0_1px_rgba(255,255,255,.07),0_3px_10px_rgba(0,0,0,.18)]; border-color: rgba(96,165,250,.22); background: linear-gradient(180deg, rgba(28,55,91,.72), rgba(15,34,61,.72)); transition: transform 120ms ease, border-color 160ms ease, background 160ms ease; }
   .quick-action > span { @apply flex size-7 items-center justify-center rounded-lg bg-blue-400/10 text-blue-300; }
   .quick-action:hover { border-color: rgba(96,165,250,.4); background: rgba(30,64,110,.78); color: white; transform: translateY(-1px); }

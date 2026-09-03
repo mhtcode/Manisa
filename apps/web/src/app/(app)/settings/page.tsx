@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logout } from "@/server/actions/auth";
 
 const groups = [
   {
@@ -40,6 +41,7 @@ export default async function SettingsPage() {
     <div className="space-y-5">
       {groups.map((group) => <section key={group.title}><h2 className="mb-2 px-2 text-xs font-semibold uppercase tracking-[.16em] text-slate-500">{group.title}</h2><div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d131d] shadow-[0_16px_40px_rgba(0,0,0,.16)]">{group.items.map(([href, label, description, Icon], index) => <Link className={`group flex items-center gap-3 px-4 py-3.5 transition hover:bg-blue-500/[0.07] active:bg-blue-500/[0.12] sm:px-5 ${index ? "border-t border-white/8" : ""}`} href={href} key={href}><span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/12 bg-blue-500/8 text-blue-300"><Icon size={18}/></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-100">{label}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{description}</span></span><ChevronRight className="shrink-0 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-blue-300 rtl:rotate-180" size={18}/></Link>)}</div></section>)}
     </div>
+    <form action={logout} className="mt-5"><button className="flex w-full items-center gap-3 rounded-2xl border border-rose-400/15 bg-rose-500/[0.045] px-4 py-3.5 text-start text-sm font-semibold text-rose-200 transition active:scale-[.99] active:bg-rose-500/10 sm:px-5"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-rose-500/10"><LogOut size={18}/></span><span className="flex-1">Sign out</span><ChevronRight className="shrink-0 opacity-45 rtl:rotate-180" size={18}/></button></form>
     <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-600"><Sparkles size={13}/>Manisa studio management</div>
   </>;
 }
