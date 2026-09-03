@@ -19,16 +19,16 @@ export async function getDashboardData(timezone = DEFAULT_TIMEZONE) {
   const yearStart = fromZonedTime(`${formatInTimeZone(now, timezone, "yyyy")}-01-01T00:00`, timezone);
 
   const [todayCount, weekCount, customerCount, customerGroups, monthRevenue, yearRevenue, outstanding, work, upcoming, completed] = await Promise.all([
-    prisma.appointment.count({ where: { startAt: { gte: today.start, lte: today.end }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } } }),
-    prisma.appointment.count({ where: { startAt: { gte: weekStart, lt: addDays(weekStart, 7) }, status: { not: "CANCELLED" } } }),
-    prisma.customer.count({ where: { active: true } }),
-    prisma.appointment.groupBy({ by: ["customerId"], where: { status: "COMPLETED" }, _count: true }),
-    prisma.appointment.aggregate({ where: { status: "COMPLETED", completedAt: { gte: monthStart } }, _sum: { finalPrice: true } }),
-    prisma.appointment.aggregate({ where: { status: "COMPLETED", completedAt: { gte: yearStart } }, _sum: { finalPrice: true } }),
-    prisma.appointment.aggregate({ where: { status: "COMPLETED", paymentStatus: { not: "PAID" } }, _sum: { finalPrice: true } }),
-    prisma.appointment.aggregate({ where: { status: "COMPLETED", completedAt: { gte: monthStart } }, _sum: { actualDurationMinutes: true, finalPrice: true } }),
-    prisma.appointment.findMany({ where: { startAt: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, include: { customer: true }, orderBy: { startAt: "asc" }, take: 6 }),
-    prisma.appointment.findMany({ where: { status: "COMPLETED", completedAt: { gte: new Date(now.getTime() - 180 * 86400000) } }, select: { completedAt: true, finalPrice: true, serviceNameSnapshot: true }, orderBy: { completedAt: "asc" } }),
+    prisma.appointment.count({ where: { deletedAt: null, startAt: { gte: today.start, lte: today.end }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } } }),
+    prisma.appointment.count({ where: { deletedAt: null, startAt: { gte: weekStart, lt: addDays(weekStart, 7) }, status: { not: "CANCELLED" } } }),
+    prisma.customer.count({ where: { active: true, deletedAt: null } }),
+    prisma.appointment.groupBy({ by: ["customerId"], where: { deletedAt: null, status: "COMPLETED" }, _count: true }),
+    prisma.appointment.aggregate({ where: { deletedAt: null, status: "COMPLETED", completedAt: { gte: monthStart } }, _sum: { finalPrice: true } }),
+    prisma.appointment.aggregate({ where: { deletedAt: null, status: "COMPLETED", completedAt: { gte: yearStart } }, _sum: { finalPrice: true } }),
+    prisma.appointment.aggregate({ where: { deletedAt: null, status: "COMPLETED", paymentStatus: { not: "PAID" } }, _sum: { finalPrice: true } }),
+    prisma.appointment.aggregate({ where: { deletedAt: null, status: "COMPLETED", completedAt: { gte: monthStart } }, _sum: { actualDurationMinutes: true, finalPrice: true } }),
+    prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, include: { customer: true }, orderBy: { startAt: "asc" }, take: 6 }),
+    prisma.appointment.findMany({ where: { deletedAt: null, status: "COMPLETED", completedAt: { gte: new Date(now.getTime() - 180 * 86400000) } }, select: { completedAt: true, finalPrice: true, serviceNameSnapshot: true }, orderBy: { completedAt: "asc" } }),
   ]);
 
   const hours = (work._sum.actualDurationMinutes || 0) / 60;

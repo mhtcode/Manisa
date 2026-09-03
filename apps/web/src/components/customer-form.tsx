@@ -1,5 +1,39 @@
 import Link from "next/link";
-type CustomerValue = { firstName: string; lastName?: string | null; displayName?: string | null; phone?: string | null; email?: string | null; address?: string | null; notes?: string | null; preferredLanguage: "en" | "fa" };
-export function CustomerForm({ action, customer }: { action: (data: FormData) => void | Promise<void>; customer?: CustomerValue }) {
-  return <form action={action} className="panel max-w-3xl p-5 sm:p-7"><div className="grid gap-5 sm:grid-cols-2"><div><label className="label" htmlFor="firstName">First name *</label><input className="field" id="firstName" name="firstName" defaultValue={customer?.firstName} required maxLength={100}/></div><div><label className="label" htmlFor="lastName">Last name</label><input className="field" id="lastName" name="lastName" defaultValue={customer?.lastName || ""}/></div><div><label className="label" htmlFor="displayName">Display name</label><input className="field" id="displayName" name="displayName" defaultValue={customer?.displayName || ""}/></div><div><label className="label" htmlFor="preferredLanguage">Preferred language</label><select className="field" id="preferredLanguage" name="preferredLanguage" defaultValue={customer?.preferredLanguage || "en"}><option value="en">English</option><option value="fa">فارسی</option></select></div><div><label className="label" htmlFor="phone">Phone</label><input className="field" id="phone" name="phone" type="tel" defaultValue={customer?.phone || ""}/></div><div><label className="label" htmlFor="email">Email</label><input className="field" id="email" name="email" type="email" defaultValue={customer?.email || ""}/></div><div className="sm:col-span-2"><label className="label" htmlFor="address">Address</label><input className="field" id="address" name="address" defaultValue={customer?.address || ""}/></div><div className="sm:col-span-2"><label className="label" htmlFor="notes">Notes</label><textarea className="field min-h-28 resize-y" id="notes" name="notes" defaultValue={customer?.notes || ""}/></div></div><div className="mt-7 flex justify-end gap-3"><Link className="button-secondary" href="/customers">Cancel</Link><button className="button" type="submit">Save customer</button></div></form>;
+import { CustomerReferralPicker, type ReferralOption } from "@/components/customer-referral-picker";
+
+type CustomerValue = {
+  firstName: string;
+  lastName?: string | null;
+  displayName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  notes?: string | null;
+  preferredLanguage: "en" | "fa";
+  referrerId?: string | null;
+};
+
+export function CustomerForm({ action, customer, referralOptions }: {
+  action: (data: FormData) => void | Promise<void>;
+  customer?: CustomerValue;
+  referralOptions: ReferralOption[];
+}) {
+  return <form action={action} className="panel max-w-3xl p-5 sm:p-7">
+    <div className="grid gap-5 sm:grid-cols-2">
+      <div><label className="label" htmlFor="firstName">First name *</label><input className="field" id="firstName" name="firstName" defaultValue={customer?.firstName} required maxLength={100}/></div>
+      <div><label className="label" htmlFor="lastName">Last name</label><input className="field" id="lastName" name="lastName" defaultValue={customer?.lastName || ""}/></div>
+      <div><label className="label" htmlFor="displayName">Display name</label><input className="field" id="displayName" name="displayName" defaultValue={customer?.displayName || ""}/></div>
+      <div><label className="label" htmlFor="preferredLanguage">Preferred language</label><select className="field" id="preferredLanguage" name="preferredLanguage" defaultValue={customer?.preferredLanguage || "en"}><option value="en">English</option><option value="fa">فارسی</option></select></div>
+      <div><label className="label" htmlFor="phone">Phone</label><input className="field" id="phone" name="phone" type="tel" defaultValue={customer?.phone || ""}/></div>
+      <div><label className="label" htmlFor="email">Email</label><input className="field" id="email" name="email" type="email" defaultValue={customer?.email || ""}/></div>
+      <div className="sm:col-span-2">
+        <label className="label" htmlFor="referrer-search">Referred by</label>
+        <CustomerReferralPicker customers={referralOptions} initialId={customer?.referrerId}/>
+        <p className="mt-2 text-xs leading-5 text-slate-500">Optional. Select the existing customer who introduced this person.</p>
+      </div>
+      <div className="sm:col-span-2"><label className="label" htmlFor="address">Address</label><input className="field" id="address" name="address" defaultValue={customer?.address || ""}/></div>
+      <div className="sm:col-span-2"><label className="label" htmlFor="notes">Notes</label><textarea className="field min-h-28 resize-y" id="notes" name="notes" defaultValue={customer?.notes || ""}/></div>
+    </div>
+    <div className="mt-7 flex justify-end gap-3"><Link className="button-secondary" href="/customers">Cancel</Link><button className="button" type="submit">Save customer</button></div>
+  </form>;
 }

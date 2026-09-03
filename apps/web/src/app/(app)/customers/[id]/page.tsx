@@ -1,18 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { Banknote, CalendarCheck2, CalendarClock, ChartNoAxesCombined, Clock3, Contact, History, Sparkles, TrendingUp, UserCheck } from "lucide-react";
+import { Banknote, CalendarCheck2, CalendarClock, ChartNoAxesCombined, Clock3, Contact, GitFork, History, Sparkles, Trash2, TrendingUp, UserCheck } from "lucide-react";
+import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { buildCustomerInsights } from "@/lib/customer-insights";
 import { customerName, formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/time";
-import { archiveCustomer } from "@/server/actions/customers";
+import { moveToTrash } from "@/server/actions/trash";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const customer = await prisma.customer.findUnique({ where: { id }, include: { appointments: { include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
+  const customer = await prisma.customer.findUnique({ where: { id, deletedAt: null }, include: { referrer: true, referrals: { where: { deletedAt: null }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }, appointments: { where: { deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
   if (!customer) notFound();
   const now = new Date();
   const insights = buildCustomerInsights(customer.appointments.map((appointment) => ({
@@ -37,7 +38,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
   return <>
     <PageHeading title={customerName(customer)} description="Customer relationship report built from stored appointment, service, and payment history." actions={<><Link className="button" href={`/appointments/new?customerId=${id}`}>+ Appointment</Link><Link className="button-secondary" href={`/customers/${id}/edit`}>Edit profile</Link></>}/>
-    <div className="mb-5 flex flex-wrap items-center gap-2"><span className="badge border-teal-300/20 bg-teal-300/8 text-teal-200"><ChartNoAxesCombined size={13}/>Database-backed report</span>{insights.historicalCount > 0 && <span className="badge border-violet-300/20 bg-violet-300/8 text-violet-200"><History size={13}/>{insights.historicalCount} historical · unreported</span>}<span className={`badge ${customer.active ? "border-emerald-300/20 bg-emerald-300/8 text-emerald-200" : "border-slate-300/15 text-slate-400"}`}>{customer.active ? "Active customer" : "Archived customer"}</span></div>
+    <div className="mb-5 flex flex-wrap items-center gap-2"><span className="badge border-teal-300/20 bg-teal-300/8 text-teal-200"><ChartNoAxesCombined size={13}/>Database-backed report</span>{customer.referrer && !customer.referrer.deletedAt && <span className="badge border-blue-300/20 bg-blue-300/8 text-blue-200"><GitFork size={13}/>Referred by {customerName(customer.referrer)}</span>}{insights.historicalCount > 0 && <span className="badge border-violet-300/20 bg-violet-300/8 text-violet-200"><History size={13}/>{insights.historicalCount} historical · unreported</span>}<span className={`badge ${customer.active ? "border-emerald-300/20 bg-emerald-300/8 text-emerald-200" : "border-slate-300/15 text-slate-400"}`}>{customer.active ? "Active customer" : "Disabled customer"}</span></div>
 
     <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">{reportCards.map(({ label, value, icon: Icon }) => <article className="stat min-w-0 p-3.5 sm:p-4" key={label}><Icon className="text-teal-300/65" size={17}/><p className="mt-3 text-[11px] text-slate-500">{label}</p><p className="mt-1.5 truncate text-lg font-semibold tracking-tight text-white">{value}</p></article>)}</section>
 
@@ -51,11 +52,12 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
       </div>
 
       <aside className="space-y-5">
+        <section className="panel overflow-hidden"><div className="panel-header"><div className="flex items-center gap-2"><GitFork className="text-blue-300" size={18}/><h2 className="font-medium text-white">Referral network</h2></div><Link className="text-xs font-semibold text-blue-300" href="/settings/referrals">Open graph</Link></div><div className="space-y-4 p-5"><div><p className="text-xs text-slate-600">Referred by</p>{customer.referrer && !customer.referrer.deletedAt ? <Link className="mt-1.5 block text-sm font-semibold text-blue-200 hover:text-white" href={`/customers/${customer.referrer.id}`} dir="auto">{customerName(customer.referrer)}</Link> : <p className="mt-1.5 text-sm text-slate-400">No referral source recorded</p>}</div><div className="border-t border-white/8 pt-4"><p className="text-xs text-slate-600">Customers referred ({customer.referrals.length})</p>{customer.referrals.length ? <div className="mt-2 flex flex-wrap gap-2">{customer.referrals.map((referral) => <Link className="rounded-full border border-blue-300/15 bg-blue-400/[0.06] px-2.5 py-1 text-xs text-blue-200 hover:border-blue-300/30" dir="auto" href={`/customers/${referral.id}`} key={referral.id}>{customerName(referral)}</Link>)}</div> : <p className="mt-1.5 text-sm text-slate-400">No recorded referrals yet</p>}</div></div></section>
         <section className="panel p-5 sm:p-6"><div className="flex items-center gap-2"><Contact className="text-teal-300/70" size={18}/><h2 className="font-medium text-white">Profile</h2></div><dl className="mt-5 space-y-4 text-sm"><div><dt className="text-xs text-slate-600">Phone</dt><dd className="mt-1 text-slate-300">{customer.phone || "—"}</dd></div><div><dt className="text-xs text-slate-600">Email</dt><dd className="mt-1 break-all text-slate-300">{customer.email || "—"}</dd></div><div><dt className="text-xs text-slate-600">Address</dt><dd className="mt-1 whitespace-pre-wrap text-slate-300">{customer.address || "—"}</dd></div><div><dt className="text-xs text-slate-600">Preferred language</dt><dd className="mt-1 text-slate-300">{customer.preferredLanguage === "fa" ? "فارسی" : "English"}</dd></div><div><dt className="text-xs text-slate-600">Customer since</dt><dd className="mt-1 text-slate-300">{new Intl.DateTimeFormat("en-CA", { dateStyle: "medium" }).format(customer.createdAt)}</dd></div><div><dt className="text-xs text-slate-600">Notes and preferences</dt><dd className="mt-1 whitespace-pre-wrap leading-6 text-slate-300">{customer.notes || "No profile notes yet."}</dd></div></dl></section>
 
         <section className="panel p-5 sm:p-6"><h2 className="font-medium text-white">Operational summary</h2><dl className="mt-5 space-y-3 text-sm"><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">First recorded visit</dt><dd className="text-right text-slate-300">{firstVisit ? new Intl.DateTimeFormat("en-CA", { dateStyle: "medium" }).format(firstVisit.startAt) : "—"}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">No-shows</dt><dd className="text-slate-300">{insights.noShows}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Cancellations</dt><dd className="text-slate-300">{insights.cancelled}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Unsettled visit value</dt><dd className="text-slate-300">{formatMoney(insights.unsettledValue)}</dd></div><div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Stored appointments</dt><dd className="text-slate-300">{customer.appointments.length}</dd></div></dl></section>
 
-        {customer.active && <form action={archiveCustomer.bind(null, id)}><button className="button-danger w-full">Archive customer</button></form>}
+        <ConfirmActionForm action={moveToTrash.bind(null, "customer", id)} className="button-danger w-full" message={`Move ${customerName(customer)} to Trash? Their appointments and visit photos will move with them. Everything will be permanently deleted after seven days unless restored.`}><Trash2 size={16}/>Move customer to Trash</ConfirmActionForm>
       </aside>
     </div>
   </>;

@@ -19,15 +19,16 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   const legacyStage = params.status === "COMPLETED" ? "finalized" : params.status === "CONFIRMED" ? "confirmed" : params.status === "CANCELLED" || params.status === "NO_SHOW" ? "exceptions" : params.status ? "scheduled" : undefined;
   const requested = params.stage || legacyStage || "scheduled";
   const stage: Stage = stages.includes(requested as Stage) ? requested as Stage : "scheduled";
-  const where: Prisma.AppointmentWhereInput = stage === "scheduled" ? { status: "SCHEDULED" } : stage === "confirmed" ? { status: "CONFIRMED" } : stage === "finalized" ? { status: "COMPLETED" } : stage === "historical" ? { status: "HISTORICAL" } : stage === "exceptions" ? { status: { in: ["CANCELLED", "NO_SHOW"] } } : {};
+  const stageWhere: Prisma.AppointmentWhereInput = stage === "scheduled" ? { status: "SCHEDULED" } : stage === "confirmed" ? { status: "CONFIRMED" } : stage === "finalized" ? { status: "COMPLETED" } : stage === "historical" ? { status: "HISTORICAL" } : stage === "exceptions" ? { status: { in: ["CANCELLED", "NO_SHOW"] } } : {};
+  const where: Prisma.AppointmentWhereInput = { deletedAt: null, ...stageWhere };
   const [appointments, scheduledCount, confirmedCount, finalizedCount, historicalCount, exceptionCount, allCount] = await Promise.all([
     prisma.appointment.findMany({ where, include: { customer: true }, orderBy: { startAt: stage === "scheduled" || stage === "confirmed" ? "asc" : "desc" }, take: 150 }),
-    prisma.appointment.count({ where: { status: "SCHEDULED" } }),
-    prisma.appointment.count({ where: { status: "CONFIRMED" } }),
-    prisma.appointment.count({ where: { status: "COMPLETED" } }),
-    prisma.appointment.count({ where: { status: "HISTORICAL" } }),
-    prisma.appointment.count({ where: { status: { in: ["CANCELLED", "NO_SHOW"] } } }),
-    prisma.appointment.count(),
+    prisma.appointment.count({ where: { deletedAt: null, status: "SCHEDULED" } }),
+    prisma.appointment.count({ where: { deletedAt: null, status: "CONFIRMED" } }),
+    prisma.appointment.count({ where: { deletedAt: null, status: "COMPLETED" } }),
+    prisma.appointment.count({ where: { deletedAt: null, status: "HISTORICAL" } }),
+    prisma.appointment.count({ where: { deletedAt: null, status: { in: ["CANCELLED", "NO_SHOW"] } } }),
+    prisma.appointment.count({ where: { deletedAt: null } }),
   ]);
   const stageTitle = stage === "scheduled" ? "Scheduled estimates" : stage === "confirmed" ? "Confirmed appointments" : stage === "finalized" ? "Finalized visit records" : stage === "historical" ? "Historical · Unreported" : stage === "exceptions" ? "Cancelled and no-show" : "All appointments";
   const stageDescription = stage === "scheduled" ? "New bookings waiting for customer confirmation." : stage === "confirmed" ? "Committed visits waiting to happen and be finalized." : stage === "finalized" ? "Actual services, income, and duration used in business reporting." : stage === "historical" ? "Imported calendar history that never changes income or working-hour totals." : stage === "exceptions" ? "Appointments that did not proceed to finalization." : "Every appointment stage in one view.";

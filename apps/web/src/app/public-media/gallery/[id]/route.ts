@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const photo = await prisma.appointmentPhoto.findFirst({ where: { id, featuredAt: { not: null }, appointment: { status: "COMPLETED" } }, select: { thumbnailPath: true } });
+  const photo = await prisma.appointmentPhoto.findFirst({ where: { id, deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, select: { thumbnailPath: true } });
   if (!photo) return new Response("Not found", { status: 404 });
   try {
     const image = await readFile(absoluteUploadPath(photo.thumbnailPath));

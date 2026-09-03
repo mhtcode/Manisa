@@ -18,8 +18,8 @@ export default async function Home() {
   const instagramEnabled = instagramConfigured();
   const [user, categories, featuredPhotos, connection] = await Promise.all([
     getCurrentUser(),
-    prisma.studioCategory.findMany({ where: { active: true, services: { some: { active: true } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true }, orderBy: { name: "asc" }, take: 5, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true } } } } } }),
-    prisma.appointmentPhoto.findMany({ where: { featuredAt: { not: null }, appointment: { status: "COMPLETED" } }, orderBy: { featuredAt: "desc" }, take: 8, select: { id: true } }),
+    prisma.studioCategory.findMany({ where: { active: true, deletedAt: null, services: { some: { active: true, deletedAt: null } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 5, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true, deletedAt: null } } } } } }),
+    prisma.appointmentPhoto.findMany({ where: { deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, orderBy: { featuredAt: "desc" }, take: 8, select: { id: true } }),
     instagramEnabled ? prisma.instagramConnection.findFirst({ select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 8, select: { id: true, caption: true, permalink: true, mediaType: true, publishedAt: true } } } }) : null,
   ]);
 

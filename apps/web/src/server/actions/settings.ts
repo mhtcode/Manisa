@@ -101,12 +101,12 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
   try {
     result = await prisma.$transaction(async (transaction) => {
     const [customers, services, existingAppointments, otherCategory] = await Promise.all([
-      transaction.customer.findMany({ select: { id: true, firstName: true, lastName: true, displayName: true } }),
-      transaction.service.findMany({ select: { id: true, name: true } }),
+      transaction.customer.findMany({ where: { deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true } }),
+      transaction.service.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
       transaction.appointment.findMany({ where: { calendarEventId: { in: parsed.events.map((event) => event.sourceId) } }, select: { calendarEventId: true } }),
       transaction.studioCategory.upsert({
         where: { slug: "other" },
-        update: {},
+        update: { active: true, deletedAt: null },
         create: { id: "studio_category_other", slug: "other", name: "Other services", description: "Additional and imported services", icon: "sparkles", accentColor: "#64748B", position: 999 },
         select: { id: true },
       }),

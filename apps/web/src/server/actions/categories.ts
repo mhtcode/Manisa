@@ -28,7 +28,7 @@ async function uniqueSlug(name: string, excludeId?: string) {
 export async function createStudioCategory(formData: FormData) {
   await requireUser();
   const data = studioCategorySchema.parse(Object.fromEntries(formData));
-  const aggregate = await prisma.studioCategory.aggregate({ _max: { position: true } });
+  const aggregate = await prisma.studioCategory.aggregate({ where: { deletedAt: null }, _max: { position: true } });
   await prisma.studioCategory.create({ data: { ...data, slug: await uniqueSlug(data.name), position: (aggregate._max.position ?? -1) + 1 } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
@@ -38,7 +38,7 @@ export async function createStudioCategory(formData: FormData) {
 export async function updateStudioCategory(id: string, formData: FormData) {
   await requireUser();
   const data = studioCategorySchema.parse(Object.fromEntries(formData));
-  await prisma.studioCategory.update({ where: { id }, data: { ...data, slug: await uniqueSlug(data.name, id) } });
+  await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { ...data, slug: await uniqueSlug(data.name, id) } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
   revalidatePath("/");
@@ -46,7 +46,7 @@ export async function updateStudioCategory(id: string, formData: FormData) {
 
 export async function toggleStudioCategory(id: string, active: boolean) {
   await requireUser();
-  await prisma.studioCategory.update({ where: { id }, data: { active } });
+  await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { active } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
   revalidatePath("/");
@@ -54,7 +54,7 @@ export async function toggleStudioCategory(id: string, active: boolean) {
 
 export async function moveStudioCategory(id: string, direction: "up" | "down") {
   await requireUser();
-  const categories = await prisma.studioCategory.findMany({ orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, position: true } });
+  const categories = await prisma.studioCategory.findMany({ where: { deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, position: true } });
   const index = categories.findIndex((category) => category.id === id);
   const targetIndex = direction === "up" ? index - 1 : index + 1;
   if (index < 0 || targetIndex < 0 || targetIndex >= categories.length) return;
@@ -63,16 +63,6 @@ export async function moveStudioCategory(id: string, direction: "up" | "down") {
     prisma.studioCategory.update({ where: { id: categories[targetIndex].id }, data: { position: categories[index].position } }),
   ]);
   revalidatePath("/services");
-  revalidatePath("/settings/categories");
-  revalidatePath("/");
-}
-
-export async function deleteStudioCategory(id: string) {
-  await requireUser();
-  const category = await prisma.studioCategory.findUnique({ where: { id }, select: { _count: { select: { services: true } } } });
-  if (!category) return;
-  if (category._count.services) throw new Error("Categories with services can be archived, but not deleted.");
-  await prisma.studioCategory.delete({ where: { id } });
   revalidatePath("/settings/categories");
   revalidatePath("/");
 }

@@ -53,6 +53,7 @@ services:
       INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET:-}
       INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-}
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
+      TRASH_CLEANUP_SECRET: ${TRASH_CLEANUP_SECRET:-change-this-local-trash-cleanup-secret}
       NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
       NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
       UPLOADS_DIR: /app/uploads
@@ -73,6 +74,29 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  trash-worker:
+    build:
+      context: ./apps/web
+      target: runner
+      args:
+        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
+        NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
+    restart: unless-stopped
+    init: true
+    environment:
+      TRASH_CLEANUP_SECRET: ${TRASH_CLEANUP_SECRET:-change-this-local-trash-cleanup-secret}
+    command: ["sh", "-c", "while true; do wget -qO- --post-data='' --header=\"Authorization: Bearer $$TRASH_CLEANUP_SECRET\" http://web:3000/api/internal/trash/purge || true; sleep 3600; done"]
+    depends_on:
+      web:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      disable: true
 
   api:
     build:

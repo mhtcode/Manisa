@@ -18,6 +18,8 @@ export type PreparedAppointmentPhoto = {
   sizeBytes: number;
 };
 
+export type StoredPhotoPaths = Pick<PreparedAppointmentPhoto, "imagePath" | "thumbnailPath">;
+
 export class PhotoUploadError extends Error {}
 
 export function uploadsRoot() {
@@ -37,7 +39,7 @@ export function absoluteUploadPath(relativePath: string) {
   return resolved;
 }
 
-export async function removePreparedPhotos(photos: PreparedAppointmentPhoto[]) {
+export async function removePreparedPhotos(photos: StoredPhotoPaths[]) {
   await Promise.all(photos.flatMap((photo) => [photo.imagePath, photo.thumbnailPath].map((filePath) => unlink(absoluteUploadPath(filePath)).catch(() => undefined))));
 }
 

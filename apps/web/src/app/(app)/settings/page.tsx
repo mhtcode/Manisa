@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, Images, Instagram, Layers3, Palette, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, UserRound, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, Palette, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -10,29 +10,31 @@ const groups = [
     items: [
       ["/appointments", "Appointments", "Schedule, confirm, finalize, and review visits", CalendarClock],
       ["/customers", "Customers", "Profiles, visit history, preferences, and insights", UsersRound],
+      ["/settings/referrals", "Customer referrals", "Filter and explore the complete referral graph", GitFork],
       ["/services", "Services", "Pricing, duration, colors, and performance", SwatchBook],
       ["/settings/categories", "Categories", "Create, reorder, archive, and organize studio areas", Layers3],
       ["/gallery", "Gallery", "Organize visit photos and choose featured work", Images],
     ],
   },
   {
-    title: "Studio settings",
+    title: "Settings",
     items: [
-      ["/settings/business", "Business preferences", "Name, language, currency, timezone, and appearance", SlidersHorizontal],
+      ["/settings/business", "Studio profile", "Name, language, currency, timezone, and appearance", SlidersHorizontal],
       ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
       ["/settings/calendar-import", "Calendar import", "Bring historical Google Calendar appointments into Manisa", CalendarSync],
       ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
       ["/settings/business#appearance", "Appearance", "Dark, light, or system theme", Palette],
       ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
+      ["/settings/trash", "Trash", "Restore deleted items for seven days or erase them now", Trash2],
     ],
   },
 ] as const;
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const categoryCount = await prisma.studioCategory.count({ where: { active: true } });
+  const categoryCount = await prisma.studioCategory.count({ where: { active: true, deletedAt: null } });
   return <>
-    <PageHeading title="Settings" description="Your management hub for studio data, integrations, appearance, and access."/>
+    <PageHeading title="Settings" description="Your single hub for studio data, integrations, appearance, access, and Trash."/>
     <section className="mb-5 overflow-hidden rounded-[1.35rem] border border-blue-400/15 bg-gradient-to-br from-[#13223e] to-[#0c1423] p-5 shadow-[0_18px_50px_rgba(0,0,0,.25)] sm:p-6">
       <div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-full border border-blue-300/20 bg-blue-400/10 text-blue-200"><UserRound size={24}/></span><div className="min-w-0"><h2 className="truncate text-lg font-semibold text-white">{user.name}</h2><p className="mt-1 truncate text-sm text-slate-400">{user.email}</p><p className="mt-2 text-xs text-blue-300">Administrator · {categoryCount} active {categoryCount === 1 ? "category" : "categories"}</p></div></div>
     </section>

@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, CalendarCheck2, CircleDot, Clock3, Images, LockKeyhole, Pencil, XCircle } from "lucide-react";
+import { BadgeCheck, CalendarCheck2, Check, ChevronRight, CircleDot, Clock3, Images, LockKeyhole, Pencil, Trash2, XCircle } from "lucide-react";
 import { AppointmentPhotoUploadForm } from "@/components/appointment-photo-upload-form";
+import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { customerName, formatMoney } from "@/lib/format";
@@ -10,17 +11,18 @@ import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate } from "@/lib/time";
 import { addAppointmentPhotos, markPaid, setAppointmentStatus } from "@/server/actions/appointments";
+import { moveToTrash } from "@/server/actions/trash";
 
 export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const item = await prisma.appointment.findUnique({
-    where: { id },
+    where: { id, deletedAt: null },
     include: {
       customer: true,
       serviceLines: { orderBy: { position: "asc" } },
       actualServiceLines: { orderBy: { position: "asc" } },
-      photos: { orderBy: { createdAt: "desc" }, take: 8 },
-      _count: { select: { photos: true } },
+      photos: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 8 },
+      _count: { select: { photos: { where: { deletedAt: null } } } },
     },
   });
   if (!item) notFound();
@@ -33,15 +35,19 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const canNoShow = editable && item.startAt <= now;
   const finalized = item.status === "COMPLETED";
   const historical = item.status === "HISTORICAL";
+  const progressIndex = item.status === "COMPLETED" ? 2 : item.status === "CONFIRMED" ? 1 : item.status === "SCHEDULED" ? 0 : -1;
+  const stages = [
+    { title: "Scheduled", copy: "Estimated services, time, and price.", icon: CircleDot },
+    { title: "Confirmed", copy: "Customer committed to the visit.", icon: CalendarCheck2 },
+    { title: "Finalized", copy: "Actual work, income, and time.", icon: BadgeCheck },
+  ];
 
   return <>
     <PageHeading title={item.serviceNameSnapshot} description={`${customerName(item.customer)} · ${formatBusinessDate(item.startAt, "en")}`} actions={editable && <Link className="button-secondary" href={`/appointments/${id}/edit`}><Pencil size={16}/>Edit appointment</Link>}/>
 
-    {!historical && !finalized && <div className="mb-5 grid gap-2 sm:grid-cols-3">
-      <div className={`rounded-xl border p-3.5 ${item.status === "SCHEDULED" ? "border-sky-300/30 bg-sky-300/[0.07]" : "border-white/8 bg-white/[0.02]"}`}><div className="flex items-center gap-2"><CircleDot className="text-sky-300" size={16}/><p className="text-xs font-semibold text-sky-200">1 · Scheduled</p></div><p className="mt-1.5 text-xs text-slate-500">Approximate services, time, and price.</p></div>
-      <div className={`rounded-xl border p-3.5 ${item.status === "CONFIRMED" ? "border-teal-300/30 bg-teal-300/[0.07]" : "border-white/8 bg-white/[0.02]"}`}><div className="flex items-center gap-2"><CalendarCheck2 className="text-teal-300" size={16}/><p className="text-xs font-semibold text-teal-200">2 · Confirmed</p></div><p className="mt-1.5 text-xs text-slate-500">The customer has committed to the visit.</p></div>
-      <div className="rounded-xl border border-white/8 bg-white/[0.02] p-3.5"><div className="flex items-center gap-2"><BadgeCheck className="text-emerald-300" size={16}/><p className="text-xs font-semibold text-emerald-200">3 · Finalized</p></div><p className="mt-1.5 text-xs text-slate-500">Actual services, income, and time.</p></div>
-    </div>}
+    {!historical && <ol aria-label="Appointment progress" className="mb-5 flex items-stretch gap-1.5 overflow-x-auto pb-1" data-horizontal-scroll>
+      {stages.map((stage, index) => { const current = progressIndex === index; const complete = progressIndex > index; const Icon = complete ? Check : stage.icon; return <li className="flex min-w-[9rem] flex-1 items-center gap-1.5" key={stage.title}><div aria-current={current ? "step" : undefined} className={`min-h-full min-w-0 flex-1 rounded-xl border p-3 ${current ? "border-blue-300/40 bg-gradient-to-br from-blue-500/[0.16] to-blue-900/[0.1] shadow-[inset_0_1px_rgba(255,255,255,.05)]" : complete ? "border-emerald-300/20 bg-emerald-300/[0.055]" : "border-white/8 bg-white/[0.02]"}`}><div className="flex items-center gap-2"><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${current ? "bg-blue-400/15 text-blue-200" : complete ? "bg-emerald-300/10 text-emerald-300" : "bg-white/[0.04] text-slate-500"}`}><Icon size={13} strokeWidth={complete ? 3 : 2}/></span><p className={`truncate text-xs font-semibold ${current ? "text-blue-100" : complete ? "text-emerald-200" : "text-slate-400"}`}>{index + 1} · {stage.title}</p></div><p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{stage.copy}</p></div>{index < stages.length - 1 && <ChevronRight aria-hidden="true" className={`shrink-0 rtl:rotate-180 ${complete ? "text-emerald-300/60" : "text-slate-700"}`} size={17}/>}</li>; })}
+    </ol>}
 
     <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
       <section className="panel p-5 sm:p-7">
@@ -76,6 +82,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         </div></section>}
         {finalized && <section className="panel p-5"><div className="mb-4"><h2 className="font-medium text-white">Add visit photos</h2><p className="mt-1 text-xs leading-5 text-slate-500">Optional. You can return and add more at any time.</p></div><AppointmentPhotoUploadForm action={addAppointmentPhotos.bind(null, id)}/></section>}
         <section className="panel p-5"><div className="flex items-center gap-2"><Clock3 className="text-slate-500" size={16}/><h2 className="font-medium">Calendar source</h2></div><p className="mt-3 text-sm leading-6 text-slate-500">{historical ? "Imported from a Google Calendar export." : item.calendarEventId ? "Connected to Google Calendar." : item.calendarSyncError || "Managed in Manisa. Calendar synchronization can be connected later."}</p></section>
+        <ConfirmActionForm action={moveToTrash.bind(null, "appointment", id)} className="button-danger w-full" message={`Move this ${item.serviceNameSnapshot} appointment to Trash? Its visit photos will move with it. Everything will be permanently deleted after seven days unless restored.`}><Trash2 size={16}/>Move appointment to Trash</ConfirmActionForm>
       </aside>
     </div>
   </>;

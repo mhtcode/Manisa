@@ -12,6 +12,7 @@ const serverEnvSchema = z.object({
   INSTAGRAM_APP_SECRET: z.string().min(1).optional(),
   INSTAGRAM_REDIRECT_URI: z.string().url().optional(),
   INTEGRATION_ENCRYPTION_KEY: z.string().min(32).optional(),
+  TRASH_CLEANUP_SECRET: z.string().min(32).optional(),
 });
 
 export function getServerEnv() {
@@ -27,6 +28,7 @@ export function getServerEnv() {
     INSTAGRAM_APP_SECRET: process.env.INSTAGRAM_APP_SECRET || undefined,
     INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || undefined,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY || undefined,
+    TRASH_CLEANUP_SECRET: process.env.TRASH_CLEANUP_SECRET || undefined,
   });
 }
 

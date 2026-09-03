@@ -12,6 +12,10 @@ describe("integration token encryption", () => {
 
   it("rejects tampered ciphertext", () => {
     const encrypted = encryptSecret("sensitive-token", key);
-    expect(() => decryptSecret(`${encrypted.slice(0, -1)}x`, key)).toThrow();
+    const parts = encrypted.split(".");
+    const ciphertext = Buffer.from(parts[3], "base64url");
+    ciphertext[0] ^= 1;
+    parts[3] = ciphertext.toString("base64url");
+    expect(() => decryptSecret(parts.join("."), key)).toThrow();
   });
 });
