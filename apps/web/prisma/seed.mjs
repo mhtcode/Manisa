@@ -23,6 +23,14 @@ async function main() {
     create: { email: email.toLowerCase(), name: "Manisa Administrator", passwordHash },
   });
   await prisma.settings.upsert({ where: { userId: user.id }, update: {}, create: { userId: user.id } });
+  const paymentMethods = [
+    { id: "payment_method_cash", name: "Cash", icon: "banknote", position: 0, active: true },
+    { id: "payment_method_debit", name: "Debit card", icon: "credit-card", position: 1, active: true },
+    { id: "payment_method_credit", name: "Credit card", icon: "credit-card", position: 2, active: true },
+    { id: "payment_method_etransfer", name: "Interac e-Transfer", icon: "landmark", position: 3, active: true },
+    { id: "payment_method_other", name: "Other", icon: "wallet", position: 4, active: true },
+  ];
+  for (const method of paymentMethods) await prisma.paymentMethod.upsert({ where: { id: method.id }, update: method, create: method });
 
   const categories = [
     { id: "studio_category_nail", slug: "nail", name: "Nail studio", description: "Manicure, extensions, gel systems, strengthening, and nail art", icon: "nail", accentColor: "#A78BFA", position: 0 },
@@ -76,16 +84,18 @@ async function main() {
     const past = i < 0;
     const cancelled = past && i % 10 === 0;
     const finalPrice = Number(service.defaultPrice) + (i % 3) * 5;
+    const paid = past && !cancelled && i % 6 !== 0;
     await prisma.appointment.create({ data: {
       customerId: customer.id, serviceId: service.id, serviceNameSnapshot: service.name,
       startAt, expectedDurationMinutes: service.defaultDurationMinutes, expectedPrice: service.defaultPrice,
       status: past ? (cancelled ? "CANCELLED" : "COMPLETED") : "SCHEDULED",
       actualDurationMinutes: past && !cancelled ? service.defaultDurationMinutes + (i % 4) * 5 : null,
       finalPrice: past && !cancelled ? finalPrice.toFixed(2) : null,
-      paymentStatus: past && !cancelled ? (i % 6 === 0 ? "UNPAID" : "PAID") : "UNPAID",
+      paymentStatus: paid ? "PAID" : "UNPAID",
       completedAt: past && !cancelled ? new Date(startAt.getTime() + service.defaultDurationMinutes * 60_000) : null,
       serviceLines: { create: { serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice } },
       actualServiceLines: past && !cancelled ? { create: { serviceId: service.id, serviceNameSnapshot: service.name, actualDurationMinutes: service.defaultDurationMinutes + (i % 4) * 5, finalPrice: finalPrice.toFixed(2) } } : undefined,
+      payments: paid ? { create: { paymentMethodId: "payment_method_cash", methodNameSnapshot: "Cash", amount: finalPrice.toFixed(2), paidAt: new Date(startAt.getTime() + service.defaultDurationMinutes * 60_000), recordedById: user.id } } : undefined,
     } });
   }
 }
