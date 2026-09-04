@@ -171,15 +171,22 @@ export async function bulkRestoreFromTrash(formData: FormData) {
   const ids = (type: TrashEntityType) => items.filter((item) => item.type === type).map((item) => item.id);
   await prisma.$transaction(async (tx) => {
     const categoryIds = ids("category"); const customerIds = ids("customer");
-    if (categoryIds.length) await tx.studioCategory.updateMany({ where: { id: { in: categoryIds }, deletedAt: { not: null } }, data: { deletedAt: null } });
-    const methodIds = ids("paymentMethod"); if (methodIds.length) await tx.paymentMethod.updateMany({ where: { id: { in: methodIds }, deletedAt: { not: null } }, data: { deletedAt: null } });
+    if (categoryIds.length) { const result = await tx.studioCategory.updateMany({ where: { id: { in: categoryIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== categoryIds.length) throw new Error("The selection changed. Nothing was restored."); }
+    const methodIds = ids("paymentMethod"); if (methodIds.length) { const result = await tx.paymentMethod.updateMany({ where: { id: { in: methodIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== methodIds.length) throw new Error("The selection changed. Nothing was restored."); }
     const serviceIds = ids("service");
-    if (serviceIds.length) { const blocked = await tx.service.count({ where: { id: { in: serviceIds }, category: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected categories before their services."); await tx.service.updateMany({ where: { id: { in: serviceIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); }
-    if (customerIds.length) await tx.customer.updateMany({ where: { id: { in: customerIds }, deletedAt: { not: null } }, data: { deletedAt: null } });
+    if (serviceIds.length) { const blocked = await tx.service.count({ where: { id: { in: serviceIds }, category: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected categories before their services."); const result = await tx.service.updateMany({ where: { id: { in: serviceIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== serviceIds.length) throw new Error("The selection changed. Nothing was restored."); }
+    if (customerIds.length) {
+      const customers = await tx.customer.findMany({ where: { id: { in: customerIds }, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
+      if (customers.length !== customerIds.length) throw new Error("The selection changed. Nothing was restored.");
+      for (const customer of customers) {
+        await tx.customer.update({ where: { id: customer.id }, data: { deletedAt: null } });
+        await tx.appointment.updateMany({ where: { customerId: customer.id, deletedAt: customer.deletedAt }, data: { deletedAt: null } });
+      }
+    }
     const appointmentIds = ids("appointment");
-    if (appointmentIds.length) { const blocked = await tx.appointment.count({ where: { id: { in: appointmentIds }, customer: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected customers before their appointments."); await tx.appointment.updateMany({ where: { id: { in: appointmentIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); }
+    if (appointmentIds.length) { const blocked = await tx.appointment.count({ where: { id: { in: appointmentIds }, customer: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected customers before their appointments."); const result = await tx.appointment.updateMany({ where: { id: { in: appointmentIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== appointmentIds.length) throw new Error("The selection changed. Nothing was restored."); }
     const photoIds = ids("photo");
-    if (photoIds.length) { const blocked = await tx.appointmentPhoto.count({ where: { id: { in: photoIds }, OR: [{ appointment: { deletedAt: { not: null } } }, { appointment: { customer: { deletedAt: { not: null } } } }] } }); if (blocked) throw new Error("Restore selected customers and appointments before their photos."); await tx.appointmentPhoto.updateMany({ where: { id: { in: photoIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); }
+    if (photoIds.length) { const blocked = await tx.appointmentPhoto.count({ where: { id: { in: photoIds }, OR: [{ appointment: { deletedAt: { not: null } } }, { appointment: { customer: { deletedAt: { not: null } } } }] } }); if (blocked) throw new Error("Restore selected customers and appointments before their photos."); const result = await tx.appointmentPhoto.updateMany({ where: { id: { in: photoIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== photoIds.length) throw new Error("The selection changed. Nothing was restored."); }
   });
   refreshTrashViews();
 }
