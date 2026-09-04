@@ -8,19 +8,23 @@ import { instagramConfigured } from "@/lib/env";
 import { instagramCacheIsStale } from "@/lib/instagram-media";
 import { prisma } from "@/lib/prisma";
 import { syncInstagramConnection } from "@/server/instagram";
+import { notFound } from "next/navigation";
 
-const business = {
+const publicInfo = {
   address: process.env.NEXT_PUBLIC_BUSINESS_ADDRESS?.trim() || "Toronto, Ontario",
   instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim() || "",
 };
 
-export default async function Home() {
+export async function StudioLanding({ slug }: { slug: string }) {
+  const studio = await prisma.business.findUnique({ where: { slug }, include: { settings: true } });
+  if (!studio?.active || studio.deletedAt) notFound();
+  const business = { address: studio.settings?.address || publicInfo.address, instagram: studio.settings?.instagramUrl || publicInfo.instagram };
   const instagramEnabled = instagramConfigured();
   const [user, categories, featuredPhotos, connection] = await Promise.all([
     getCurrentUser(),
-    prisma.studioCategory.findMany({ where: { active: true, deletedAt: null, services: { some: { active: true, deletedAt: null } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 5, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true, deletedAt: null } } } } } }),
-    prisma.appointmentPhoto.findMany({ where: { deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, orderBy: { featuredAt: "desc" }, take: 8, select: { id: true } }),
-    instagramEnabled ? prisma.instagramConnection.findFirst({ select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 8, select: { id: true, caption: true, permalink: true, mediaType: true, publishedAt: true } } } }) : null,
+    prisma.studioCategory.findMany({ where: { businessId: studio.id, active: true, deletedAt: null, services: { some: { active: true, deletedAt: null } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 5, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true, deletedAt: null } } } } } }),
+    prisma.mediaAsset.findMany({ where: { businessId: studio.id, deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, orderBy: { featuredAt: "desc" }, take: 8, select: { id: true } }),
+    instagramEnabled ? prisma.instagramConnection.findUnique({ where: { businessId: studio.id }, select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 8, select: { id: true, caption: true, permalink: true, mediaType: true, publishedAt: true } } } }) : null,
   ]);
 
   if (connection && instagramCacheIsStale(connection.lastSyncedAt)) {
@@ -46,4 +50,13 @@ export default async function Home() {
 
     <footer className="relative z-10 border-t border-white/8"><div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10"><p>© {new Date().getFullYear()} Manisa. All rights reserved.</p><div className="flex items-center gap-5"><a className="hover:text-slate-300" href="#services">Services</a>{featuredPhotos.length > 0 && <a className="hover:text-slate-300" href="#gallery">Gallery</a>}<Link className="hover:text-slate-300" href={staffHref}>{staffLabel}</Link></div></div></footer>
   </main>;
+}
+
+export default async function Home() {
+  const [user, studios, setupComplete] = await Promise.all([
+    getCurrentUser(),
+    prisma.business.findMany({ where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 12, select: { name: true, slug: true } }),
+    prisma.platformAccess.count({ where: { role: "ROOT_OWNER" } }),
+  ]);
+  return <main className="min-h-screen bg-[#070a10] text-white"><header className="border-b border-white/10"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4"><span className="flex items-center gap-3 font-semibold"><span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300"><Sparkles size={18}/></span>Manisa</span><Link className="button-secondary" href={user ? "/report" : setupComplete ? "/login" : "/setup"}>{user ? "Open management" : setupComplete ? "Sign in" : "Set up"}</Link></div></header><section className="mx-auto max-w-6xl px-5 py-20 sm:py-28"><p className="text-sm font-semibold uppercase tracking-[.18em] text-blue-300">Business management platform</p><h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-[-.055em] sm:text-7xl">One clear platform for every business you manage.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">Secure workspaces for appointments, customers, payments, reporting, teams, and fast media delivery.</p>{studios.length ? <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{studios.map((studio) => <Link className="panel flex items-center justify-between p-5 transition hover:border-blue-400/30" href={`/studio/${studio.slug}`} key={studio.slug}><span className="font-semibold">{studio.name}</span><ArrowRight className="text-blue-300" size={17}/></Link>)}</div> : null}</section></main>;
 }
