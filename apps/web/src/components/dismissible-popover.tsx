@@ -22,6 +22,20 @@ export function DismissiblePopover({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const lastPointerType = useRef<string | null>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelClose() {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  }
+
+  function scheduleClose(pointerType: string) {
+    if (pointerType !== "mouse") return;
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 200);
+  }
+
+  useEffect(() => () => cancelClose(), []);
 
   useEffect(() => {
     if (!open) return;
@@ -44,7 +58,7 @@ export function DismissiblePopover({
     };
   }, [open]);
 
-  return <div className={rootClassName} onPointerEnter={(event) => { if (event.pointerType === "mouse") setOpen(true); }} onPointerLeave={(event) => { if (event.pointerType === "mouse") setOpen(false); }} ref={rootRef}>
+  return <div className={rootClassName} onPointerEnter={(event) => { if (event.pointerType === "mouse") { cancelClose(); setOpen(true); } }} onPointerLeave={(event) => scheduleClose(event.pointerType)} ref={rootRef}>
     <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
       {trigger}
     </button>
