@@ -20,7 +20,19 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npx prisma generate
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run db:seed"]
+CMD ["sh", "-c", "npx prisma migrate deploy"]
+
+FROM node:24-alpine AS media-worker
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 worker
+COPY --from=dependencies --chown=worker:nodejs /app/node_modules ./node_modules
+COPY --chown=worker:nodejs package.json package-lock.json ./
+COPY --chown=worker:nodejs prisma ./prisma
+COPY --chown=worker:nodejs scripts ./scripts
+RUN npx prisma generate
+USER worker
+CMD ["node", "scripts/media-worker.mjs"]
 
 FROM node:24-alpine AS runner
 WORKDIR /app

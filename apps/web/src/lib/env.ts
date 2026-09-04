@@ -15,6 +15,15 @@ const serverEnvSchema = z.object({
   INSTAGRAM_REDIRECT_URI: z.string().url().optional(),
   INTEGRATION_ENCRYPTION_KEY: z.string().min(32).optional(),
   TRASH_CLEANUP_SECRET: z.string().min(32).optional(),
+  PLATFORM_SETUP_TOKEN: z.string().min(24).optional(),
+  DEFAULT_STORAGE_QUOTA_BYTES: z.coerce.bigint().positive().default(BigInt(10 * 1024 * 1024 * 1024)),
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_PUBLIC_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_ACCESS_KEY: z.string().optional(),
+  S3_SECRET_KEY: z.string().optional(),
+  S3_PRIVATE_BUCKET: z.string().default("manisa-private"),
+  S3_PUBLIC_BUCKET: z.string().default("manisa-public"),
 });
 
 export function getServerEnv() {
@@ -33,6 +42,15 @@ export function getServerEnv() {
     INSTAGRAM_REDIRECT_URI: process.env.INSTAGRAM_REDIRECT_URI || undefined,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY || undefined,
     TRASH_CLEANUP_SECRET: process.env.TRASH_CLEANUP_SECRET || undefined,
+    PLATFORM_SETUP_TOKEN: process.env.PLATFORM_SETUP_TOKEN || undefined,
+    DEFAULT_STORAGE_QUOTA_BYTES: process.env.DEFAULT_STORAGE_QUOTA_BYTES,
+    S3_ENDPOINT: process.env.S3_ENDPOINT || undefined,
+    S3_PUBLIC_ENDPOINT: process.env.S3_PUBLIC_ENDPOINT || undefined,
+    S3_REGION: process.env.S3_REGION,
+    S3_ACCESS_KEY: process.env.S3_ACCESS_KEY || undefined,
+    S3_SECRET_KEY: process.env.S3_SECRET_KEY || undefined,
+    S3_PRIVATE_BUCKET: process.env.S3_PRIVATE_BUCKET,
+    S3_PUBLIC_BUCKET: process.env.S3_PUBLIC_BUCKET,
   });
 }
 
