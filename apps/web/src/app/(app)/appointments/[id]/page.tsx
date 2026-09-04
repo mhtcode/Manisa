@@ -82,7 +82,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         </div></section>}
         {finalized && <section className="panel p-5"><div className="mb-4"><h2 className="font-medium text-white">Add visit photos</h2><p className="mt-1 text-xs leading-5 text-slate-500">Optional. You can return and add more at any time.</p></div><AppointmentPhotoUploadForm action={addAppointmentPhotos.bind(null, id)}/></section>}
         <section className="panel p-5"><div className="flex items-center gap-2"><Clock3 className="text-slate-500" size={16}/><h2 className="font-medium">Calendar source</h2></div><p className="mt-3 text-sm leading-6 text-slate-500">{historical ? "Manually added from a calendar file or JSON batch." : item.calendarEventId ? "Connected to Google Calendar." : item.calendarSyncError || "Managed in Manisa. Calendar synchronization can be connected later."}</p></section>
-        <ConfirmActionForm action={moveToTrash.bind(null, "appointment", id)} className="button-danger w-full" message={`Move this ${item.serviceNameSnapshot} appointment to Trash? Its visit photos will move with it. Everything will be permanently deleted after seven days unless restored.`}><Trash2 size={16}/>Move appointment to Trash</ConfirmActionForm>
+        <ConfirmActionForm action={moveToTrash.bind(null, "appointment", id)} className="icon-button border-rose-400/20 text-rose-300" message={`Move this ${item.serviceNameSnapshot} appointment to Trash? Its visit photos will move with it. Everything will be permanently deleted after seven days unless restored.`} title="Move appointment to Trash"><Trash2 size={16}/><span className="sr-only">Move appointment to Trash</span></ConfirmActionForm>
       </aside>
     </div>
   </>;

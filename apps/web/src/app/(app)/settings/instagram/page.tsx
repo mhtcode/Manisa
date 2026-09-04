@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ExternalLink, Instagram, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
+import { CheckCircle2, ExternalLink, Instagram, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
@@ -36,7 +36,7 @@ export default async function InstagramSettingsPage({ searchParams }: { searchPa
   ].filter(Boolean) as string[];
 
   return <>
-    <PageHeading title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed." actions={<Link className="button-secondary" href="/settings"><ArrowLeft size={16}/>Settings</Link>}/>
+    <PageHeading backHref="/settings" title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed."/>
     {query.success && notices[query.success] && <div className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-200">{notices[query.success]}</div>}
     {query.error && errors[query.error] && <div className="mb-5 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200">{errors[query.error]}</div>}
 

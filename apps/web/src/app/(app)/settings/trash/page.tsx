@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, ImageIcon, Layers3, RotateCcw, Scissors, Trash2, UserRound, type LucideIcon } from "lucide-react";
+import { CalendarClock, ImageIcon, Layers3, RotateCcw, Scissors, Trash2, UserRound, type LucideIcon } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { customerName } from "@/lib/format";
@@ -18,7 +18,7 @@ function RestoreForm({ id, type }: { id: string; type: TrashEntityType }) {
 }
 
 function DeleteForever({ id, label, type }: { id: string; label: string; type: TrashEntityType }) {
-  return <ConfirmActionForm action={deletePermanently.bind(null, type, id)} className="button-danger h-9 min-h-9 px-3" message={`Permanently delete ${label}? This cannot be undone.`}><Trash2 size={14}/>Delete now</ConfirmActionForm>;
+  return <ConfirmActionForm action={deletePermanently.bind(null, type, id)} className="icon-button size-9 border-rose-400/20 text-rose-300" message={`Permanently delete ${label}? This cannot be undone.`} title="Delete permanently"><Trash2 size={14}/><span className="sr-only">Delete permanently</span></ConfirmActionForm>;
 }
 
 function TrashRow({ children, deletedAt, icon: Icon, title, type, id, permanentBlocked, restoreBlocked }: {
@@ -34,7 +34,7 @@ function TrashRow({ children, deletedAt, icon: Icon, title, type, id, permanentB
   return <article className="grid gap-3 border-t border-white/8 px-4 py-4 first:border-t-0 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:px-5">
     <span className="flex size-10 items-center justify-center rounded-xl border border-white/8 bg-white/[0.035] text-slate-400"><Icon size={18}/></span>
     <div className="min-w-0"><h3 className="truncate text-sm font-semibold text-white" dir="auto">{title}</h3><div className="mt-1 text-xs leading-5 text-slate-500">{children}</div><p className="mt-1 text-[11px] font-medium text-amber-200/75">Permanent deletion in {trashTimeRemaining(deletedAt)}</p>{restoreBlocked && <p className="mt-1 text-[11px] text-amber-200/75">{restoreBlocked}</p>}{permanentBlocked && <p className="mt-1 text-[11px] text-rose-300/75">{permanentBlocked}</p>}</div>
-    <div className="flex flex-wrap gap-2 sm:justify-end">{restoreBlocked ? <button className="button-secondary h-9 min-h-9 px-3" disabled title={restoreBlocked}><RotateCcw size={14}/>Restore</button> : <RestoreForm id={id} type={type}/>} {permanentBlocked ? <button className="button-danger h-9 min-h-9 px-3" disabled title={permanentBlocked}><Trash2 size={14}/>Delete now</button> : <DeleteForever id={id} label={title} type={type}/>}</div>
+    <div className="flex flex-wrap gap-2 sm:justify-end">{restoreBlocked ? <button className="button-secondary h-9 min-h-9 px-3" disabled title={restoreBlocked}><RotateCcw size={14}/>Restore</button> : <RestoreForm id={id} type={type}/>} {permanentBlocked ? <button aria-label="Delete permanently" className="icon-button size-9 border-rose-400/20 text-rose-300" disabled title={permanentBlocked}><Trash2 size={14}/></button> : <DeleteForever id={id} label={title} type={type}/>}</div>
   </article>;
 }
 
@@ -51,7 +51,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
   const total = customers.length + appointments.length + photos.length + services.length + categories.length;
 
   return <>
-    <PageHeading title="Trash" description="Restore items for seven days, or permanently delete them now. Expired photos are removed from disk." actions={<Link className="button-secondary" href="/settings"><ArrowLeft size={16}/>Settings</Link>}/>
+    <PageHeading backHref="/settings" title="Trash" description="Restore items for seven days, or permanently delete them now. Expired photos are removed from disk."/>
     <nav aria-label="Trash filters" className="mb-4 flex gap-2 overflow-x-auto pb-1" data-horizontal-scroll>{filters.map((filter) => <Link className={`filter-chip shrink-0 ${selected === filter ? "active" : ""}`} href={filter === "all" ? "/settings/trash" : `/settings/trash?type=${filter}`} key={filter}>{filterLabels[filter]}</Link>)}</nav>
     <section className="panel overflow-hidden">
       <div className="panel-header"><div><h2 className="font-semibold text-white">Deleted items</h2><p className="mt-1 text-xs text-slate-500">Automatic cleanup runs hourly</p></div><span className="badge border-amber-300/15 bg-amber-300/[0.06] text-amber-200">{total} {total === 1 ? "item" : "items"}</span></div>

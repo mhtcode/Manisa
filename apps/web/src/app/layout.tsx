@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
+import "@fontsource-variable/vazirmatn/wght.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

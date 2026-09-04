@@ -7,7 +7,7 @@ import { customerName } from "@/lib/format";
 import { collectionView } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 
-export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; from?: string }> }) {
   const [params, user] = await Promise.all([searchParams, requireUser()]);
   const q = params.q?.trim() || "";
   const view = collectionView(user.settings?.collectionViews, "customers", "list");
@@ -23,5 +23,5 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const serviceCounts = new Map<string, Map<string, number>>();
   const appointmentsWithActuals = new Set(actualServiceLines.map((line) => line.appointment.id));
   [...actualServiceLines, ...historicalServiceLines.filter((line) => line.appointment.status === "HISTORICAL" || !appointmentsWithActuals.has(line.appointment.id))].forEach((line) => { const counts = serviceCounts.get(line.appointment.customerId) || new Map<string, number>(); counts.set(line.serviceNameSnapshot, (counts.get(line.serviceNameSnapshot) || 0) + 1); serviceCounts.set(line.appointment.customerId, counts); });
-  return <><PageHeading title="Customers" description="Search profiles and open a complete relationship report." actions={<><ViewModeToggle initialMode={view} page="customers"/><Link className="button" href="/customers/new">+ New customer</Link></>}/><CustomerDirectory initialQuery={q} mode={view} customers={customers.map((customer) => ({ id: customer.id, name: customerName(customer), phone: customer.phone, email: customer.email, language: customer.preferredLanguage, appointmentCount: customer._count.appointments, latestVisit: latestVisits.get(customer.id)?.toISOString() || null, popularService: [...(serviceCounts.get(customer.id) || new Map<string,number>())].sort((a,b) => b[1]-a[1])[0]?.[0] || null }))}/></>;
+  return <><PageHeading backHref={params.from === "settings" ? "/settings" : undefined} title="Customers" description="Search profiles and open a complete relationship report." actions={<><ViewModeToggle initialMode={view} page="customers"/><Link className="button" href="/customers/new">+ New customer</Link></>}/><CustomerDirectory initialQuery={q} mode={view} customers={customers.map((customer) => ({ id: customer.id, name: customerName(customer), phone: customer.phone, email: customer.email, language: customer.preferredLanguage, appointmentCount: customer._count.appointments, latestVisit: latestVisits.get(customer.id)?.toISOString() || null, popularService: [...(serviceCounts.get(customer.id) || new Map<string,number>())].sort((a,b) => b[1]-a[1])[0]?.[0] || null }))}/></>;
 }

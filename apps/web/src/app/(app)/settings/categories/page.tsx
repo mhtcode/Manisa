@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, Archive, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Archive, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { CategoryIcon, categoryIconOptions } from "@/components/category-icon";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
@@ -27,7 +26,7 @@ export default async function CategoriesSettingsPage() {
   });
 
   return <>
-    <PageHeading title="Service categories" description="Category totals include enabled services only. Empty categories can be moved to Trash." actions={<Link className="button-secondary" href="/settings"><ArrowLeft size={16}/>Settings</Link>}/>
+    <PageHeading backHref="/settings" title="Service categories" description="Category totals include enabled services only. Empty categories can be moved to Trash."/>
     <div className="space-y-4">
       <details className="panel overflow-hidden">
         <summary className="panel-header cursor-pointer list-none"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Plus size={17}/></span><div><h2 className="font-semibold text-white">New category</h2><p className="mt-0.5 text-xs text-slate-500">Create another independent studio area</p></div></div></summary>
@@ -41,7 +40,7 @@ export default async function CategoriesSettingsPage() {
             <form action={moveStudioCategory.bind(null, category.id, "up")}><button aria-label={`Move ${category.name} up`} className="button-secondary" disabled={index === 0}><ArrowUp size={15}/>Move up</button></form>
             <form action={moveStudioCategory.bind(null, category.id, "down")}><button aria-label={`Move ${category.name} down`} className="button-secondary" disabled={index === categories.length - 1}><ArrowDown size={15}/>Move down</button></form>
             <form action={toggleStudioCategory.bind(null, category.id, !category.active)}><button className="button-secondary">{category.active ? <Archive size={15}/> : <RotateCcw size={15}/>} {category.active ? "Disable" : "Enable"}</button></form>
-            {!category.services.length && <ConfirmActionForm action={moveToTrash.bind(null, "category", category.id)} message={`Move ${category.name} to Trash? It will be permanently deleted after seven days unless restored.`}><Trash2 size={15}/>Move to Trash</ConfirmActionForm>}
+            {!category.services.length && <ConfirmActionForm action={moveToTrash.bind(null, "category", category.id)} className="icon-button border-rose-400/20 text-rose-300" message={`Move ${category.name} to Trash? It will be permanently deleted after seven days unless restored.`} title="Move category to Trash"><Trash2 size={15}/><span className="sr-only">Move category to Trash</span></ConfirmActionForm>}
           </div>
           {category.services.length > 0 && <p className="mt-3 text-xs text-slate-500">Move all {category.services.length} related {category.services.length === 1 ? "service" : "services"} to Trash before deleting this category.</p>}
         </div>

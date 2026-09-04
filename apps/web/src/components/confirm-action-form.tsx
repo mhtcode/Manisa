@@ -2,18 +2,19 @@
 
 import { useId, useState, useTransition } from "react";
 
-export function ConfirmActionForm({ action, children, className = "button-danger", message }: {
+export function ConfirmActionForm({ action, children, className = "button-danger", message, title }: {
   action: (formData: FormData) => void | Promise<void>;
   children: React.ReactNode;
   className?: string;
   message: string;
+  title?: string;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
   const titleId = useId();
 
   return <>
-    <button className={className} disabled={pending} onClick={() => setConfirming(true)} type="button">{children}</button>
+    <button aria-label={title} className={className} disabled={pending} onClick={() => setConfirming(true)} title={title} type="button">{children}</button>
     {confirming && <div aria-labelledby={titleId} aria-modal="true" className="fixed inset-0 z-[100] flex items-end justify-center bg-[#030711]/80 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.currentTarget === event.target && !pending) setConfirming(false); }} role="dialog">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-blue-300/20 bg-[#0c1422] shadow-[0_28px_90px_rgba(0,0,0,.65)]">
         <div className="border-b border-white/10 bg-[#080d15] px-5 py-4"><h2 className="font-semibold text-white" id={titleId}>Confirm action</h2></div>

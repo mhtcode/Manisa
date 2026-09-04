@@ -20,7 +20,7 @@ function decodeCursor(value?: string) {
 
 function encodeCursor(album: { startAt: Date; id: string }) { return Buffer.from(JSON.stringify([album.startAt.toISOString(), album.id])).toString("base64url"); }
 
-export default async function GalleryPage({ searchParams }: { searchParams: Promise<{ customerId?: string; serviceId?: string; cursor?: string }> }) {
+export default async function GalleryPage({ searchParams }: { searchParams: Promise<{ customerId?: string; serviceId?: string; cursor?: string; from?: string }> }) {
   const [query, user] = await Promise.all([searchParams, requireUser()]);
   const view = collectionView(user.settings?.collectionViews, "gallery", "grid");
   const locale = user.settings?.locale || "en";
@@ -41,14 +41,16 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
   const nextParams = new URLSearchParams();
   if (customerId) nextParams.set("customerId", customerId);
   if (serviceId) nextParams.set("serviceId", serviceId);
+  if (query.from === "settings") nextParams.set("from", "settings");
   if (hasMore && last) nextParams.set("cursor", encodeCursor(last));
 
   return <>
-    <PageHeading title="Gallery" description="Each finalized visit is one album. Open an album to manage its photos." actions={<ViewModeToggle initialMode={view} page="gallery"/>}/>
+    <PageHeading backHref={query.from === "settings" ? "/settings" : undefined} title="Gallery" description="Each finalized visit is one album. Open an album to manage its photos." actions={<ViewModeToggle initialMode={view} page="gallery"/>}/>
     <form className="panel mb-5 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" method="get">
+      {query.from === "settings" && <input name="from" type="hidden" value="settings"/>}
       <div><label className="label" htmlFor="gallery-customer">Customer</label><select className="field" defaultValue={customerId} id="gallery-customer" name="customerId"><option value="">All customers</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customerName(customer)}</option>)}</select></div>
       <div><label className="label" htmlFor="gallery-service">Service</label><select className="field" defaultValue={serviceId} id="gallery-service" name="serviceId"><option value="">All services</option>{services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select></div>
-      <div className="flex gap-2"><button className="button flex-1 sm:flex-none"><Filter size={16}/><span>Apply</span></button>{(customerId || serviceId) && <Link aria-label="Clear filters" className="icon-button" href="/gallery" title="Clear filters">×</Link>}</div>
+      <div className="flex gap-2"><button className="button flex-1 sm:flex-none"><Filter size={16}/><span>Apply</span></button>{(customerId || serviceId) && <Link aria-label="Clear filters" className="icon-button" href={query.from === "settings" ? "/gallery?from=settings" : "/gallery"} title="Clear filters">×</Link>}</div>
     </form>
 
     {albums.length ? <div className={`gallery-surface ${view === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4" : "space-y-3"}`} data-swipe-lock>
