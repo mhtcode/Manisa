@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound } from "lucide-react";
+import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound, WalletCards } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -20,6 +20,7 @@ const groups = [
   {
     title: "Settings",
     items: [
+      ["/settings/financial", "Financial", "Payments, methods, balances, and collections", WalletCards],
       ["/settings/business", "Studio profile & appearance", "Name, language, currency, timezone, and theme", SlidersHorizontal],
       ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
       ["/settings/calendar-import", "Calendar import", "Bring earlier calendar or JSON appointments into Manisa", CalendarSync],

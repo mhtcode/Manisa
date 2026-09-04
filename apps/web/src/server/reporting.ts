@@ -49,7 +49,7 @@ function filteredWhere(start: Date, end: Date, query: ReportQuery): Prisma.Appoi
   };
 }
 
-type ReportAppointment = Prisma.AppointmentGetPayload<{ include: { customer: true; serviceLines: true; actualServiceLines: true } }>;
+type ReportAppointment = Prisma.AppointmentGetPayload<{ include: { customer: true; serviceLines: true; actualServiceLines: true; payments: true } }>;
 
 function bucketKey(date: Date, days: number, timezone: string, locale: AppLocale) {
   if (days > 180) return new Intl.DateTimeFormat(intlLocale(locale), { month: "short", year: "numeric", timeZone: timezone }).format(date);
@@ -68,6 +68,7 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
   const weekdays = new Map<string, number>();
   const hours = new Map<string, number>();
   const monthlyHours = new Map<string, { name: string; hours: number; revenue: number; visits: number }>();
+  let knownOutstanding = 0;
 
   appointments.forEach((appointment) => outcomes.set(appointment.status, (outcomes.get(appointment.status) || 0) + 1));
   chronological.forEach((appointment) => {
@@ -75,7 +76,9 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
     const key = bucketKey(date, days, timezone, locale);
     const point = timeline.get(key) || { name: key, revenue: 0, visits: 0, hours: 0 };
     point.revenue += Number(appointment.finalPrice || 0); point.visits += 1; point.hours += (appointment.actualDurationMinutes || 0) / 60; timeline.set(key, point);
-    payments.set(appointment.paymentStatus, (payments.get(appointment.paymentStatus) || 0) + Number(appointment.finalPrice || 0));
+    const validPayments = appointment.payments.filter((payment) => !payment.voidedAt);
+    validPayments.forEach((payment) => payments.set(payment.methodNameSnapshot, (payments.get(payment.methodNameSnapshot) || 0) + Number(payment.amount)));
+    if (!appointment.paymentReconciliationRequired) knownOutstanding += Math.max(0, Number(appointment.finalPrice || 0) - validPayments.reduce((sum, payment) => sum + Number(payment.amount), 0));
     const weekday = new Intl.DateTimeFormat(intlLocale(locale), { weekday: "short", timeZone: timezone }).format(appointment.startAt);
     weekdays.set(weekday, (weekdays.get(weekday) || 0) + 1);
     const hour = new Intl.DateTimeFormat(intlLocale(locale), { hour: "numeric", timeZone: timezone }).format(appointment.startAt);
@@ -88,7 +91,7 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
   });
 
   return {
-    metrics: { ...core, newCustomers, returningCustomers },
+    metrics: { ...core, outstanding: knownOutstanding, newCustomers, returningCustomers },
     timeline: [...timeline.values()],
     services: [...servicePerformance.values()].sort((a, b) => b.revenue - a.revenue),
     outcomes: [...outcomes].map(([name, value]) => ({ name, value })),
@@ -105,7 +108,7 @@ export async function getReportData(query: ReportQuery, timezone: string, locale
   const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
   const todayStart = fromZonedTime(`${today}T00:00:00`, timezone);
   const todayEnd = fromZonedTime(`${today}T23:59:59.999`, timezone);
-  const include = { customer: true, serviceLines: { orderBy: { position: "asc" as const } }, actualServiceLines: { orderBy: { position: "asc" as const } } };
+  const include = { customer: true, serviceLines: { orderBy: { position: "asc" as const } }, actualServiceLines: { orderBy: { position: "asc" as const } }, payments: true };
   const currentWhere = filteredWhere(range.start, range.end, query);
   const previousWhere = filteredWhere(range.previousStart, range.previousEnd, query);
   const [current, previous, services, todayAppointments, upcoming, currentNewCustomers, previousNewCustomers] = await Promise.all([

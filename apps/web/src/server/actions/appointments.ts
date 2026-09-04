@@ -10,6 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, appointmentsOverlap, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate, parseBusinessDateTime } from "@/lib/time";
 import { appointmentSchema, completionSchema } from "@/lib/validation";
+import { parsePaymentInputs, paymentStatusFor } from "@/lib/payments";
 
 async function findConflict(startAt: Date, duration: number, excludeId?: string) {
   const candidates = await prisma.appointment.findMany({
@@ -98,7 +99,7 @@ export async function updateAppointment(id: string, formData: FormData) {
 }
 
 export async function completeAppointment(id: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const data = completionSchema.parse({ ...Object.fromEntries(formData), actualServiceIds: formData.getAll("actualServiceIds") });
   const appointment = await prisma.appointment.findFirst({ where: { id, deletedAt: null } });
   if (!appointment) return { error: "Appointment not found." };
@@ -119,6 +120,12 @@ export async function completeAppointment(id: string, formData: FormData) {
   }
   const actualDurationMinutes = actualLines.reduce((sum, line) => sum + line.actualDurationMinutes, 0);
   const finalPrice = actualLines.reduce((sum, line) => sum + Number(line.finalPrice), 0).toFixed(2);
+  const paymentInputs = parsePaymentInputs(formData);
+  const methods = await prisma.paymentMethod.findMany({ where: { id: { in: paymentInputs.map((item) => item.methodId) }, active: true, deletedAt: null } });
+  if (methods.length !== new Set(paymentInputs.map((item) => item.methodId)).size) return { error: "Choose a valid payment method for every payment." };
+  if (paymentInputs.some((item) => !/^\d{1,10}(\.\d{1,2})?$/.test(item.amount) || Number(item.amount) <= 0)) return { error: "Enter a valid positive amount for every payment." };
+  const paidAmount = paymentInputs.reduce((sum, item) => sum + Number(item.amount), 0);
+  if (paidAmount > Number(finalPrice) + 0.001) return { error: "Recorded payments cannot exceed the final price." };
   const primaryService = orderedServices[0];
   let photos;
   try { photos = await prepareAppointmentPhotos(id, formData); }
@@ -127,7 +134,8 @@ export async function completeAppointment(id: string, formData: FormData) {
     await prisma.appointment.update({ where: { id }, data: {
       status: "COMPLETED",
       completedAt: new Date(),
-      paymentStatus: data.paymentStatus,
+      paymentStatus: paymentStatusFor(Number(finalPrice), paidAmount),
+      paymentReconciliationRequired: false,
       completionNotes: data.completionNotes,
       actualDurationMinutes,
       finalPrice,
@@ -136,6 +144,7 @@ export async function completeAppointment(id: string, formData: FormData) {
       currency: primaryService.currency,
       actualServiceLines: { deleteMany: {}, create: actualLines },
       photos: { create: photos },
+      payments: { create: paymentInputs.map((payment) => { const method = methods.find((item) => item.id === payment.methodId)!; return { paymentMethodId: method.id, methodNameSnapshot: method.name, amount: payment.amount, recordedById: user.id }; }) },
     } });
   } catch (error) {
     await removePreparedPhotos(photos);

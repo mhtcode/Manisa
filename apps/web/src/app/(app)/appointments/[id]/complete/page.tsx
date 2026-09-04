@@ -14,7 +14,7 @@ export default async function CompletePage({ params }: { params: Promise<{ id: s
   const item = await prisma.appointment.findUnique({ where: { id, deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } } } });
   if (!item) notFound();
   const currentServiceIds = item.serviceLines.flatMap((line) => line.serviceId ? [line.serviceId] : []);
-  const services = await prisma.service.findMany({ where: { deletedAt: null, category: { deletedAt: null }, OR: [{ active: true, category: { active: true } }, { id: { in: currentServiceIds } }] }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] });
+  const [services, paymentMethods] = await Promise.all([prisma.service.findMany({ where: { deletedAt: null, category: { deletedAt: null }, OR: [{ active: true, category: { active: true } }, { id: { in: currentServiceIds } }] }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }), prisma.paymentMethod.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] })]);
   const estimatedEnd = appointmentExpectedEnd(item.startAt, item.expectedDurationMinutes);
   const blockedReason = item.status !== "CONFIRMED"
     ? "This appointment must be confirmed before it can be finalized."
@@ -38,7 +38,7 @@ export default async function CompletePage({ params }: { params: Promise<{ id: s
         </div>
         <p className="mt-5 text-xs leading-5 text-slate-500">The confirmed plan is preserved for history. Your final choices become the source for reports.</p>
       </aside>
-      <CompletionForm action={completeAppointment.bind(null, id)} appointmentId={id} completionNotes={item.completionNotes} paymentStatus={item.paymentStatus} scheduledLines={item.serviceLines.flatMap((line) => line.serviceId ? [{ serviceId: line.serviceId, duration: line.durationMinutes, price: line.price.toString(), selectedColor: line.selectedColor }] : [])} services={services.map((service) => ({ id: service.id, name: service.name, category: service.category, supportsColor: service.supportsColor, duration: service.defaultDurationMinutes, price: service.defaultPrice.toString(), currency: service.currency }))}/>
+      <CompletionForm action={completeAppointment.bind(null, id)} appointmentId={id} completionNotes={item.completionNotes} paymentMethods={paymentMethods} scheduledLines={item.serviceLines.flatMap((line) => line.serviceId ? [{ serviceId: line.serviceId, duration: line.durationMinutes, price: line.price.toString(), selectedColor: line.selectedColor }] : [])} services={services.map((service) => ({ id: service.id, name: service.name, category: service.category, supportsColor: service.supportsColor, duration: service.defaultDurationMinutes, price: service.defaultPrice.toString(), currency: service.currency }))}/>
     </div>}
   </>;
 }

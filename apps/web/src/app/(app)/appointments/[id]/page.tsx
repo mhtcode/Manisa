@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BadgeCheck, CalendarCheck2, Check, ChevronRight, CircleDot, Clock3, Images, LockKeyhole, Pencil, Trash2, XCircle } from "lucide-react";
 import { AppointmentPhotoUploadForm } from "@/components/appointment-photo-upload-form";
+import { AppointmentPayments } from "@/components/appointment-payments";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { StatusBadge } from "@/components/status-badge";
@@ -10,7 +11,7 @@ import { customerName, formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate } from "@/lib/time";
-import { addAppointmentPhotos, markPaid, setAppointmentStatus } from "@/server/actions/appointments";
+import { addAppointmentPhotos, setAppointmentStatus } from "@/server/actions/appointments";
 import { moveToTrash } from "@/server/actions/trash";
 
 export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +23,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
       serviceLines: { orderBy: { position: "asc" } },
       actualServiceLines: { orderBy: { position: "asc" } },
       photos: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 8 },
+      payments: { orderBy: { paidAt: "desc" } },
       _count: { select: { photos: { where: { deletedAt: null } } } },
     },
   });
@@ -35,6 +37,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const canNoShow = editable && item.startAt <= now;
   const finalized = item.status === "COMPLETED";
   const historical = item.status === "HISTORICAL";
+  const paymentMethods = finalized ? await prisma.paymentMethod.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }) : [];
   const progressIndex = item.status === "COMPLETED" ? 2 : item.status === "CONFIRMED" ? 1 : item.status === "SCHEDULED" ? 0 : -1;
   const stages = [
     { title: "Scheduled", copy: "Estimated services, time, and price.", icon: CircleDot },
@@ -75,12 +78,12 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         {!historical && <section className="panel p-5"><h2 className="font-medium">Next action</h2><div className="mt-4 grid gap-2">
           {canConfirm && <form action={setAppointmentStatus.bind(null, id, "CONFIRMED")}><button className="button w-full"><CalendarCheck2 size={17}/>Confirm appointment</button></form>}
           {item.status === "CONFIRMED" && (canFinalize ? <Link className="button w-full" href={`/appointments/${id}/complete`}><BadgeCheck size={17}/>Finalize visit</Link> : <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3.5"><div className="flex items-center gap-2 text-sm font-medium text-slate-300"><LockKeyhole size={16}/>Finalization locked</div><p className="mt-1.5 text-xs leading-5 text-slate-500">Available after {formatBusinessDate(estimatedEnd, "en")}.</p></div>)}
-          {item.paymentStatus !== "PAID" && finalized && <form action={markPaid.bind(null, id)}><button className="button-secondary w-full">Mark paid</button></form>}
           {editable && <Link className="button-secondary w-full" href={`/appointments/${id}/edit`}><Pencil size={16}/>Edit estimate</Link>}
           {canNoShow && <form action={setAppointmentStatus.bind(null, id, "NO_SHOW")}><button className="button-secondary w-full">Mark no-show</button></form>}
           {editable && <form action={setAppointmentStatus.bind(null, id, "CANCELLED")}><button className="button-danger w-full"><XCircle size={16}/>Cancel appointment</button></form>}
         </div></section>}
-        {finalized && <section className="panel p-5"><div className="mb-4"><h2 className="font-medium text-white">Add visit photos</h2><p className="mt-1 text-xs leading-5 text-slate-500">Optional. You can return and add more at any time.</p></div><AppointmentPhotoUploadForm action={addAppointmentPhotos.bind(null, id)}/></section>}
+        {finalized && <AppointmentPayments appointmentId={id} currency={item.currency} finalPrice={Number(item.finalPrice || 0)} methods={paymentMethods} payments={item.payments} reconciliationRequired={item.paymentReconciliationRequired}/>}
+        {finalized && <section className="panel p-5"><div className="mb-4"><h2 className="font-medium text-white">Add visit photos</h2></div><AppointmentPhotoUploadForm action={addAppointmentPhotos.bind(null, id)}/></section>}
         <section className="panel p-5"><div className="flex items-center gap-2"><Clock3 className="text-slate-500" size={16}/><h2 className="font-medium">Calendar source</h2></div><p className="mt-3 text-sm leading-6 text-slate-500">{historical ? "Manually added from a calendar file or JSON batch." : item.calendarEventId ? "Connected to Google Calendar." : item.calendarSyncError || "Managed in Manisa. Calendar synchronization can be connected later."}</p></section>
         <ConfirmActionForm action={moveToTrash.bind(null, "appointment", id)} className="icon-button border-rose-400/20 text-rose-300" message={`Move this ${item.serviceNameSnapshot} appointment to Trash? Its visit photos will move with it. Everything will be permanently deleted after seven days unless restored.`} title="Move appointment to Trash"><Trash2 size={16}/><span className="sr-only">Move appointment to Trash</span></ConfirmActionForm>
       </aside>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paymentStatusFor } from "@/lib/payments";
+import { paymentStatusFor } from "./payments";
 
 describe("paymentStatusFor", () => {
   it("derives unpaid, partial, and paid states", () => {

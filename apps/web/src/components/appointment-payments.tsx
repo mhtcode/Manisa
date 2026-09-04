@@ -1,0 +1,18 @@
+import { Banknote, Ban, Plus, Save } from "lucide-react";
+import { formatMoney } from "@/lib/format";
+import { addAppointmentPayment, updateAppointmentPayment, voidAppointmentPayment } from "@/server/actions/finance";
+
+type Method = { id: string; name: string };
+type Payment = { id: string; paymentMethodId: string | null; methodNameSnapshot: string; amount: unknown; paidAt: Date; voidedAt: Date | null; voidReason: string | null };
+
+export function AppointmentPayments({ appointmentId, currency, finalPrice, methods, payments, reconciliationRequired }: { appointmentId: string; currency: string; finalPrice: number; methods: Method[]; payments: Payment[]; reconciliationRequired: boolean }) {
+  const active = payments.filter((item) => !item.voidedAt);
+  const paid = active.reduce((sum, item) => sum + Number(item.amount), 0);
+  const remaining = Math.max(0, finalPrice - paid);
+  return <section className="panel p-5" id="payments">
+    <div className="flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 font-medium"><Banknote className="text-blue-300" size={17}/>Payments</h2><span className="text-sm font-semibold text-white">{formatMoney(paid, currency)} / {formatMoney(finalPrice, currency)}</span></div>
+    {reconciliationRequired && <p className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-3 text-xs text-amber-200">Legacy partial payment needs review. Add the known payments to reconcile it.</p>}
+    <div className="mt-4 space-y-3">{payments.map((payment) => <article className={`rounded-xl border border-white/8 p-3 ${payment.voidedAt ? "opacity-45" : ""}`} key={payment.id}>{payment.voidedAt ? <div><p className="text-sm line-through">{payment.methodNameSnapshot} · {formatMoney(Number(payment.amount), currency)}</p><p className="mt-1 text-xs text-slate-500">Voided: {payment.voidReason}</p></div> : <><form action={updateAppointmentPayment.bind(null, payment.id)} className="grid grid-cols-[minmax(0,1fr)_minmax(0,.7fr)_auto] gap-2"><select className="field" name="paymentMethodId" defaultValue={payment.paymentMethodId || ""}>{!payment.paymentMethodId && <option value="">{payment.methodNameSnapshot}</option>}{methods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select><input aria-label="Payment amount" className="field" name="amount" defaultValue={String(payment.amount)} inputMode="decimal"/><button aria-label="Save payment" className="icon-button" title="Save payment"><Save size={15}/></button></form><form action={voidAppointmentPayment.bind(null, payment.id)} className="mt-2 flex gap-2"><input aria-label="Void reason" className="field" name="voidReason" placeholder="Reason for voiding" required/><button aria-label="Void payment" className="icon-button border-rose-400/20 text-rose-300" title="Void payment"><Ban size={15}/></button></form></>}</article>)}</div>
+    {remaining > 0 && <form action={addAppointmentPayment.bind(null, appointmentId)} className="mt-4 grid gap-2 sm:grid-cols-[1fr_.7fr_1fr_auto]"><select className="field" name="paymentMethodId" required><option value="">Payment method</option>{methods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select><input aria-label="Amount" className="field" inputMode="decimal" max={remaining.toFixed(2)} name="amount" placeholder={remaining.toFixed(2)} required/><input aria-label="Payment note" className="field" name="note" placeholder="Note (optional)"/><button aria-label="Add payment" className="icon-button" title="Add payment"><Plus size={16}/></button></form>}
+  </section>;
+}

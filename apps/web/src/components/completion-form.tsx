@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { AlertTriangle, BadgeCheck, Check } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Check, Plus, Trash2 } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
@@ -20,13 +20,13 @@ type ScheduledLine = { serviceId: string; duration: number; price: string; selec
 type LineValue = { duration: number; price: string; color: string };
 type ActionResult = { error: string } | null;
 
-export function CompletionForm({ action, appointmentId, paymentStatus, completionNotes, services, scheduledLines }: {
+export function CompletionForm({ action, appointmentId, completionNotes, services, scheduledLines, paymentMethods }: {
   action: (data: FormData) => void | Promise<void | { error: string }>;
   appointmentId: string;
-  paymentStatus: string;
   completionNotes: string | null;
   services: ServiceOption[];
   scheduledLines: ScheduledLine[];
+  paymentMethods: Array<{ id: string; name: string }>;
 }) {
   const scheduledIds = scheduledLines.map((line) => line.serviceId);
   const [serviceIds, setServiceIds] = useState(scheduledIds);
@@ -35,12 +35,14 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
     return [service.id, { duration: 0, price: "", color: scheduled?.selectedColor || "#D36B85" }];
   })));
   const [actionState, formAction, isSubmitting] = useActionState<ActionResult, FormData>(async (_previous, formData) => (await action(formData)) ?? null, null);
+  const [payments, setPayments] = useState<Array<{ key: number; methodId: string; amount: string }>>([]);
   const groups = Array.from(new Map(services.map((service) => [service.category.id, service.category])).values());
   const selectedServices = services.filter((service) => serviceIds.includes(service.id));
   const totals = useMemo(() => selectedServices.reduce((result, service) => ({
     duration: result.duration + (lines[service.id]?.duration || 0),
     price: result.price + Number(lines[service.id]?.price || 0),
   }), { duration: 0, price: 0 }), [lines, selectedServices]);
+  const paidTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
   function toggleService(service: ServiceOption) {
     setServiceIds((ids) => ids.includes(service.id) ? ids.filter((id) => id !== service.id) : [...ids, service.id]);
@@ -94,7 +96,7 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
-        <div><label className="label" htmlFor="paymentStatus">Payment status</label><select className="field" id="paymentStatus" name="paymentStatus" defaultValue={paymentStatus}><option value="UNPAID">Unpaid</option><option value="PAID">Paid</option><option value="PARTIALLY_PAID">Partially paid</option></select></div>
+        <div className="sm:col-span-2"><div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-semibold text-white">Payments</h3><button className="icon-button size-9" disabled={!paymentMethods.length} onClick={() => setPayments((items) => [...items, { key: Date.now(), methodId: paymentMethods[0]?.id || "", amount: "" }])} title="Add payment" type="button"><Plus size={16}/><span className="sr-only">Add payment</span></button></div><div className="space-y-2">{payments.map((payment) => <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,.7fr)_auto] gap-2" key={payment.key}><select className="field" name="paymentMethodId" onChange={(event) => setPayments((items) => items.map((item) => item.key === payment.key ? { ...item, methodId: event.target.value } : item))} value={payment.methodId}>{paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.name}</option>)}</select><input aria-label="Payment amount" className="field" inputMode="decimal" name="paymentAmount" onChange={(event) => setPayments((items) => items.map((item) => item.key === payment.key ? { ...item, amount: event.target.value } : item))} placeholder="0.00" value={payment.amount}/><button aria-label="Remove payment" className="icon-button border-rose-400/20 text-rose-300" onClick={() => setPayments((items) => items.filter((item) => item.key !== payment.key))} title="Remove payment" type="button"><Trash2 size={15}/></button></div>)}</div><p className={`mt-2 text-xs ${paidTotal > totals.price ? "text-rose-300" : "text-slate-500"}`}>{paidTotal === 0 ? "Unpaid" : paidTotal < totals.price ? `Partially paid · ${paidTotal.toFixed(2)}` : paidTotal === totals.price ? "Paid in full" : "Payments exceed the final price"}</p></div>
         <div className="grid grid-cols-2 gap-4 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] px-4 py-3"><div><p className="text-[10px] uppercase tracking-wider text-emerald-200/55">Total time</p><p className="mt-1 font-semibold text-emerald-100">{totals.duration} min</p></div><div><p className="text-[10px] uppercase tracking-wider text-emerald-200/55">Total income</p><p className="mt-1 font-semibold text-emerald-100">{new Intl.NumberFormat("en-CA", { style: "currency", currency: selectedServices[0]?.currency || "CAD" }).format(totals.price)}</p></div></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="completionNotes">Completion notes</label><textarea className="field min-h-28" id="completionNotes" name="completionNotes" defaultValue={completionNotes || ""}/></div>
       </div>
@@ -102,7 +104,7 @@ export function CompletionForm({ action, appointmentId, paymentStatus, completio
       <div className="mt-5"><PhotoUploadField disabled={isSubmitting}/></div>
 
       {actionState?.error && <div className="mt-5 flex items-start gap-2 rounded-xl border border-rose-400/25 bg-rose-400/8 p-3 text-sm text-rose-200" role="alert"><AlertTriangle className="mt-0.5 shrink-0" size={16}/>{actionState.error}</div>}
-      <div className="mt-7 flex flex-wrap justify-end gap-3"><Link className="button-secondary" href={`/appointments/${appointmentId}`}>Cancel</Link><button className="button" disabled={!selectedServices.length || isSubmitting}><BadgeCheck size={17}/>{isSubmitting ? "Finalizing…" : "Finalize appointment"}</button></div>
+      <div className="mt-7 flex flex-wrap justify-end gap-3"><Link className="button-secondary" href={`/appointments/${appointmentId}`}>Cancel</Link><button className="button" disabled={!selectedServices.length || isSubmitting || paidTotal > totals.price}><BadgeCheck size={17}/>{isSubmitting ? "Finalizing…" : "Finalize appointment"}</button></div>
     </form>
   );
 }
