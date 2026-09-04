@@ -31,7 +31,6 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     prisma.appointment.count({ where: { deletedAt: null } }),
   ]);
   const stageTitle = stage === "scheduled" ? "Scheduled estimates" : stage === "confirmed" ? "Confirmed appointments" : stage === "finalized" ? "Finalized visit records" : stage === "historical" ? "Manually added · Unreported" : stage === "exceptions" ? "Cancelled and no-show" : "All appointments";
-  const stageDescription = stage === "scheduled" ? "New bookings waiting for customer confirmation." : stage === "confirmed" ? "Committed visits waiting to happen and be finalized." : stage === "finalized" ? "Actual services, income, and duration used in business reporting." : stage === "historical" ? "Imported or manually added records that never change income or working-hour totals." : stage === "exceptions" ? "Appointments that did not proceed to finalization." : "Every appointment stage in one view.";
 
   return <>
     <PageHeading backHref={params.from === "settings" ? "/settings" : undefined} title="Appointments" description="A clear path from estimated booking to confirmed visit and final business record." actions={<><ViewModeToggle initialMode={view} page="appointments"/><Link className="button" href="/appointments/new"><CalendarPlus size={17}/>New appointment</Link></>}/>
@@ -42,7 +41,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     </div>
     <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1" data-horizontal-scroll><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "historical" ? "border-violet-300/30 bg-violet-300/8 text-violet-200" : ""}`} href="/appointments?stage=historical"><History size={15}/>Manually added · {historicalCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "exceptions" ? "border-rose-300/30 bg-rose-300/8 text-rose-200" : ""}`} href="/appointments?stage=exceptions"><TriangleAlert size={15}/>Exceptions · {exceptionCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "all" ? "border-blue-300/30 bg-blue-300/8 text-blue-200" : ""}`} href="/appointments?stage=all"><Layers3 size={15}/>All · {allCount}</Link></div>
     <section className="panel overflow-hidden">
-      <div className="panel-header"><div><h2 className="font-medium text-white">{stageTitle}</h2><p className="mt-1 text-xs text-slate-500">{stageDescription}</p></div><span className="text-xs text-slate-600">{appointments.length} shown</span></div>
+      <div className="panel-header"><h2 className="font-medium text-white">{stageTitle}</h2><span className="text-xs text-slate-600">{appointments.length} shown</span></div>
       {appointments.length ? <div className={view === "grid" ? "grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3" : "divide-y divide-white/8"}>{appointments.map((item) => {
         const isFinalized = item.status === "COMPLETED";
         const isHistorical = item.status === "HISTORICAL";

@@ -5,8 +5,7 @@ html[data-theme="light"] { color-scheme: light; filter: invert(.9) hue-rotate(18
 html[data-theme="light"] img, html[data-theme="light"] video { filter: invert(1) hue-rotate(180deg); }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
-body { margin: 0; background: var(--background); color: var(--foreground); font-family: Inter, Tahoma, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
-[dir="rtl"] body, :lang(fa) { font-family: "Vazirmatn Variable", Vazirmatn, Tahoma, ui-sans-serif, sans-serif; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: "Vazirmatn Variable", Vazirmatn, Tahoma, ui-sans-serif, sans-serif; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; touch-action: manipulation; }

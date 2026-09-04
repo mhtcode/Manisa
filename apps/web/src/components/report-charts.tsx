@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { CircleHelp } from "lucide-react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DismissiblePopover } from "@/components/dismissible-popover";
 import type { AppLocale } from "@/lib/i18n";
 
 type TrendPoint = { name: string; revenue: number; visits: number; hours: number };
@@ -22,8 +20,8 @@ function Switch({ value, onChange }: { value: "revenue" | "visits" | "hours"; on
   return <div className="metric-switch" data-swipe-lock>{(["revenue", "visits", "hours"] as const).map((metric) => <button aria-pressed={value === metric} className={value === metric ? "active" : ""} key={metric} onClick={() => onChange(metric)} type="button">{metric}</button>)}</div>;
 }
 
-function ChartPanel({ title, subtitle, action, children }: { title: string; subtitle: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return <section className="panel chart-panel min-w-0 overflow-hidden" data-swipe-lock><div className="panel-header"><div className="flex min-w-0 items-center gap-1.5"><h2 className="truncate text-sm font-semibold text-white">{title}</h2><DismissiblePopover ariaLabel="Help" panelClassName="fixed inset-x-3 top-[7.5rem] z-50 rounded-lg border border-blue-300/15 bg-[#101927] p-2.5 text-[11px] leading-4 text-slate-300 shadow-xl sm:absolute sm:inset-x-auto sm:start-0 sm:top-7 sm:w-56" trigger={<CircleHelp size={13}/>} triggerClassName="flex size-6 items-center justify-center text-slate-600 hover:text-blue-300">{subtitle}</DismissiblePopover></div>{action}</div><div className="p-3 sm:p-5">{children}</div></section>;
+function ChartPanel({ title, action, children }: { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return <section className="panel chart-panel min-w-0 overflow-hidden" data-swipe-lock><div className="panel-header"><h2 className="truncate text-sm font-semibold text-white">{title}</h2>{action}</div><div className="p-3 sm:p-5">{children}</div></section>;
 }
 
 export function ReportCharts({ trend, previousTrend, services, outcomes, payments, busiestDays, busiestHours, monthlyHours, queryString }: { trend: TrendPoint[]; previousTrend: TrendPoint[]; services: ServicePoint[]; outcomes: ValuePoint[]; payments: ValuePoint[]; busiestDays: ValuePoint[]; busiestHours: ValuePoint[]; monthlyHours: WorkPoint[]; queryString: string; currency: string; locale: AppLocale }) {
