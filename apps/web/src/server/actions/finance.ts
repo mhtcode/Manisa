@@ -8,7 +8,7 @@ import { paymentStatusFor } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 
 const methodSchema = z.object({ name: z.string().trim().min(1).max(80), icon: z.enum(["banknote", "credit-card", "landmark", "wallet"]), active: z.preprocess((value) => value === "on", z.boolean()) });
-const money = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/);
+const money = z.string().regex(/^\d{1,10}(\.\d{1,2})?$/).refine((value) => Number(value) > 0, "Payment amount must be positive.");
 
 function refreshFinance(appointmentId?: string) {
   revalidatePath("/report");
@@ -48,13 +48,6 @@ export async function movePaymentMethod(id: string, direction: "up" | "down") {
   revalidatePath("/settings/financial");
 }
 
-async function recalculatePaymentStatus(appointmentId: string) {
-  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, select: { finalPrice: true, payments: { where: { voidedAt: null }, select: { amount: true } } } });
-  if (!appointment?.finalPrice) throw new Error("Finalized appointment not found.");
-  const total = appointment.payments.reduce((sum, item) => sum + Number(item.amount), 0);
-  await prisma.appointment.update({ where: { id: appointmentId }, data: { paymentStatus: paymentStatusFor(Number(appointment.finalPrice), total), paymentReconciliationRequired: false } });
-}
-
 export async function addAppointmentPayment(appointmentId: string, formData: FormData) {
   const user = await requireBusinessPermission("payments.manage");
   const methodId = String(formData.get("paymentMethodId") || "");
@@ -82,16 +75,23 @@ export async function updateAppointmentPayment(paymentId: string, formData: Form
   if (!payment?.appointment.finalPrice || !method) throw new Error("Payment or method not found.");
   const otherTotal = payment.appointment.payments.filter((item) => item.id !== payment.id).reduce((sum, item) => sum + Number(item.amount), 0);
   if (otherTotal + Number(amount) > Number(payment.appointment.finalPrice) + 0.001) throw new Error("Payment exceeds the outstanding balance.");
-  await prisma.appointmentPayment.update({ where: { id: payment.id }, data: { amount, paymentMethodId: method.id, methodNameSnapshot: method.name } });
-  await recalculatePaymentStatus(payment.appointmentId);
+  await prisma.$transaction([
+    prisma.appointmentPayment.update({ where: { id: payment.id }, data: { amount, paymentMethodId: method.id, methodNameSnapshot: method.name } }),
+    prisma.appointment.update({ where: { id: payment.appointmentId }, data: { paymentStatus: paymentStatusFor(Number(payment.appointment.finalPrice), otherTotal + Number(amount)), paymentReconciliationRequired: false } }),
+  ]);
   refreshFinance(payment.appointmentId);
 }
 
 export async function voidAppointmentPayment(paymentId: string, formData: FormData) {
   const user = await requireBusinessPermission("payments.manage");
   const reason = z.string().trim().min(3).max(300).parse(formData.get("voidReason"));
-  const payment = await prisma.appointmentPayment.update({ where: { id: paymentId, businessId: user.businessId, voidedAt: null }, data: { voidedAt: new Date(), voidReason: reason } });
-  await recalculatePaymentStatus(payment.appointmentId);
+  const payment = await prisma.appointmentPayment.findFirst({ where: { id: paymentId, businessId: user.businessId, voidedAt: null }, include: { appointment: { include: { payments: { where: { voidedAt: null } } } } } });
+  if (!payment?.appointment.finalPrice) throw new Error("Payment or appointment not found.");
+  const remaining = payment.appointment.payments.filter((item) => item.id !== payment.id).reduce((sum, item) => sum + Number(item.amount), 0);
+  await prisma.$transaction([
+    prisma.appointmentPayment.update({ where: { id: payment.id }, data: { voidedAt: new Date(), voidReason: reason } }),
+    prisma.appointment.update({ where: { id: payment.appointmentId }, data: { paymentStatus: paymentStatusFor(Number(payment.appointment.finalPrice), remaining), paymentReconciliationRequired: false } }),
+  ]);
   refreshFinance(payment.appointmentId);
 }
 
