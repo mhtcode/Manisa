@@ -1,10 +1,11 @@
 import { ArrowDown, ArrowUp, Archive, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { CategoryIcon, categoryIconOptions } from "@/components/category-icon";
+import { BulkSelection, SelectableItem } from "@/components/bulk-selection";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { prisma } from "@/lib/prisma";
 import { createStudioCategory, moveStudioCategory, toggleStudioCategory, updateStudioCategory } from "@/server/actions/categories";
-import { moveToTrash } from "@/server/actions/trash";
+import { bulkMoveToTrash, moveToTrash } from "@/server/actions/trash";
 
 function CategoryFields({ category }: { category?: { name: string; description: string | null; icon: string; accentColor: string } }) {
   return <div className="grid gap-4 sm:grid-cols-2">
@@ -27,12 +28,12 @@ export default async function CategoriesSettingsPage() {
 
   return <>
     <PageHeading backHref="/settings" title="Service categories" description="Category totals include enabled services only. Empty categories can be moved to Trash."/>
-    <div className="space-y-4">
+    <BulkSelection action={bulkMoveToTrash.bind(null, "category")} allIds={categories.map((category) => category.id)}><div className="space-y-4">
       <details className="panel overflow-hidden">
         <summary className="panel-header cursor-pointer list-none"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Plus size={17}/></span><div><h2 className="font-semibold text-white">New category</h2><p className="mt-0.5 text-xs text-slate-500">Create another independent studio area</p></div></div></summary>
         <form action={createStudioCategory} className="p-5"><CategoryFields/><div className="mt-5 flex justify-end"><button className="button"><Plus size={16}/>Create category</button></div></form>
       </details>
-      {categories.map((category, index) => <details className={`panel overflow-hidden ${category.active ? "" : "opacity-70"}`} key={category.id}>
+      {categories.map((category, index) => <SelectableItem id={category.id} key={category.id}><details className={`panel overflow-hidden ${category.active ? "" : "opacity-70"}`}>
         <summary className="panel-header cursor-pointer list-none"><div className="flex min-w-0 items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${category.accentColor}1A`, color: category.accentColor }}><CategoryIcon name={category.icon}/></span><div className="min-w-0"><h2 className="truncate font-semibold text-white">{category.name}</h2><p className="mt-0.5 text-xs text-slate-500">{category._count.services} enabled {category._count.services === 1 ? "service" : "services"} · {category.active ? "active" : "archived"}</p></div></div><span className="text-xs text-blue-300">Edit</span></summary>
         <div className="p-5">
           <form action={updateStudioCategory.bind(null, category.id)}><CategoryFields category={category}/><div className="mt-5 flex justify-end"><button className="button">Save category</button></div></form>
@@ -44,7 +45,7 @@ export default async function CategoriesSettingsPage() {
           </div>
           {category.services.length > 0 && <p className="mt-3 text-xs text-slate-500">Move all {category.services.length} related {category.services.length === 1 ? "service" : "services"} to Trash before deleting this category.</p>}
         </div>
-      </details>)}
-    </div>
+      </details></SelectableItem>)}
+    </div></BulkSelection>
   </>;
 }

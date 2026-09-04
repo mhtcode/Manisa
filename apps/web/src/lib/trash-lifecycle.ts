@@ -1,7 +1,7 @@
 export const TRASH_RETENTION_DAYS = 7;
 export const TRASH_RETENTION_MS = TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
-export const trashEntityTypes = ["customer", "appointment", "photo", "service", "category"] as const;
+export const trashEntityTypes = ["customer", "appointment", "photo", "service", "category", "paymentMethod"] as const;
 export type TrashEntityType = (typeof trashEntityTypes)[number];
 
 export function trashExpiresAt(deletedAt: Date) {

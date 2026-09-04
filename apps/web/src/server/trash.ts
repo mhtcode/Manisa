@@ -5,7 +5,7 @@ import { removePreparedPhotos, type StoredPhotoPaths } from "@/lib/photo-storage
 import { prisma } from "@/lib/prisma";
 import { TRASH_RETENTION_DAYS } from "@/lib/trash-lifecycle";
 
-export type TrashPurgeResult = { appointments: number; categories: number; customers: number; photos: number; services: number };
+export type TrashPurgeResult = { appointments: number; categories: number; customers: number; photos: number; services: number; paymentMethods: number };
 
 export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeResult> {
   const cutoff = subDays(now, TRASH_RETENTION_DAYS);
@@ -29,7 +29,8 @@ export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeRes
     const customers = await transaction.customer.deleteMany({ where: { deletedAt: { lte: cutoff }, appointments: { none: {} } } });
     const services = await transaction.service.deleteMany({ where: { deletedAt: { lte: cutoff } } });
     const categories = await transaction.studioCategory.deleteMany({ where: { deletedAt: { lte: cutoff }, services: { none: {} } } });
-    return { appointments, categories: categories.count, customers: customers.count, photos, services: services.count };
+    const paymentMethods = await transaction.paymentMethod.deleteMany({ where: { deletedAt: { lte: cutoff } } });
+    return { appointments, categories: categories.count, customers: customers.count, photos, services: services.count, paymentMethods: paymentMethods.count };
   }, { timeout: 60_000 });
 
   await removePreparedPhotos(removedPhotoFiles);

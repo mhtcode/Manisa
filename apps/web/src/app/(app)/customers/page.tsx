@@ -13,7 +13,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const view = collectionView(user.settings?.collectionViews, "customers", "list");
   const now = new Date();
   const [customers, deliveredAppointments, actualServiceLines, historicalServiceLines] = await Promise.all([
-    prisma.customer.findMany({ where: { active: true, deletedAt: null }, include: { _count: { select: { appointments: { where: { deletedAt: null } } } } }, orderBy: { updatedAt: "desc" }, take: 500 }),
+    prisma.customer.findMany({ where: { active: true, deletedAt: null }, include: { _count: { select: { appointments: { where: { deletedAt: null } } } } }, orderBy: { updatedAt: "desc" } }),
     prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } }, select: { customerId: true, startAt: true }, orderBy: { startAt: "desc" } }),
     prisma.appointmentActualService.findMany({ where: { appointment: { deletedAt: null, status: "COMPLETED", startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true } } } }),
     prisma.appointmentService.findMany({ where: { appointment: { deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true, status: true } } } }),
