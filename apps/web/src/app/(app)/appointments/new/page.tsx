@@ -3,14 +3,16 @@ import { formatInTimeZone } from "date-fns-tz";
 import { AppointmentForm } from "@/components/appointment-form";
 import { PageHeading } from "@/components/page-heading";
 import { customerName } from "@/lib/format";
+import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createAppointment } from "@/server/actions/appointments";
 
 export default async function NewAppointmentPage({ searchParams }: { searchParams: Promise<{ customerId?: string; date?: string; time?: string }> }) {
+  const user = await requireBusinessPermission("appointments.manage");
   const [{ customerId, date, time }, customers, services] = await Promise.all([
     searchParams,
-    prisma.customer.findMany({ where: { active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
-    prisma.service.findMany({ where: { active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
+    prisma.customer.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
+    prisma.service.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
   ]);
   const nextHour = addHours(new Date(), 1);
   const nextBusinessHour = Number(formatInTimeZone(nextHour, "America/Toronto", "H"));

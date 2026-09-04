@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound, WalletCards } from "lucide-react";
+import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +26,7 @@ const groups = [
       ["/settings/calendar-import", "Calendar import", "Bring earlier calendar or JSON appointments into Manisa", CalendarSync],
       ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
       ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
+      ["/settings/members", "Members", "Invite and manage this business team", UserCog],
       ["/settings/trash", "Trash", "Restore deleted items for seven days or erase them now", Trash2],
     ],
   },
@@ -35,7 +36,7 @@ const contextualDestinations = new Set(["/appointments", "/customers", "/service
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const categoryCount = await prisma.studioCategory.count({ where: { active: true, deletedAt: null } });
+  const categoryCount = await prisma.studioCategory.count({ where: { businessId: user.businessId, active: true, deletedAt: null } });
   return <>
     <PageHeading title="Settings"/>
     <section className="mb-5 overflow-hidden rounded-[1.35rem] border border-blue-400/15 bg-gradient-to-br from-[#13223e] to-[#0c1423] p-5 shadow-[0_18px_50px_rgba(0,0,0,.25)] sm:p-6">

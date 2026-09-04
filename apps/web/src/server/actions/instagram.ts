@@ -10,7 +10,7 @@ import { syncInstagramConnection } from "@/server/instagram";
 
 export async function refreshInstagram() {
   const user = await requireUser();
-  const connection = await prisma.instagramConnection.findUnique({ where: { userId: user.id }, select: { id: true } });
+  const connection = await prisma.instagramConnection.findUnique({ where: { businessId: user.businessId }, select: { id: true } });
   if (!connection) redirect("/settings/instagram?error=not-connected");
   try { await syncInstagramConnection(connection.id); }
   catch { redirect("/settings/instagram?error=refresh"); }
@@ -21,7 +21,7 @@ export async function refreshInstagram() {
 
 export async function disconnectInstagram() {
   const user = await requireUser();
-  const connection = await prisma.instagramConnection.findUnique({ where: { userId: user.id }, include: { posts: { select: { cachedImagePath: true } } } });
+  const connection = await prisma.instagramConnection.findUnique({ where: { businessId: user.businessId }, include: { posts: { select: { cachedImagePath: true } } } });
   if (!connection) redirect("/settings/instagram");
   await prisma.instagramConnection.delete({ where: { id: connection.id } });
   await Promise.all(connection.posts.map((post) => unlink(absoluteUploadPath(post.cachedImagePath)).catch(() => undefined)));

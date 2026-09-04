@@ -19,12 +19,12 @@ function name(customer: { firstName: string; lastName: string | null; displayNam
   return customer.displayName || [customer.firstName, customer.lastName].filter(Boolean).join(" ");
 }
 
-export async function getActionNotifications(userId: string, now = new Date()): Promise<ActionNotification[]> {
+export async function getActionNotifications(userId: string, businessId: string, now = new Date()): Promise<ActionNotification[]> {
   const recent = subDays(now, 45);
   const soon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const appointments = await prisma.appointment.findMany({
     where: {
-      deletedAt: null,
+      businessId, deletedAt: null,
       OR: [
         { status: { in: ["SCHEDULED", "CONFIRMED"] }, startAt: { gte: recent, lte: soon } },
         { status: "COMPLETED", paymentStatus: { not: "PAID" }, startAt: { gte: recent, lte: now } },
@@ -48,7 +48,7 @@ export async function getActionNotifications(userId: string, now = new Date()): 
   }).slice(0, 16);
 
   const receipts = candidates.length ? await prisma.notificationReceipt.findMany({
-    where: { userId, key: { in: candidates.map((item) => item.key) } },
+    where: { userId, businessId, key: { in: candidates.map((item) => item.key) } },
     select: { key: true },
   }) : [];
   const readKeys = new Set(receipts.map((receipt) => receipt.key));

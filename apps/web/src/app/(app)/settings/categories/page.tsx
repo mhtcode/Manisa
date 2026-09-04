@@ -1,11 +1,11 @@
-import { ArrowDown, ArrowUp, Archive, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Archive, Plus, RotateCcw } from "lucide-react";
 import { CategoryIcon, categoryIconOptions } from "@/components/category-icon";
 import { BulkSelection, SelectableItem } from "@/components/bulk-selection";
-import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { prisma } from "@/lib/prisma";
+import { requireBusinessPermission } from "@/lib/auth";
 import { createStudioCategory, moveStudioCategory, toggleStudioCategory, updateStudioCategory } from "@/server/actions/categories";
-import { bulkMoveToTrash, moveToTrash } from "@/server/actions/trash";
+import { bulkMoveToTrash } from "@/server/actions/trash";
 
 function CategoryFields({ category }: { category?: { name: string; description: string | null; icon: string; accentColor: string } }) {
   return <div className="grid gap-4 sm:grid-cols-2">
@@ -17,8 +17,9 @@ function CategoryFields({ category }: { category?: { name: string; description: 
 }
 
 export default async function CategoriesSettingsPage() {
+  const user = await requireBusinessPermission("services.manage");
   const categories = await prisma.studioCategory.findMany({
-    where: { deletedAt: null },
+    where: { businessId: user.businessId, deletedAt: null },
     include: {
       services: { where: { deletedAt: null }, select: { id: true } },
       _count: { select: { services: { where: { active: true, deletedAt: null } } } },
@@ -41,7 +42,6 @@ export default async function CategoriesSettingsPage() {
             <form action={moveStudioCategory.bind(null, category.id, "up")}><button aria-label={`Move ${category.name} up`} className="button-secondary" disabled={index === 0}><ArrowUp size={15}/>Move up</button></form>
             <form action={moveStudioCategory.bind(null, category.id, "down")}><button aria-label={`Move ${category.name} down`} className="button-secondary" disabled={index === categories.length - 1}><ArrowDown size={15}/>Move down</button></form>
             <form action={toggleStudioCategory.bind(null, category.id, !category.active)}><button className="button-secondary">{category.active ? <Archive size={15}/> : <RotateCcw size={15}/>} {category.active ? "Disable" : "Enable"}</button></form>
-            {!category.services.length && <ConfirmActionForm action={moveToTrash.bind(null, "category", category.id)} className="icon-button border-rose-400/20 text-rose-300" message={`Move ${category.name} to Trash? It will be permanently deleted after seven days unless restored.`} title="Move category to Trash"><Trash2 size={15}/><span className="sr-only">Move category to Trash</span></ConfirmActionForm>}
           </div>
           {category.services.length > 0 && <p className="mt-3 text-xs text-slate-500">Move all {category.services.length} related {category.services.length === 1 ? "service" : "services"} to Trash before deleting this category.</p>}
         </div>

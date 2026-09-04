@@ -5,7 +5,7 @@ import { PageHeading } from "@/components/page-heading";
 import { BulkSelection, SelectableLink } from "@/components/bulk-selection";
 import { StatusBadge } from "@/components/status-badge";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission } from "@/lib/auth";
 import { customerName, formatMoney } from "@/lib/format";
 import { collectionView } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
@@ -16,22 +16,22 @@ const stages = ["scheduled", "confirmed", "finalized", "historical", "exceptions
 type Stage = typeof stages[number];
 
 export default async function AppointmentsPage({ searchParams }: { searchParams: Promise<{ stage?: string; status?: string; from?: string }> }) {
-  const [params, user] = await Promise.all([searchParams, requireUser()]);
+  const [params, user] = await Promise.all([searchParams, requireBusinessPermission("appointments.view")]);
   const view = collectionView(user.settings?.collectionViews, "appointments", "list");
   const legacyStage = params.status === "COMPLETED" ? "finalized" : params.status === "CONFIRMED" ? "confirmed" : params.status === "CANCELLED" || params.status === "NO_SHOW" ? "exceptions" : params.status ? "scheduled" : undefined;
   const requested = params.stage || legacyStage || "scheduled";
   const stage: Stage = stages.includes(requested as Stage) ? requested as Stage : "scheduled";
   const stageWhere: Prisma.AppointmentWhereInput = stage === "scheduled" ? { status: "SCHEDULED" } : stage === "confirmed" ? { status: "CONFIRMED" } : stage === "finalized" ? { status: "COMPLETED" } : stage === "historical" ? { status: "HISTORICAL" } : stage === "exceptions" ? { status: { in: ["CANCELLED", "NO_SHOW"] } } : {};
-  const where: Prisma.AppointmentWhereInput = { deletedAt: null, ...stageWhere };
+  const where: Prisma.AppointmentWhereInput = { businessId: user.businessId, deletedAt: null, ...stageWhere };
   const [appointments, allMatchingIds, scheduledCount, confirmedCount, finalizedCount, historicalCount, exceptionCount, allCount] = await Promise.all([
     prisma.appointment.findMany({ where, include: { customer: true }, orderBy: { startAt: stage === "scheduled" || stage === "confirmed" ? "asc" : "desc" }, take: 150 }),
     prisma.appointment.findMany({ where, select: { id: true } }),
-    prisma.appointment.count({ where: { deletedAt: null, status: "SCHEDULED" } }),
-    prisma.appointment.count({ where: { deletedAt: null, status: "CONFIRMED" } }),
-    prisma.appointment.count({ where: { deletedAt: null, status: "COMPLETED" } }),
-    prisma.appointment.count({ where: { deletedAt: null, status: "HISTORICAL" } }),
-    prisma.appointment.count({ where: { deletedAt: null, status: { in: ["CANCELLED", "NO_SHOW"] } } }),
-    prisma.appointment.count({ where: { deletedAt: null } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null, status: "SCHEDULED" } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null, status: "CONFIRMED" } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null, status: "COMPLETED" } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null, status: "HISTORICAL" } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null, status: { in: ["CANCELLED", "NO_SHOW"] } } }),
+    prisma.appointment.count({ where: { businessId: user.businessId, deletedAt: null } }),
   ]);
   const stageTitle = stage === "scheduled" ? "Scheduled estimates" : stage === "confirmed" ? "Confirmed appointments" : stage === "finalized" ? "Finalized visit records" : stage === "historical" ? "Manually added · Unreported" : stage === "exceptions" ? "Cancelled and no-show" : "All appointments";
 

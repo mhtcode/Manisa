@@ -73,7 +73,7 @@ async function performInstagramSync(connectionId: string) {
     mediaUrl.searchParams.set("access_token", token);
     const response = await jsonResponse<{ data?: InstagramMedia[] }>(await fetch(mediaUrl, { cache: "no-store", signal: AbortSignal.timeout(20_000) }), "Instagram media refresh");
     const media = (response.data || []).filter((item) => item.id && item.permalink && !Number.isNaN(new Date(item.timestamp).getTime()));
-    const existing = new Map((await prisma.instagramPost.findMany({ where: { remoteMediaId: { in: media.map((item) => item.id) } }, select: { remoteMediaId: true, cachedImagePath: true } })).map((post) => [post.remoteMediaId, post.cachedImagePath]));
+    const existing = new Map((await prisma.instagramPost.findMany({ where: { businessId: connection.businessId, remoteMediaId: { in: media.map((item) => item.id) } }, select: { remoteMediaId: true, cachedImagePath: true } })).map((post) => [post.remoteMediaId, post.cachedImagePath]));
     const cached: Array<{ item: InstagramMedia; cachedImagePath: string }> = [];
     for (const item of media) {
       const cover = instagramCoverUrl(item);
@@ -92,8 +92,8 @@ async function performInstagramSync(connectionId: string) {
       await transaction.instagramPost.updateMany({ where: { connectionId, ...(remoteIds.length ? { remoteMediaId: { notIn: remoteIds } } : {}) }, data: { active: false } });
       for (const { item, cachedImagePath } of cached) {
         await transaction.instagramPost.upsert({
-          where: { remoteMediaId: item.id },
-          create: { connectionId, remoteMediaId: item.id, caption: item.caption?.slice(0, 2_200), mediaType: item.media_type, permalink: item.permalink, publishedAt: new Date(item.timestamp), cachedImagePath, syncedAt },
+          where: { businessId_remoteMediaId: { businessId: connection.businessId, remoteMediaId: item.id } },
+          create: { businessId: connection.businessId, connectionId, remoteMediaId: item.id, caption: item.caption?.slice(0, 2_200), mediaType: item.media_type, permalink: item.permalink, publishedAt: new Date(item.timestamp), cachedImagePath, syncedAt },
           update: { connectionId, caption: item.caption?.slice(0, 2_200), mediaType: item.media_type, permalink: item.permalink, publishedAt: new Date(item.timestamp), cachedImagePath, active: true, syncedAt },
         });
       }

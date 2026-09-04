@@ -1,7 +1,7 @@
 import { addDays, addYears, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { CalendarBoard, type CalendarView } from "@/components/calendar-board";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { intlLocale } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +14,7 @@ function validDateKey(value?: string) {
 
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; view?: string }> }) {
   const { date, view } = await searchParams;
-  const user = await requireUser();
+  const user = await requireBusinessPermission("appointments.view");
   const timeZone = user.settings?.timezone || "America/Toronto";
   const locale = user.settings?.locale || "en";
   const todayKey = formatInTimeZone(new Date(), timeZone, "yyyy-MM-dd");
@@ -30,7 +30,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "month";
 
   const appointments = await prisma.appointment.findMany({
-    where: { deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
+    where: { businessId: user.businessId, deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
     include: { customer: true },
     orderBy: { startAt: "asc" },
   });

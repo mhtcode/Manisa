@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, ExternalLink, Instagram, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission } from "@/lib/auth";
 import { getServerEnv, instagramConfigured } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { disconnectInstagram, refreshInstagram } from "@/server/actions/instagram";
@@ -21,9 +21,9 @@ const errors: Record<string, string> = {
 };
 
 export default async function InstagramSettingsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
-  const [query, user] = await Promise.all([searchParams, requireUser()]);
+  const [query, user] = await Promise.all([searchParams, requireBusinessPermission("integrations.manage")]);
   const [connection, env] = await Promise.all([
-    prisma.instagramConnection.findUnique({ where: { userId: user.id }, include: { _count: { select: { posts: { where: { active: true } } } } } }),
+    prisma.instagramConnection.findUnique({ where: { businessId: user.businessId }, include: { _count: { select: { posts: { where: { active: true } } } } } }),
     Promise.resolve(getServerEnv()),
   ]);
   const configured = instagramConfigured();

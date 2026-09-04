@@ -14,7 +14,7 @@ export type ReportQuery = { preset?: string; from?: string; to?: string; service
 
 function validDate(value?: string) { return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value)); }
 
-async function reportRange(query: ReportQuery, timezone: string) {
+async function reportRange(businessId: string, query: ReportQuery, timezone: string) {
   const preset = validPresets.includes(query.preset as (typeof validPresets)[number]) ? query.preset as (typeof validPresets)[number] : "90";
   const today = formatInTimeZone(new Date(), timezone, "yyyy-MM-dd");
   let end = fromZonedTime(`${validDate(query.to) && preset === "custom" ? query.to : today}T23:59:59.999`, timezone);
@@ -22,7 +22,7 @@ async function reportRange(query: ReportQuery, timezone: string) {
   if (preset === "custom" && validDate(query.from)) start = fromZonedTime(`${query.from}T00:00:00`, timezone);
   else if (preset === "ytd") start = fromZonedTime(`${formatInTimeZone(new Date(), timezone, "yyyy")}-01-01T00:00:00`, timezone);
   else if (preset === "all") {
-    const earliest = await prisma.appointment.findFirst({ where: { deletedAt: null }, orderBy: { startAt: "asc" }, select: { startAt: true } });
+    const earliest = await prisma.appointment.findFirst({ where: { businessId, deletedAt: null }, orderBy: { startAt: "asc" }, select: { startAt: true } });
     start = earliest?.startAt || fromZonedTime(`${today}T00:00:00`, timezone);
   } else {
     const days = ["7", "30", "90"].includes(preset) ? Number(preset) : 90;
@@ -33,11 +33,11 @@ async function reportRange(query: ReportQuery, timezone: string) {
   return { preset, start, end, previousStart: new Date(start.getTime() - milliseconds), previousEnd: new Date(start.getTime() - 1), days: Math.max(1, Math.round(milliseconds / 86_400_000)) };
 }
 
-function filteredWhere(start: Date, end: Date, query: ReportQuery): Prisma.AppointmentWhereInput {
+function filteredWhere(businessId: string, start: Date, end: Date, query: ReportQuery): Prisma.AppointmentWhereInput {
   const status = validStatuses.includes(query.status as AppointmentStatus) ? query.status as AppointmentStatus : undefined;
   const paymentStatus = validPayments.includes(query.paymentStatus as PaymentStatus) ? query.paymentStatus as PaymentStatus : undefined;
   return {
-    deletedAt: null,
+    businessId, deletedAt: null,
     startAt: { gte: start, lte: end },
     ...(status ? { status } : {}),
     ...(paymentStatus ? { paymentStatus } : {}),
@@ -102,29 +102,29 @@ function summarize(appointments: ReportAppointment[], newCustomers: number, retu
   };
 }
 
-export async function getReportData(query: ReportQuery, timezone: string, locale: AppLocale = "en") {
-  const range = await reportRange(query, timezone);
+export async function getReportData(businessId: string, query: ReportQuery, timezone: string, locale: AppLocale = "en") {
+  const range = await reportRange(businessId, query, timezone);
   const now = new Date();
   const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
   const todayStart = fromZonedTime(`${today}T00:00:00`, timezone);
   const todayEnd = fromZonedTime(`${today}T23:59:59.999`, timezone);
   const include = { customer: true, serviceLines: { orderBy: { position: "asc" as const } }, actualServiceLines: { orderBy: { position: "asc" as const } }, payments: true };
-  const currentWhere = filteredWhere(range.start, range.end, query);
-  const previousWhere = filteredWhere(range.previousStart, range.previousEnd, query);
+  const currentWhere = filteredWhere(businessId, range.start, range.end, query);
+  const previousWhere = filteredWhere(businessId, range.previousStart, range.previousEnd, query);
   const [current, previous, services, todayAppointments, upcoming, currentNewCustomers, previousNewCustomers] = await Promise.all([
     prisma.appointment.findMany({ where: currentWhere, include, orderBy: { startAt: "desc" } }),
     prisma.appointment.findMany({ where: previousWhere, include, orderBy: { startAt: "desc" } }),
-    prisma.service.findMany({ where: { active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
-    prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: todayStart, lte: todayEnd }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } }, include: { customer: true }, orderBy: { startAt: "asc" } }),
-    prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, include: { customer: true }, orderBy: { startAt: "asc" }, take: 5 }),
-    prisma.customer.count({ where: { deletedAt: null, createdAt: { gte: range.start, lte: range.end } } }),
-    prisma.customer.count({ where: { deletedAt: null, createdAt: { gte: range.previousStart, lte: range.previousEnd } } }),
+    prisma.service.findMany({ where: { businessId, active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
+    prisma.appointment.findMany({ where: { businessId, deletedAt: null, startAt: { gte: todayStart, lte: todayEnd }, status: { in: ["SCHEDULED", "CONFIRMED", "COMPLETED"] } }, include: { customer: true }, orderBy: { startAt: "asc" } }),
+    prisma.appointment.findMany({ where: { businessId, deletedAt: null, startAt: { gte: now }, status: { in: ["SCHEDULED", "CONFIRMED"] } }, include: { customer: true }, orderBy: { startAt: "asc" }, take: 5 }),
+    prisma.customer.count({ where: { businessId, deletedAt: null, createdAt: { gte: range.start, lte: range.end } } }),
+    prisma.customer.count({ where: { businessId, deletedAt: null, createdAt: { gte: range.previousStart, lte: range.previousEnd } } }),
   ]);
   const currentCustomerIds = [...new Set(current.filter((item) => item.status === "COMPLETED").map((item) => item.customerId))];
   const previousCustomerIds = [...new Set(previous.filter((item) => item.status === "COMPLETED").map((item) => item.customerId))];
   const [currentReturning, previousReturning] = await Promise.all([
-    currentCustomerIds.length ? prisma.appointment.groupBy({ by: ["customerId"], where: { deletedAt: null, customerId: { in: currentCustomerIds }, status: "COMPLETED", startAt: { lt: range.start } } }) : [],
-    previousCustomerIds.length ? prisma.appointment.groupBy({ by: ["customerId"], where: { deletedAt: null, customerId: { in: previousCustomerIds }, status: "COMPLETED", startAt: { lt: range.previousStart } } }) : [],
+    currentCustomerIds.length ? prisma.appointment.groupBy({ by: ["customerId"], where: { businessId, deletedAt: null, customerId: { in: currentCustomerIds }, status: "COMPLETED", startAt: { lt: range.start } } }) : [],
+    previousCustomerIds.length ? prisma.appointment.groupBy({ by: ["customerId"], where: { businessId, deletedAt: null, customerId: { in: previousCustomerIds }, status: "COMPLETED", startAt: { lt: range.previousStart } } }) : [],
   ]);
   return {
     range,

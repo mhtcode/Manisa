@@ -2,21 +2,21 @@ import Link from "next/link";
 import { CustomerDirectory } from "@/components/customer-directory";
 import { PageHeading } from "@/components/page-heading";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { collectionView } from "@/lib/preferences";
 import { prisma } from "@/lib/prisma";
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; from?: string }> }) {
-  const [params, user] = await Promise.all([searchParams, requireUser()]);
+  const [params, user] = await Promise.all([searchParams, requireBusinessPermission("customers.view")]);
   const q = params.q?.trim() || "";
   const view = collectionView(user.settings?.collectionViews, "customers", "list");
   const now = new Date();
   const [customers, deliveredAppointments, actualServiceLines, historicalServiceLines] = await Promise.all([
-    prisma.customer.findMany({ where: { active: true, deletedAt: null }, include: { _count: { select: { appointments: { where: { deletedAt: null } } } } }, orderBy: { updatedAt: "desc" } }),
-    prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } }, select: { customerId: true, startAt: true }, orderBy: { startAt: "desc" } }),
-    prisma.appointmentActualService.findMany({ where: { appointment: { deletedAt: null, status: "COMPLETED", startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true } } } }),
-    prisma.appointmentService.findMany({ where: { appointment: { deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true, status: true } } } }),
+    prisma.customer.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, include: { _count: { select: { appointments: { where: { deletedAt: null } } } } }, orderBy: { updatedAt: "desc" } }),
+    prisma.appointment.findMany({ where: { businessId: user.businessId, deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } }, select: { customerId: true, startAt: true }, orderBy: { startAt: "desc" } }),
+    prisma.appointmentActualService.findMany({ where: { businessId: user.businessId, appointment: { deletedAt: null, status: "COMPLETED", startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true } } } }),
+    prisma.appointmentService.findMany({ where: { businessId: user.businessId, appointment: { deletedAt: null, status: { in: ["COMPLETED", "HISTORICAL"] }, startAt: { lte: now } } }, select: { serviceNameSnapshot: true, appointment: { select: { id: true, customerId: true, status: true } } } }),
   ]);
   const latestVisits = new Map<string, Date>();
   deliveredAppointments.forEach((appointment) => { if (!latestVisits.has(appointment.customerId)) latestVisits.set(appointment.customerId, appointment.startAt); });

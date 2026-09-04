@@ -8,6 +8,7 @@ import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { customerName, formatMoney } from "@/lib/format";
+import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate } from "@/lib/time";
@@ -16,8 +17,9 @@ import { moveToTrash } from "@/server/actions/trash";
 
 export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await requireBusinessPermission("appointments.view");
   const item = await prisma.appointment.findUnique({
-    where: { id, deletedAt: null },
+    where: { id, businessId: user.businessId, deletedAt: null },
     include: {
       customer: true,
       serviceLines: { orderBy: { position: "asc" } },
@@ -37,7 +39,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const canNoShow = editable && item.startAt <= now;
   const finalized = item.status === "COMPLETED";
   const historical = item.status === "HISTORICAL";
-  const paymentMethods = finalized ? await prisma.paymentMethod.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }) : [];
+  const paymentMethods = finalized ? await prisma.paymentMethod.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }) : [];
   const progressIndex = item.status === "COMPLETED" ? 2 : item.status === "CONFIRMED" ? 1 : item.status === "SCHEDULED" ? 0 : -1;
   const stages = [
     { title: "Scheduled", copy: "Estimated services, time, and price.", icon: CircleDot },

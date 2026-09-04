@@ -5,16 +5,20 @@ import { Banknote, CalendarCheck2, CalendarClock, ChartNoAxesCombined, Clock3, C
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { PageHeading } from "@/components/page-heading";
 import { StatusBadge } from "@/components/status-badge";
+import { CustomerAvatarUploader } from "@/components/customer-avatar-uploader";
 import { buildCustomerInsights } from "@/lib/customer-insights";
 import { customerName, formatMoney } from "@/lib/format";
+import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/time";
 import { moveToTrash } from "@/server/actions/trash";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const customer = await prisma.customer.findUnique({ where: { id, deletedAt: null }, include: { referrer: true, referrals: { where: { deletedAt: null }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }, appointments: { where: { deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
+  const user = await requireBusinessPermission("customers.view");
+  const customer = await prisma.customer.findUnique({ where: { id, businessId: user.businessId, deletedAt: null }, include: { referrer: true, referrals: { where: { deletedAt: null }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }, appointments: { where: { deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } }, actualServiceLines: { orderBy: { position: "asc" } } }, orderBy: { startAt: "desc" } } } });
   if (!customer) notFound();
+  const profilePhoto = await prisma.mediaAsset.findFirst({ where: { businessId: user.businessId, customerId: id, ownerType: "CUSTOMER_AVATAR", deletedAt: null, status: "READY" }, select: { id: true } });
   const now = new Date();
   const insights = buildCustomerInsights(customer.appointments.map((appointment) => ({
     actualDurationMinutes: appointment.actualDurationMinutes,
@@ -38,6 +42,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
   return <>
     <PageHeading title={customerName(customer)} description="Customer relationship report built from stored appointment, service, and payment history." actions={<><Link className="button" href={`/appointments/new?customerId=${id}`}>+ Appointment</Link><Link className="button-secondary" href={`/customers/${id}/edit`}>Edit profile</Link></>}/>
+    <CustomerAvatarUploader assetId={profilePhoto?.id} customerId={id} name={customerName(customer)}/>
     <div className="mb-5 flex flex-wrap items-center gap-2"><span className="badge border-teal-300/20 bg-teal-300/8 text-teal-200"><ChartNoAxesCombined size={13}/>Database-backed report</span>{customer.referrer && !customer.referrer.deletedAt && <span className="badge border-blue-300/20 bg-blue-300/8 text-blue-200"><GitFork size={13}/>Referred by {customerName(customer.referrer)}</span>}{insights.historicalCount > 0 && <span className="badge border-violet-300/20 bg-violet-300/8 text-violet-200"><History size={13}/>{insights.historicalCount} manually added · unreported</span>}<span className={`badge ${customer.active ? "border-emerald-300/20 bg-emerald-300/8 text-emerald-200" : "border-slate-300/15 text-slate-400"}`}>{customer.active ? "Active customer" : "Disabled customer"}</span></div>
 
     <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">{reportCards.map(({ label, value, icon: Icon }) => <article className="stat min-w-0 p-3.5 sm:p-4" key={label}><Icon className="text-teal-300/65" size={17}/><p className="mt-3 text-[11px] text-slate-500">{label}</p><p className="mt-1.5 truncate text-lg font-semibold tracking-tight text-white">{value}</p></article>)}</section>

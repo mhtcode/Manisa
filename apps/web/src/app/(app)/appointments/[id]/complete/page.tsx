@@ -4,6 +4,7 @@ import { Clock3, LockKeyhole, Sparkles } from "lucide-react";
 import { CompletionForm } from "@/components/completion-form";
 import { PageHeading } from "@/components/page-heading";
 import { formatMoney } from "@/lib/format";
+import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, canFinalizeAppointment } from "@/lib/scheduling";
 import { formatBusinessDate } from "@/lib/time";
@@ -11,10 +12,11 @@ import { completeAppointment } from "@/server/actions/appointments";
 
 export default async function CompletePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const item = await prisma.appointment.findUnique({ where: { id, deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } } } });
+  const user = await requireBusinessPermission("appointments.manage");
+  const item = await prisma.appointment.findUnique({ where: { id, businessId: user.businessId, deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } } } });
   if (!item) notFound();
   const currentServiceIds = item.serviceLines.flatMap((line) => line.serviceId ? [line.serviceId] : []);
-  const [services, paymentMethods] = await Promise.all([prisma.service.findMany({ where: { deletedAt: null, category: { deletedAt: null }, OR: [{ active: true, category: { active: true } }, { id: { in: currentServiceIds } }] }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }), prisma.paymentMethod.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] })]);
+  const [services, paymentMethods] = await Promise.all([prisma.service.findMany({ where: { businessId: user.businessId, deletedAt: null, category: { deletedAt: null }, OR: [{ active: true, category: { active: true } }, { id: { in: currentServiceIds } }] }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }), prisma.paymentMethod.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] })]);
   const estimatedEnd = appointmentExpectedEnd(item.startAt, item.expectedDurationMinutes);
   const blockedReason = item.status !== "CONFIRMED"
     ? "This appointment must be confirmed before it can be finalized."

@@ -7,7 +7,7 @@ import { PageHeading } from "@/components/page-heading";
 import { ReportCharts } from "@/components/report-charts";
 import { StatusBadge } from "@/components/status-badge";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission } from "@/lib/auth";
 import { customerName, formatMoney } from "@/lib/format";
 import { collectionView } from "@/lib/preferences";
 import { reportPercentChange } from "@/lib/report-metrics";
@@ -31,11 +31,11 @@ function paramsFor(query: ReportQuery, patch: Record<string, string | undefined>
 }
 
 export default async function ReportPage({ searchParams }: { searchParams: Promise<ReportQuery> }) {
-  const [query, user] = await Promise.all([searchParams, requireUser()]);
+  const [query, user] = await Promise.all([searchParams, requireBusinessPermission("reports.view")]);
   const timezone = user.settings?.timezone || "America/Toronto";
   const locale = user.settings?.locale || "en";
   const currency = user.settings?.currency || "CAD";
-  const data = await getReportData(query, timezone, locale);
+  const data = await getReportData(user.businessId, query, timezone, locale);
   const view = collectionView(user.settings?.collectionViews, "reportRecords", "list");
   const metricCards = [
     ["Revenue", formatMoney(data.current.metrics.revenue, currency, locale), data.current.metrics.revenue, data.previous.metrics.revenue, Banknote],
