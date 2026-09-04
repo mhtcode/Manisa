@@ -102,14 +102,14 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
   const password = String(formData.get("password") || "");
   if (!token || !name || password.length < 10) return { error: "Enter your name and a password of at least 10 characters." };
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  const passwordHash = await argon2.hash(password);
   try {
     const accepted = await prisma.$transaction(async (tx) => {
       const invitation = await tx.invitation.findUnique({ where: { tokenHash } });
       if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt <= new Date()) throw new Error("INVALID_INVITATION");
       let user = await tx.user.findUnique({ where: { email: invitation.email } });
-      if (user && user.passwordHash) throw new Error("ACCOUNT_EXISTS");
-      user = user ? await tx.user.update({ where: { id: user.id }, data: { name, passwordHash, active: true } }) : await tx.user.create({ data: { email: invitation.email, name, passwordHash, preferences: { create: {} } } });
+      if (user?.passwordHash && !(await argon2.verify(user.passwordHash, password))) throw new Error("INVALID_CREDENTIALS");
+      const passwordHash = user?.passwordHash || await argon2.hash(password);
+      user = user ? await tx.user.update({ where: { id: user.id }, data: { name: user.name || name, passwordHash, active: true } }) : await tx.user.create({ data: { email: invitation.email, name, passwordHash, preferences: { create: {} } } });
       const overrides = invitation.permissionOverrides && typeof invitation.permissionOverrides === "object" && !Array.isArray(invitation.permissionOverrides) ? invitation.permissionOverrides : {};
       if (invitation.kind === "BUSINESS" && invitation.businessId && invitation.businessRole) await tx.businessMembership.upsert({ where: { userId_businessId: { userId: user.id, businessId: invitation.businessId } }, update: { role: invitation.businessRole, permissionOverrides: overrides, active: true, deletedAt: null }, create: { userId: user.id, businessId: invitation.businessId, role: invitation.businessRole, permissionOverrides: overrides, preferences: { create: {} } } });
       if (invitation.kind === "PLATFORM" && invitation.platformRole) await tx.platformAccess.upsert({ where: { userId: user.id }, update: { role: invitation.platformRole, permissionOverrides: overrides, active: true, deletedAt: null }, create: { userId: user.id, role: invitation.platformRole, permissionOverrides: overrides } });
@@ -119,7 +119,7 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
     }, { isolationLevel: "Serializable" });
     await createSession(accepted.userId, accepted.businessId);
   } catch (error) {
-    if (error instanceof Error && error.message === "ACCOUNT_EXISTS") return { error: "This email already has an account. Sign in to accept access." };
+    if (error instanceof Error && error.message === "INVALID_CREDENTIALS") return { error: "This email already has an account. Enter its current password to accept the invitation." };
     return { error: "This invitation is invalid, expired, revoked, or already used." };
   }
   redirect("/report");
@@ -144,6 +144,7 @@ export async function setMembershipActive(membershipId: string, active: boolean)
   const user = await requireBusinessPermission("members.manage");
   const membership = await prisma.businessMembership.findFirst({ where: { id: membershipId, businessId: user.businessId }, include: { user: true } });
   if (!membership || membership.role === "OWNER") throw new Error("The business owner cannot be disabled.");
+  if (membership.userId === user.id) throw new Error("You cannot disable your own active membership.");
   await prisma.businessMembership.update({ where: { id: membership.id }, data: { active } });
   await prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: active ? "membership.enable" : "membership.disable", targetType: "BusinessMembership", targetId: membership.id, before: { active: membership.active }, after: { active } } });
   revalidatePath("/settings/members");

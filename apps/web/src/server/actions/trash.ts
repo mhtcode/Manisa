@@ -120,6 +120,22 @@ export async function bulkMoveToTrash(typeValue: string, formData: FormData) {
   refreshTrashViews();
 }
 
+export async function bulkMoveGalleryAlbumsToTrash(formData: FormData) {
+  const user = await requireBusinessPermission("trash.manage");
+  const raw = JSON.parse(String(formData.get("ids") || "[]"));
+  if (!Array.isArray(raw) || !raw.length || raw.length > 10_000 || raw.some((id) => typeof id !== "string")) throw new Error("Invalid selection.");
+  const appointmentIds = [...new Set(raw as string[])];
+  const deletedAt = new Date();
+  const featured = await prisma.mediaAsset.findMany({ where: { businessId: user.businessId, appointmentId: { in: appointmentIds }, deletedAt: null, featuredAt: { not: null } }, select: { id: true } });
+  await prisma.$transaction(async (tx) => {
+    const albums = await tx.appointment.findMany({ where: { businessId: user.businessId, id: { in: appointmentIds }, deletedAt: null, photos: { some: { deletedAt: null } } }, select: { id: true } });
+    if (albums.length !== appointmentIds.length) throw new Error("The album selection changed. Nothing was deleted.");
+    await tx.mediaAsset.updateMany({ where: { businessId: user.businessId, appointmentId: { in: appointmentIds }, deletedAt: null }, data: { deletedAt, featuredAt: null } });
+  });
+  await Promise.allSettled(featured.map((photo) => removeObject(`${user.businessId}/featured/${photo.id}.webp`, true)));
+  refreshTrashViews();
+}
+
 export async function restoreFromTrash(typeValue: string, id: string) {
   const user = await requireBusinessPermission("trash.manage");
   validType(typeValue);
