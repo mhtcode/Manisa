@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { createSession, requireBusinessPermission, requirePlatformPermission } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
 import { businessPermissionKeys, hasBusinessPermission } from "@/lib/permissions";
+import { passwordIsValid } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
 
 export type SetupState = { error?: string };
@@ -22,9 +23,12 @@ export async function setupPlatform(_: SetupState, formData: FormData): Promise<
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
+  const passwordConfirmation = String(formData.get("passwordConfirmation") || "");
   const businessName = String(formData.get("businessName") || "Manisa").trim();
   if (!env.PLATFORM_SETUP_TOKEN || token !== env.PLATFORM_SETUP_TOKEN) return { error: "The setup token is invalid." };
-  if (!name || !/^\S+@\S+\.\S+$/.test(email) || password.length < 10 || !businessName) return { error: "Complete every field. Passwords need at least 10 characters." };
+  if (!name || !/^\S+@\S+\.\S+$/.test(email) || !businessName) return { error: "Complete every field." };
+  if (password !== passwordConfirmation) return { error: "The passwords do not match." };
+  if (!passwordIsValid(password)) return { error: "Use at least 10 characters with uppercase, lowercase, a number, and a symbol." };
   const passwordHash = await argon2.hash(password);
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -101,7 +105,8 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
   const token = String(formData.get("token") || "");
   const name = String(formData.get("name") || "").trim();
   const password = String(formData.get("password") || "");
-  if (!token || !name || password.length < 10) return { error: "Enter your name and a password of at least 10 characters." };
+  const passwordConfirmation = String(formData.get("passwordConfirmation") || "");
+  if (!token || !name || !password) return { error: "Enter your name and password." };
   const tokenHash = createHash("sha256").update(token).digest("hex");
   try {
     const accepted = await prisma.$transaction(async (tx) => {
@@ -109,6 +114,8 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
       if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt <= new Date()) throw new Error("INVALID_INVITATION");
       let user = await tx.user.findUnique({ where: { email: invitation.email } });
       if (user?.passwordHash && !(await argon2.verify(user.passwordHash, password))) throw new Error("INVALID_CREDENTIALS");
+      if (!user?.passwordHash && password !== passwordConfirmation) throw new Error("PASSWORD_MISMATCH");
+      if (!user?.passwordHash && !passwordIsValid(password)) throw new Error("PASSWORD_POLICY");
       const passwordHash = user?.passwordHash || await argon2.hash(password);
       user = user ? await tx.user.update({ where: { id: user.id }, data: { name: user.name || name, passwordHash, active: true } }) : await tx.user.create({ data: { email: invitation.email, name, passwordHash, preferences: { create: {} } } });
       const overrides = invitation.permissionOverrides && typeof invitation.permissionOverrides === "object" && !Array.isArray(invitation.permissionOverrides) ? invitation.permissionOverrides : {};
@@ -121,6 +128,8 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
     await createSession(accepted.userId, accepted.businessId);
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_CREDENTIALS") return { error: "This email already has an account. Enter its current password to accept the invitation." };
+    if (error instanceof Error && error.message === "PASSWORD_MISMATCH") return { error: "The passwords do not match." };
+    if (error instanceof Error && error.message === "PASSWORD_POLICY") return { error: "Use at least 10 characters with uppercase, lowercase, a number, and a symbol." };
     return { error: "This invitation is invalid, expired, revoked, or already used." };
   }
   redirect("/report");
