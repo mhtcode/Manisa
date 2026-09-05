@@ -4,7 +4,7 @@ import argon2 from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createSession, requireBusinessPermission, requirePlatformPermission } from "@/lib/auth";
+import { createSession, destroySession, requireBusinessPermission, requirePlatformPermission } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
 import { businessPermissionKeys, hasBusinessPermission } from "@/lib/permissions";
 import { passwordIsValid } from "@/lib/password-policy";
@@ -109,7 +109,7 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
   if (!token || !name || !password) return { error: "Enter your name and password." };
   const tokenHash = createHash("sha256").update(token).digest("hex");
   try {
-    const accepted = await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx) => {
       const invitation = await tx.invitation.findUnique({ where: { tokenHash } });
       if (!invitation || invitation.revokedAt || invitation.acceptedAt || invitation.expiresAt <= new Date()) throw new Error("INVALID_INVITATION");
       let user = await tx.user.findUnique({ where: { email: invitation.email } });
@@ -123,16 +123,15 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
       if (invitation.kind === "PLATFORM" && invitation.platformRole) await tx.platformAccess.upsert({ where: { userId: user.id }, update: { role: invitation.platformRole, permissionOverrides: overrides, active: true, deletedAt: null }, create: { userId: user.id, role: invitation.platformRole, permissionOverrides: overrides } });
       await tx.invitation.update({ where: { id: invitation.id }, data: { acceptedAt: new Date(), acceptedById: user.id } });
       await tx.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: invitation.businessId, action: "invitation.accept", targetType: "Invitation", targetId: invitation.id } });
-      return { userId: user.id, businessId: invitation.businessId ?? undefined };
     }, { isolationLevel: "Serializable" });
-    await createSession(accepted.userId, accepted.businessId);
+    await destroySession();
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_CREDENTIALS") return { error: "This email already has an account. Enter its current password to accept the invitation." };
     if (error instanceof Error && error.message === "PASSWORD_MISMATCH") return { error: "The passwords do not match." };
     if (error instanceof Error && error.message === "PASSWORD_POLICY") return { error: "Use at least 10 characters with uppercase, lowercase, a number, and a symbol." };
     return { error: "This invitation is invalid, expired, revoked, or already used." };
   }
-  redirect("/report");
+  redirect("/login?invitation=accepted");
 }
 
 export async function inviteBusinessMember(_: InvitationState, formData: FormData): Promise<InvitationState> {
@@ -141,6 +140,12 @@ export async function inviteBusinessMember(_: InvitationState, formData: FormDat
   const roleValue = String(formData.get("role") || "STAFF");
   const role = (["ADMIN", "STAFF"] as const).includes(roleValue as never) ? roleValue as "ADMIN" | "STAFF" : "STAFF";
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Enter a valid email." };
+  const [existingMember, pendingInvitation] = await Promise.all([
+    prisma.businessMembership.findFirst({ where: { businessId: user.businessId, user: { email } }, select: { id: true } }),
+    prisma.invitation.findFirst({ where: { businessId: user.businessId, email, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } }),
+  ]);
+  if (existingMember) return { error: "A member with this email already belongs to this business." };
+  if (pendingInvitation) return { error: "An active invitation already exists for this email." };
   const rawToken = randomBytes(32).toString("base64url");
   const invitation = await prisma.invitation.create({ data: { tokenHash: createHash("sha256").update(rawToken).digest("hex"), email, kind: "BUSINESS", businessId: user.businessId, businessRole: role, invitedById: user.id, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) } });
   await prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: "member.invite", targetType: "Invitation", targetId: invitation.id, after: { email, role } } });

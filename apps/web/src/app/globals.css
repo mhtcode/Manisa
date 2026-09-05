@@ -14,7 +14,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 [data-horizontal-scroll] { scrollbar-width: none; }
 [data-horizontal-scroll]::-webkit-scrollbar { display: none; }
 ::selection { background: rgba(96,165,250,.25); color: white; }
-:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 3px; }
+:where(a, button, [role="button"], [role="option"]):focus-visible { outline: 2px solid #7dd3fc; outline-offset: 3px; }
+input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 
 @layer components {
   .panel { @apply rounded-2xl border border-white/10 bg-[#0e131b] shadow-[0_18px_50px_rgba(0,0,0,0.2)]; }
@@ -39,7 +40,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .quick-action:active { transform: translateY(1px) scale(.985); }
   .field, .input { @apply w-full rounded-2xl border bg-[#0c121b] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none; border-color: rgba(255,255,255,.11); box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 8px 24px rgba(0,0,0,.08); transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
   .field:hover, .input:hover { border-color: rgba(255,255,255,.18); background: #0d141e; }
-  .field:focus, .input:focus { border-color: rgba(203,213,225,.3); background: #0e1621; box-shadow: 0 0 0 3px rgba(148,163,184,.055), inset 0 1px 0 rgba(255,255,255,.035); }
+  .field:focus, .field:focus-within, .input:focus, .input:focus-visible { border-color: rgba(96,165,250,.48); background: #0e1621; box-shadow: 0 0 0 3px rgba(59,130,246,.1), inset 0 1px 0 rgba(255,255,255,.04); }
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
   .empty { @apply flex min-h-48 flex-col items-center justify-center px-6 text-center text-slate-500; }
