@@ -14,6 +14,8 @@ export function privateBucket() { return getServerEnv().S3_PRIVATE_BUCKET; }
 export function publicBucket() { return getServerEnv().S3_PUBLIC_BUCKET; }
 export async function createUploadUrl(key: string, contentType: string) { return getSignedUrl(storageClient(true), new PutObjectCommand({ Bucket: privateBucket(), Key: key, ContentType: contentType }), { expiresIn: 10 * 60 }); }
 export async function createReadUrl(key: string, isPublic = false) { return getSignedUrl(storageClient(true), new GetObjectCommand({ Bucket: isPublic ? publicBucket() : privateBucket(), Key: key }), { expiresIn: 5 * 60 }); }
+export async function readObject(key: string, isPublic = false) { return storageClient().send(new GetObjectCommand({ Bucket: isPublic ? publicBucket() : privateBucket(), Key: key })); }
+export async function putObject(key: string, body: Uint8Array, contentType: string) { return storageClient().send(new PutObjectCommand({ Bucket: privateBucket(), Key: key, Body: body, ContentType: contentType })); }
 export async function inspectObject(key: string) { return storageClient().send(new HeadObjectCommand({ Bucket: privateBucket(), Key: key })); }
 export async function removeObject(key: string, isPublic = false) { await storageClient().send(new DeleteObjectCommand({ Bucket: isPublic ? publicBucket() : privateBucket(), Key: key })); }
 export async function publishObject(sourceKey: string, publicKey: string) { await storageClient().send(new CopyObjectCommand({ Bucket: publicBucket(), Key: publicKey, CopySource: `${privateBucket()}/${sourceKey}`, CacheControl: "public,max-age=31536000,immutable", ContentType: "image/webp", MetadataDirective: "REPLACE" })); }

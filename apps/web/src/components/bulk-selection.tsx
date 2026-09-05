@@ -1,41 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useContext, useState } from "react";
-import { CheckCheck, CheckSquare2, RotateCcw, Trash2, X } from "lucide-react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { CheckCheck, CheckSquare2, RotateCcw, Square, SquareCheckBig, Trash2, X } from "lucide-react";
 
 const SelectionContext = createContext<{ active: boolean; selected: Set<string>; toggle(id: string): void } | null>(null);
+const controlClass = "inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-35";
+
+function SelectionAction({ action, ids, label, confirmMessage, danger = false, onComplete, children }: { action: (data: FormData) => void | Promise<void>; ids: Set<string>; label: string; confirmMessage: string; danger?: boolean; onComplete(): void; children: React.ReactNode }) {
+  const [completed, setCompleted] = useState(0);
+  useEffect(() => { if (completed) onComplete(); }, [completed, onComplete]);
+  return <form action={async (data) => { await action(data); setCompleted((value) => value + 1); }} className="contents">
+    <input name="ids" type="hidden" value={JSON.stringify([...ids])}/>
+    <button aria-label={label} className={`${controlClass} ${danger ? "text-rose-300 hover:bg-rose-400/10 hover:text-rose-200" : ""}`} disabled={!ids.size} onClick={(event) => { if (!window.confirm(confirmMessage)) event.preventDefault(); }} title={label}>{children}</button>
+  </form>;
+}
 
 export function BulkSelection({ action, secondaryAction, allIds, children, locale = "en", primary = "trash", embedded = false }: { action: (data: FormData) => void | Promise<void>; secondaryAction?: (data: FormData) => void | Promise<void>; allIds: string[]; children: React.ReactNode; locale?: "en" | "fa"; primary?: "trash" | "restore"; embedded?: boolean }) {
   const [active, setActive] = useState(false);
   const [selected, setSelected] = useState(new Set<string>());
-  const t = locale === "fa" ? { select: "انتخاب", all: "انتخاب همه", clear: "پاک کردن", trash: "انتقال به زباله‌دان", restore: "بازیابی", permanent: "حذف دائمی", confirm: "موارد انتخاب‌شده به زباله‌دان منتقل شوند؟", confirmRestore: "موارد انتخاب‌شده بازیابی شوند؟", confirmPermanent: "مورد انتخاب‌شده برای همیشه حذف شوند؟ این کار قابل بازگشت نیست." } : { select: "Select", all: "Select all", clear: "Clear", trash: "Move to Trash", restore: "Restore", permanent: "Delete permanently", confirm: "Move all selected items to Trash?", confirmRestore: "Restore selected items?", confirmPermanent: "selected items? This cannot be undone." };
+  const t = locale === "fa" ? { select: "انتخاب", all: "انتخاب همه", clear: "پاک کردن", trash: "انتقال به زباله‌دان", restore: "بازیابی", permanent: "حذف دائمی", confirm: "موارد انتخاب‌شده به زباله‌دان منتقل شوند؟", confirmRestore: "موارد انتخاب‌شده بازیابی شوند؟", confirmPermanent: "برای همیشه حذف شوند؟ این کار قابل بازگشت نیست." } : { select: "Select", all: "Select all", clear: "Clear selection", trash: "Move to Trash", restore: "Restore", permanent: "Delete permanently", confirm: "Move selected items to Trash?", confirmRestore: "Restore selected items?", confirmPermanent: "Permanently delete selected items? This cannot be undone." };
   const toggle = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const close = useCallback(() => { setActive(false); setSelected(new Set()); }, []);
+  const allSelected = allIds.length > 0 && selected.size === allIds.length;
 
   return <SelectionContext.Provider value={{ active, selected, toggle }}>
-    <div className={`${embedded ? "flex border-b border-white/8 px-4 py-2.5" : "sticky top-16 z-30 mb-3 flex"} justify-start`} dir="ltr">
-      {active ? <form action={action} className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-blue-300/25 bg-[#0b1423]/95 p-1.5 shadow-2xl backdrop-blur-xl">
-        <input name="ids" type="hidden" value={JSON.stringify([...selected])}/>
-        <button aria-label={t.clear} className="icon-button size-9 shrink-0" onClick={() => { setActive(false); setSelected(new Set()); }} title={t.clear} type="button"><X size={16}/></button>
+    <div className={`${embedded ? "flex border-b border-white/8 px-4 py-2" : "sticky top-16 z-30 mb-3 flex"} justify-start`} dir="ltr">
+      {active ? <div className="inline-flex max-w-full items-center gap-0.5 rounded-xl bg-[#0b1423]/95 p-1 shadow-2xl backdrop-blur-xl">
+        <button aria-label={t.clear} className={controlClass} onClick={close} title={t.clear} type="button"><X size={17}/></button>
         <span aria-live="polite" className="min-w-7 text-center text-sm font-bold text-blue-200">{selected.size}</span>
-        <button aria-label={t.all} className="icon-button size-9 shrink-0" onClick={() => setSelected(new Set(allIds))} title={t.all} type="button"><CheckCheck size={17}/></button>
-        <button aria-label={primary === "restore" ? t.restore : t.trash} className="icon-button size-9 shrink-0" disabled={!selected.size} onClick={(event) => { if (!window.confirm(`${primary === "restore" ? t.confirmRestore : t.confirm} (${selected.size})`)) event.preventDefault(); }} title={primary === "restore" ? t.restore : t.trash}>{primary === "restore" ? <RotateCcw size={15}/> : <Trash2 size={15}/>}</button>
-        {secondaryAction && <button aria-label={t.permanent} className="icon-button size-9 shrink-0 border-rose-400/25 text-rose-300" disabled={!selected.size} formAction={secondaryAction} onClick={(event) => { if (!window.confirm(`${locale === "fa" ? selected.size : `Permanently delete ${selected.size}`} ${t.confirmPermanent}`)) event.preventDefault(); }} title={t.permanent}><Trash2 size={15}/></button>}
-      </form> : <button aria-pressed={false} className="icon-button" onClick={() => setActive(true)} title={t.select} type="button"><CheckSquare2 size={16}/><span className="sr-only">{t.select}</span></button>}
+        <button aria-label={t.all} aria-pressed={allSelected} className={controlClass} onClick={() => setSelected(allSelected ? new Set() : new Set(allIds))} title={t.all} type="button"><CheckCheck size={18}/></button>
+        <SelectionAction action={action} confirmMessage={`${primary === "restore" ? t.confirmRestore : t.confirm} (${selected.size})`} ids={selected} label={primary === "restore" ? t.restore : t.trash} onComplete={close}>{primary === "restore" ? <RotateCcw size={16}/> : <Trash2 size={16}/>}</SelectionAction>
+        {secondaryAction && <SelectionAction action={secondaryAction} confirmMessage={`${t.confirmPermanent} (${selected.size})`} danger ids={selected} label={t.permanent} onComplete={close}><Trash2 size={16}/></SelectionAction>}
+      </div> : <button aria-label={t.select} className={controlClass} onClick={() => setActive(true)} title={t.select} type="button"><CheckSquare2 size={18}/></button>}
     </div>
     {children}
   </SelectionContext.Provider>;
+}
+
+function SelectionCheckbox({ checked, onClick, centered }: { checked: boolean; onClick(): void; centered: boolean }) {
+  const Icon = checked ? SquareCheckBig : Square;
+  return <button aria-label="Toggle selection" aria-pressed={checked} className={`absolute left-2 z-20 flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white ${centered ? "top-1/2 -translate-y-1/2" : "top-2"} ${checked ? "text-blue-300" : ""}`} onClick={onClick} type="button"><Icon size={20}/></button>;
 }
 
 export function SelectableLink({ id, href, className, children, reserveSelectionSpace = true }: { id: string; href: string; className: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {
   const context = useContext(SelectionContext);
   if (!context?.active) return <Link className={className} href={href}>{children}</Link>;
   const checked = context.selected.has(id);
-  return <button aria-pressed={checked} className={`${className} relative w-full appearance-none text-start ${reserveSelectionSpace ? "pl-12" : ""} ${checked ? "ring-2 ring-blue-400" : ""}`} onClick={() => context.toggle(id)} type="button"><span className={`absolute left-3 z-10 flex size-6 items-center justify-center rounded-md border ${reserveSelectionSpace ? "top-1/2 -translate-y-1/2" : "top-3"} ${checked ? "border-blue-300 bg-blue-500 text-white" : "border-white/25 bg-black/70"}`}>{checked ? "✓" : ""}</span>{children}</button>;
+  return <div className={`${className} relative w-full ${reserveSelectionSpace ? "pl-12" : ""}`}><SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/><div className="relative">{children}</div></div>;
 }
 
 export function SelectableItem({ id, className = "", children, reserveSelectionSpace = false }: { id: string; className?: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {
   const context = useContext(SelectionContext);
   const checked = context?.selected.has(id) || false;
-  return <div className={`${className} relative ${context?.active && reserveSelectionSpace ? "pl-11" : ""} ${checked ? "rounded-2xl ring-2 ring-blue-400" : ""}`}>{context?.active && <button aria-label="Toggle selection" aria-pressed={checked} className={`absolute left-2 z-20 flex size-7 items-center justify-center rounded-md border ${reserveSelectionSpace ? "top-1/2 -translate-y-1/2" : "top-2"} ${checked ? "border-blue-300 bg-blue-500 text-white" : "border-white/25 bg-black/70"}`} onClick={() => context.toggle(id)} type="button">{checked ? "✓" : ""}</button>}{children}</div>;
+  return <div className={`${className} relative ${context?.active && reserveSelectionSpace ? "pl-11" : ""}`}>{context?.active && <SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/>} {children}</div>;
 }
