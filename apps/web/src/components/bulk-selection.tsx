@@ -25,7 +25,7 @@ export function BulkSelection({ action, secondaryAction, allIds, children, local
   const allSelected = allIds.length > 0 && selected.size === allIds.length;
 
   return <SelectionContext.Provider value={{ active, selected, toggle }}>
-    <div className={`${embedded ? "flex border-b border-white/8 px-4 py-2" : "sticky top-16 z-30 mb-3 flex"} justify-start`} dir="ltr">
+    <div className={`${embedded ? "flex border-b border-white/8 px-4 py-2" : "mb-3 flex"} justify-start`} dir="ltr">
       {active ? <div className="inline-flex max-w-full items-center gap-0.5 rounded-xl bg-[#0b1423]/95 p-1 shadow-2xl backdrop-blur-xl">
         <button aria-label={t.clear} className={controlClass} onClick={close} title={t.clear} type="button"><X size={17}/></button>
         <span aria-live="polite" className="min-w-7 text-center text-sm font-bold text-blue-200">{selected.size}</span>
@@ -38,20 +38,23 @@ export function BulkSelection({ action, secondaryAction, allIds, children, local
   </SelectionContext.Provider>;
 }
 
-function SelectionCheckbox({ checked, onClick, centered }: { checked: boolean; onClick(): void; centered: boolean }) {
+function SelectionCheckbox({ checked, onClick, centered, positioned = true }: { checked: boolean; onClick(): void; centered: boolean; positioned?: boolean }) {
   const Icon = checked ? SquareCheckBig : Square;
-  return <button aria-label="Toggle selection" aria-pressed={checked} className={`absolute left-2 z-20 flex size-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white ${centered ? "top-1/2 -translate-y-1/2" : "top-2"} ${checked ? "text-blue-300" : ""}`} onClick={onClick} type="button"><Icon size={20}/></button>;
+  return <button aria-label="Toggle selection" aria-pressed={checked} className={`${positioned ? `absolute left-2 z-20 ${centered ? "top-1/2 -translate-y-1/2" : "top-2"}` : centered ? "self-center" : "mt-2"} flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white ${checked ? "text-blue-300" : ""}`} onClick={onClick} type="button"><Icon size={20}/></button>;
 }
 
 export function SelectableLink({ id, href, className, children, reserveSelectionSpace = true }: { id: string; href: string; className: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {
   const context = useContext(SelectionContext);
   if (!context?.active) return <Link className={className} href={href}>{children}</Link>;
   const checked = context.selected.has(id);
-  return <div className={`${className} relative w-full ${reserveSelectionSpace ? "pl-12" : ""}`}><SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/><div className="relative">{children}</div></div>;
+  if (!reserveSelectionSpace) return <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start"><SelectionCheckbox centered={false} checked={checked} onClick={() => context.toggle(id)} positioned={false}/><div className={className}>{children}</div></div>;
+  return <div className="relative min-w-0"><SelectionCheckbox centered checked={checked} onClick={() => context.toggle(id)}/><div className={`${className} !pl-12`}>{children}</div></div>;
 }
 
 export function SelectableItem({ id, className = "", children, reserveSelectionSpace = false }: { id: string; className?: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {
   const context = useContext(SelectionContext);
   const checked = context?.selected.has(id) || false;
-  return <div className={`${className} relative ${context?.active && reserveSelectionSpace ? "pl-11" : ""}`}>{context?.active && <SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/>} {children}</div>;
+  if (!context?.active) return <div className={className}>{children}</div>;
+  if (!reserveSelectionSpace) return <div className={`${className} grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start`}><SelectionCheckbox centered={false} checked={checked} onClick={() => context.toggle(id)} positioned={false}/><div className="min-w-0">{children}</div></div>;
+  return <div className={`${className} relative pl-11`}><SelectionCheckbox centered checked={checked} onClick={() => context.toggle(id)}/>{children}</div>;
 }

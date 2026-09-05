@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgeCheck, CalendarCheck2, Check, ChevronRight, CircleDot, Clock3, Images, LockKeyhole, Pencil, Trash2, XCircle } from "lucide-react";
+import { BadgeCheck, CalendarCheck2, Check, CircleDot, Clock3, Images, LockKeyhole, Pencil, Trash2, XCircle } from "lucide-react";
 import { AppointmentPhotoUploadForm } from "@/components/appointment-photo-upload-form";
 import { AppointmentPayments } from "@/components/appointment-payments";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
@@ -42,16 +42,16 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const paymentMethods = finalized ? await prisma.paymentMethod.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }) : [];
   const progressIndex = item.status === "COMPLETED" ? 2 : item.status === "CONFIRMED" ? 1 : item.status === "SCHEDULED" ? 0 : -1;
   const stages = [
-    { title: "Scheduled", copy: "Estimated services, time, and price.", icon: CircleDot },
-    { title: "Confirmed", copy: "Customer committed to the visit.", icon: CalendarCheck2 },
-    { title: "Finalized", copy: "Actual work, income, and time.", icon: BadgeCheck },
+    { title: "Scheduled", icon: CircleDot },
+    { title: "Confirmed", icon: CalendarCheck2 },
+    { title: "Finalized", icon: BadgeCheck },
   ];
 
   return <>
     <PageHeading title={item.serviceNameSnapshot} description={`${customerName(item.customer)} · ${formatBusinessDate(item.startAt, "en")}`} actions={editable && <Link className="button-secondary" href={`/appointments/${id}/edit`}><Pencil size={16}/>Edit appointment</Link>}/>
 
-    {!historical && <ol aria-label="Appointment progress" className="mb-5 flex items-stretch gap-1.5 overflow-x-auto pb-1" data-horizontal-scroll>
-      {stages.map((stage, index) => { const current = progressIndex === index; const complete = progressIndex > index; const Icon = complete ? Check : stage.icon; return <li className="flex min-w-[9rem] flex-1 items-center gap-1.5" key={stage.title}><div aria-current={current ? "step" : undefined} className={`min-h-full min-w-0 flex-1 rounded-xl border p-3 ${current ? "border-blue-300/40 bg-gradient-to-br from-blue-500/[0.16] to-blue-900/[0.1] shadow-[inset_0_1px_rgba(255,255,255,.05)]" : complete ? "border-emerald-300/20 bg-emerald-300/[0.055]" : "border-white/8 bg-white/[0.02]"}`}><div className="flex items-center gap-2"><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${current ? "bg-blue-400/15 text-blue-200" : complete ? "bg-emerald-300/10 text-emerald-300" : "bg-white/[0.04] text-slate-500"}`}><Icon size={13} strokeWidth={complete ? 3 : 2}/></span><p className={`truncate text-xs font-semibold ${current ? "text-blue-100" : complete ? "text-emerald-200" : "text-slate-400"}`}>{index + 1} · {stage.title}</p></div><p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{stage.copy}</p></div>{index < stages.length - 1 && <ChevronRight aria-hidden="true" className={`shrink-0 rtl:rotate-180 ${complete ? "text-emerald-300/60" : "text-slate-700"}`} size={17}/>}</li>; })}
+    {!historical && <ol aria-label="Appointment progress" className="mb-5 grid min-w-0 grid-cols-3 gap-2">
+      {stages.map((stage, index) => { const current = progressIndex === index; const complete = progressIndex > index; const Icon = complete ? Check : stage.icon; return <li aria-current={current ? "step" : undefined} className={`flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-1.5 py-2.5 text-center sm:flex-row sm:px-3 ${current ? "border-blue-300/40 bg-gradient-to-br from-blue-500/[0.16] to-blue-900/[0.1]" : complete ? "border-emerald-300/20 bg-emerald-300/[0.055]" : "border-white/8 bg-white/[0.02]"}`} key={stage.title}><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${current ? "bg-blue-400/15 text-blue-200" : complete ? "bg-emerald-300/10 text-emerald-300" : "bg-white/[0.04] text-slate-500"}`}><Icon size={13} strokeWidth={complete ? 3 : 2}/></span><span className={`min-w-0 truncate text-[10px] font-semibold sm:text-xs ${current ? "text-blue-100" : complete ? "text-emerald-200" : "text-slate-400"}`}>{stage.title}</span></li>; })}
     </ol>}
 
     <div className="grid gap-5 lg:grid-cols-[1.2fr_.8fr]">

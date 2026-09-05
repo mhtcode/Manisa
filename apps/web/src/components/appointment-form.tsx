@@ -123,7 +123,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
         </section>
 
         <section className="panel p-5 sm:p-6">
-          <div className="mb-5 flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-300"><Sparkles size={19} /></span><div><h2 className="font-semibold text-white">Choose one or more services</h2><p className="mt-1 text-sm text-slate-500">These defaults create the Stage 1 estimate. Actual time and income are entered after the visit.</p></div></div>
+          <div className="mb-5 flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-300"><Sparkles size={19} /></span><h2 className="font-semibold text-white">Choose one or more services</h2></div>
           <div className="space-y-5">
             {serviceGroups.map((group) => <div key={group.id}>
               <div className="mb-2.5 flex items-center gap-2">
