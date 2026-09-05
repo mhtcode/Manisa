@@ -111,6 +111,14 @@ https://your-domain.example/api/integrations/instagram/callback
 
 Set `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URI`, and a separately generated `INTEGRATION_ENCRYPTION_KEY`. The redirect URI must use public HTTPS. Then open **Settings → Instagram** and connect an Instagram Business or Creator account. A linked Facebook Page is not required for the Instagram Login flow.
 
+### One-way Google Calendar synchronization
+
+Enable the Google Calendar API in Google Cloud, create a Web application OAuth client, and set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI`, `GOOGLE_CALENDAR_SYNC_SECRET`, and `INTEGRATION_ENCRYPTION_KEY`. The Calendar callback is separate from Google sign-in and must exactly match `https://YOUR_DOMAIN/api/integrations/google-calendar/callback` on a public HTTPS origin.
+
+For an External consent screen in Testing, add the intended Gmail address (for example `fahimemnsn@gmail.com`) as a test user. Open **Settings → Google Calendar**, connect that account, and approve offline Calendar event access. Manisa then pushes all future scheduled and confirmed visits to the connected account's primary calendar. Edits and outcomes update those events, Trash removes them, and restore recreates them. The integration is deliberately one-way: Google Calendar never writes appointments into Manisa.
+
+The `calendar-worker` Compose service drains a durable database outbox every 15 seconds. Appointment changes remain successful while Google is unavailable; failures retry with backoff and appear only in the private integration page. Google events include customer and service names but exclude contact details, private notes, payments, and photos.
+
 Manisa encrypts the long-lived access token with AES-256-GCM, validates signed OAuth state against a short-lived HTTP-only cookie, requests read-only access, and caches optimized covers locally. Landing-page requests use the cache and schedule a background refresh when it is older than 15 minutes; a failed refresh keeps the last successful feed online. Disconnecting removes the connection and unpublishes cached database records.
 
 ## Google Calendar

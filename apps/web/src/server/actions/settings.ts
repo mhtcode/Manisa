@@ -108,7 +108,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
     const [customers, services, existingAppointments, otherCategory] = await Promise.all([
       transaction.customer.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true } }),
       transaction.service.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, name: true } }),
-      transaction.appointment.findMany({ where: { businessId: user.businessId, calendarEventId: { in: parsed.events.map((event) => event.sourceId) } }, select: { calendarEventId: true } }),
+      transaction.appointment.findMany({ where: { businessId: user.businessId, importSourceId: { in: parsed.events.map((event) => event.sourceId) } }, select: { importSourceId: true } }),
       transaction.studioCategory.upsert({
         where: { businessId_slug: { businessId: user.businessId, slug: "other" } },
         update: { active: true, deletedAt: null },
@@ -118,7 +118,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
     ]);
     const customerIds = new Map(customers.map((customer) => [normalized(customer.displayName || [customer.firstName, customer.lastName].filter(Boolean).join(" ")), customer.id]));
     const serviceIds = new Map(services.map((service) => [normalized(service.name), service.id]));
-    const sourceIds = new Set(existingAppointments.flatMap((appointment) => appointment.calendarEventId ? [appointment.calendarEventId] : []));
+    const sourceIds = new Set(existingAppointments.flatMap((appointment) => appointment.importSourceId ? [appointment.importSourceId] : []));
     let imported = 0;
     let duplicates = 0;
 
@@ -147,7 +147,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
         expectedPrice: 0,
         currency,
         status: "HISTORICAL",
-        calendarEventId: event.sourceId,
+        importSourceId: event.sourceId,
         notes: [event.description, "Imported from Google Calendar. Manually added/unreported; excluded from income and working-hour totals."].filter(Boolean).join("\n\n"),
         serviceLines: { create: { businessId: user.businessId, serviceId, serviceNameSnapshot: event.serviceName, durationMinutes: event.durationMinutes, price: 0 } },
       } });
@@ -195,7 +195,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
         transaction.customer.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true, phone: true, email: true } }),
         transaction.studioCategory.findMany({ where: { businessId: user.businessId }, select: { id: true, name: true, slug: true, active: true, deletedAt: true } }),
         transaction.service.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, name: true, categoryId: true, active: true } }),
-        transaction.appointment.findMany({ where: { businessId: user.businessId, calendarEventId: { in: parsed.appointments.map((appointment) => appointment.sourceId) } }, select: { calendarEventId: true } }),
+        transaction.appointment.findMany({ where: { businessId: user.businessId, importSourceId: { in: parsed.appointments.map((appointment) => appointment.sourceId) } }, select: { importSourceId: true } }),
       ]);
       const customersByIdentity = new Map<string, string>();
       customers.forEach((customer) => {
@@ -207,7 +207,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
       const categoriesByName = new Map(categories.filter((category) => !category.deletedAt).map((category) => [normalizedImportValue(category.name), { id: category.id, active: category.active }]));
       const usedSlugs = new Set(categories.map((category) => category.slug));
       const servicesByCategoryAndName = new Map(services.map((service) => [`${service.categoryId}:${normalizedImportValue(service.name)}`, { id: service.id, active: service.active }]));
-      const sourceIds = new Set(existingAppointments.flatMap((appointment) => appointment.calendarEventId ? [appointment.calendarEventId] : []));
+      const sourceIds = new Set(existingAppointments.flatMap((appointment) => appointment.importSourceId ? [appointment.importSourceId] : []));
       let imported = 0;
       let duplicates = 0;
 
@@ -261,7 +261,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
           expectedPrice: price,
           currency,
           status: "HISTORICAL",
-          calendarEventId: appointment.sourceId,
+          importSourceId: appointment.sourceId,
           notes: [appointment.notes, "Manually added from JSON; excluded from income and working-hour totals."].filter(Boolean).join("\n\n"),
           serviceLines: { create: lineData },
         } });

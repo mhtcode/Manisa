@@ -12,6 +12,7 @@ import { formatBusinessDate, parseBusinessDateTime } from "@/lib/time";
 import { appointmentSchema, completionSchema } from "@/lib/validation";
 import { parsePaymentInputs, paymentStatusFor } from "@/lib/payments";
 import { publishObject, removeObject } from "@/lib/object-storage";
+import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
 
 async function findConflict(businessId: string, startAt: Date, duration: number, excludeId?: string) {
   const candidates = await prisma.appointment.findMany({
@@ -61,14 +62,18 @@ export async function createAppointment(formData: FormData) {
   const { serviceIds: _, ...appointmentData } = data;
   void _;
   const primaryService = orderedServices[0];
-  const appointment = await prisma.appointment.create({ data: {
-    ...appointmentData, businessId: user.businessId,
-    startAt,
-    serviceId: primaryService.id,
-    serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
-    currency: primaryService.currency,
-    serviceLines: { create: orderedServices.map((service, position) => ({ businessId: user.businessId, serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
-  } });
+  const appointment = await prisma.$transaction(async (tx) => {
+    const created = await tx.appointment.create({ data: {
+      ...appointmentData, businessId: user.businessId,
+      startAt,
+      serviceId: primaryService.id,
+      serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
+      currency: primaryService.currency,
+      serviceLines: { create: orderedServices.map((service, position) => ({ businessId: user.businessId, serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
+    } });
+    await enqueueGoogleCalendarSync(tx, user.businessId, [created.id], "UPSERT");
+    return created;
+  });
   revalidatePath("/appointments");
   redirect(`/appointments/${appointment.id}`);
 }
@@ -91,14 +96,17 @@ export async function updateAppointment(id: string, formData: FormData) {
   const { serviceIds: _, ...appointmentData } = data;
   void _;
   const primaryService = orderedServices[0];
-  await prisma.appointment.update({ where: { id }, data: {
-    ...appointmentData,
-    startAt,
-    serviceId: primaryService.id,
-    serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
-    currency: primaryService.currency,
-    serviceLines: { deleteMany: {}, create: orderedServices.map((service, position) => ({ businessId: user.businessId, serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
-  } });
+  await prisma.$transaction(async (tx) => {
+    await tx.appointment.update({ where: { id }, data: {
+      ...appointmentData,
+      startAt,
+      serviceId: primaryService.id,
+      serviceNameSnapshot: orderedServices.map((service) => service.name).join(" + "),
+      currency: primaryService.currency,
+      serviceLines: { deleteMany: {}, create: orderedServices.map((service, position) => ({ businessId: user.businessId, serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
+    } });
+    await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
+  });
   revalidatePath(`/appointments/${id}`);
   redirect(`/appointments/${id}`);
 }
@@ -115,7 +123,7 @@ export async function completeAppointment(id: string, formData: FormData) {
   if (services.length !== data.actualServiceIds.length) return { error: "One or more actual services could not be found." };
   const orderedServices = data.actualServiceIds.map((serviceId) => services.find((service) => service.id === serviceId)!);
   if (new Set(orderedServices.map((service) => service.currency)).size > 1) return { error: "Actual services must use the same currency." };
-  const actualLines = [];
+  const actualLines: Array<{ businessId: string; serviceId: string; serviceNameSnapshot: string; actualDurationMinutes: number; finalPrice: string; selectedColor: string | null; position: number }> = [];
   for (const [position, service] of orderedServices.entries()) {
     const duration = Number(formData.get(`actualDuration_${service.id}`));
     const price = formData.get(`actualPrice_${service.id}`);
@@ -136,7 +144,8 @@ export async function completeAppointment(id: string, formData: FormData) {
   try { photos = await prepareAppointmentPhotos(id, formData); }
   catch (error) { return { error: error instanceof PhotoUploadError ? error.message : "The photos could not be uploaded." }; }
   try {
-    await prisma.appointment.update({ where: { id }, data: {
+    await prisma.$transaction(async (tx) => {
+      await tx.appointment.update({ where: { id }, data: {
       status: "COMPLETED",
       completedAt: new Date(),
       paymentStatus: paymentStatusFor(Number(finalPrice), paidAmount),
@@ -150,7 +159,9 @@ export async function completeAppointment(id: string, formData: FormData) {
       actualServiceLines: { deleteMany: {}, create: actualLines },
       photos: { create: photos.map((photo) => ({ ...photo, businessId: user.businessId })) },
       payments: { create: paymentInputs.map((payment) => { const method = methods.find((item) => item.id === payment.methodId)!; return { businessId: user.businessId, paymentMethodId: method.id, methodNameSnapshot: method.name, amount: payment.amount, recordedById: user.id }; }) },
-    } });
+      } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
+    });
   } catch (error) {
     await removePreparedPhotos(photos);
     throw error;
@@ -187,7 +198,10 @@ export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO
   if (status === "CONFIRMED" && appointment.status !== "SCHEDULED") throw new Error("Only scheduled appointments can be confirmed.");
   if (status === "CANCELLED" && !["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw new Error("Only upcoming appointments can be cancelled.");
   if (status === "NO_SHOW" && (!["SCHEDULED", "CONFIRMED"].includes(appointment.status) || appointment.startAt > new Date())) throw new Error("A future appointment cannot be marked as no-show.");
-  await prisma.appointment.update({ where: { id }, data: { status } });
+  await prisma.$transaction(async (tx) => {
+    await tx.appointment.update({ where: { id }, data: { status } });
+    await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
+  });
   revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/report");
 }
 

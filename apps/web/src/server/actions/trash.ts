@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { trashEntityTypes, type TrashEntityType } from "@/lib/trash-lifecycle";
 import { requireBusinessPermission } from "@/lib/auth";
 import { removeObject } from "@/lib/object-storage";
+import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
 
 type MediaFiles = { id: string; imagePath: string | null; thumbnailPath: string | null; objectKey: string | null; featuredAt: Date | null; businessId: string; variants: Array<{ objectKey: string; sizeBytes: number }> };
 
@@ -65,13 +66,18 @@ export async function moveToTrash(typeValue: string, id: string) {
   const deletedAt = new Date();
 
   if (typeValue === "customer") {
-    await prisma.$transaction([
-      prisma.customer.update({ where: { id, deletedAt: null }, data: { deletedAt } }),
-      prisma.appointment.updateMany({ where: { customerId: id, deletedAt: null }, data: { deletedAt } }),
-      prisma.mediaAsset.updateMany({ where: { customerId: id, deletedAt: null }, data: { deletedAt } }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      const appointments = await tx.appointment.findMany({ where: { businessId: user.businessId, customerId: id, deletedAt: null }, select: { id: true } });
+      await tx.customer.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await tx.appointment.updateMany({ where: { customerId: id, deletedAt: null }, data: { deletedAt } });
+      await tx.mediaAsset.updateMany({ where: { customerId: id, deletedAt: null }, data: { deletedAt } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, appointments.map((item) => item.id), "DELETE");
+    });
   } else if (typeValue === "appointment") {
-    await prisma.appointment.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+    await prisma.$transaction(async (tx) => {
+      await tx.appointment.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, [id], "DELETE");
+    });
   } else if (typeValue === "photo") {
     await prisma.mediaAsset.update({ where: { id, deletedAt: null }, data: { deletedAt } });
   } else if (typeValue === "service") {
@@ -105,9 +111,11 @@ export async function bulkMoveToTrash(typeValue: string, formData: FormData) {
     } else if (typeValue === "customer") {
       const found = await tx.customer.count({ where: { id: { in: ids }, deletedAt: null } });
       if (found !== ids.length) throw new Error("The selection changed. Nothing was deleted.");
+      const appointments = await tx.appointment.findMany({ where: { businessId: user.businessId, customerId: { in: ids }, deletedAt: null }, select: { id: true } });
       await tx.appointment.updateMany({ where: { customerId: { in: ids }, deletedAt: null }, data: { deletedAt } });
       await tx.mediaAsset.updateMany({ where: { customerId: { in: ids }, deletedAt: null }, data: { deletedAt } });
       await tx.customer.updateMany({ where: { id: { in: ids }, deletedAt: null }, data: { deletedAt } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, appointments.map((item) => item.id), "DELETE");
     } else if (typeValue === "paymentMethod") {
       const result = await tx.paymentMethod.updateMany({ where: { id: { in: ids }, deletedAt: null }, data: { deletedAt, active: false } });
       if (result.count !== ids.length) throw new Error("The selection changed. Nothing was deleted.");
@@ -115,6 +123,7 @@ export async function bulkMoveToTrash(typeValue: string, formData: FormData) {
       const model = typeValue === "appointment" ? tx.appointment : typeValue === "photo" ? tx.mediaAsset : tx.service;
       const result = await (model as typeof tx.service).updateMany({ where: { id: { in: ids }, deletedAt: null }, data: { deletedAt } });
       if (result.count !== ids.length) throw new Error("The selection changed. Nothing was deleted.");
+      if (typeValue === "appointment") await enqueueGoogleCalendarSync(tx, user.businessId, ids, "DELETE");
     }
   });
   refreshTrashViews();
@@ -144,14 +153,19 @@ export async function restoreFromTrash(typeValue: string, id: string) {
   if (typeValue === "customer") {
     const customer = await prisma.customer.findUnique({ where: { id }, select: { deletedAt: true } });
     if (!customer?.deletedAt) throw new Error("This customer is no longer in Trash.");
-    await prisma.$transaction([
-      prisma.customer.update({ where: { id }, data: { deletedAt: null } }),
-      prisma.appointment.updateMany({ where: { customerId: id, deletedAt: customer.deletedAt }, data: { deletedAt: null } }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      const appointments = await tx.appointment.findMany({ where: { customerId: id, deletedAt: customer.deletedAt }, select: { id: true } });
+      await tx.customer.update({ where: { id }, data: { deletedAt: null } });
+      await tx.appointment.updateMany({ where: { customerId: id, deletedAt: customer.deletedAt }, data: { deletedAt: null } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, appointments.map((item) => item.id), "UPSERT");
+    });
   } else if (typeValue === "appointment") {
     const appointment = await prisma.appointment.findUnique({ where: { id }, select: { customer: { select: { deletedAt: true } } } });
     if (!appointment || appointment.customer.deletedAt) throw new Error("Restore the customer before restoring this appointment.");
-    await prisma.appointment.update({ where: { id }, data: { deletedAt: null } });
+    await prisma.$transaction(async (tx) => {
+      await tx.appointment.update({ where: { id }, data: { deletedAt: null } });
+      await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
+    });
   } else if (typeValue === "photo") {
     const photo = await prisma.mediaAsset.findUnique({ where: { id }, select: { appointment: { select: { deletedAt: true, customer: { select: { deletedAt: true } } } } } });
     if (!photo?.appointment || photo.appointment.deletedAt || photo.appointment.customer.deletedAt) throw new Error("Restore the appointment and customer before restoring this photo.");
@@ -228,12 +242,14 @@ export async function bulkRestoreFromTrash(formData: FormData) {
       const customers = await tx.customer.findMany({ where: { id: { in: customerIds }, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
       if (customers.length !== customerIds.length) throw new Error("The selection changed. Nothing was restored.");
       for (const customer of customers) {
+        const appointments = await tx.appointment.findMany({ where: { customerId: customer.id, deletedAt: customer.deletedAt }, select: { id: true } });
         await tx.customer.update({ where: { id: customer.id }, data: { deletedAt: null } });
         await tx.appointment.updateMany({ where: { customerId: customer.id, deletedAt: customer.deletedAt }, data: { deletedAt: null } });
+        await enqueueGoogleCalendarSync(tx, user.businessId, appointments.map((item) => item.id), "UPSERT");
       }
     }
     const appointmentIds = ids("appointment");
-    if (appointmentIds.length) { const blocked = await tx.appointment.count({ where: { id: { in: appointmentIds }, customer: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected customers before their appointments."); const result = await tx.appointment.updateMany({ where: { id: { in: appointmentIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== appointmentIds.length) throw new Error("The selection changed. Nothing was restored."); }
+    if (appointmentIds.length) { const blocked = await tx.appointment.count({ where: { id: { in: appointmentIds }, customer: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected customers before their appointments."); const result = await tx.appointment.updateMany({ where: { id: { in: appointmentIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== appointmentIds.length) throw new Error("The selection changed. Nothing was restored."); await enqueueGoogleCalendarSync(tx, user.businessId, appointmentIds, "UPSERT"); }
     const photoIds = ids("photo");
     if (photoIds.length) { const blocked = await tx.mediaAsset.count({ where: { id: { in: photoIds }, OR: [{ appointment: { deletedAt: { not: null } } }, { appointment: { customer: { deletedAt: { not: null } } } }] } }); if (blocked) throw new Error("Restore selected customers and appointments before their photos."); const result = await tx.mediaAsset.updateMany({ where: { id: { in: photoIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== photoIds.length) throw new Error("The selection changed. Nothing was restored."); }
   });

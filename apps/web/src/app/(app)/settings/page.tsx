@@ -25,6 +25,7 @@ const groups = [
       ["/settings/business", "Studio profile & appearance", "Name, language, currency, timezone, and theme", SlidersHorizontal],
       ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
       ["/settings/calendar-import", "Calendar import", "Bring earlier calendar or JSON appointments into Manisa", CalendarSync],
+      ["/settings/google-calendar", "Google Calendar", "One-way appointment synchronization", CalendarSync],
       ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
       ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
       ["/settings/members", "Members", "Invite and manage this business team", UserCog],
@@ -38,6 +39,7 @@ const requiredPermission: Record<string, BusinessPermission> = {
   "/appointments": "appointments.view", "/customers": "customers.view", "/settings/referrals": "customers.view", "/services": "services.view",
   "/settings/categories": "services.manage", "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/business": "business.manage",
   "/settings/navigation": "business.manage", "/settings/calendar-import": "appointments.manage", "/settings/instagram": "integrations.manage",
+  "/settings/google-calendar": "integrations.manage",
   "/settings/members": "members.manage", "/settings/trash": "trash.manage",
 };
 

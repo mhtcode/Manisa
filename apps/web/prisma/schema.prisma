@@ -61,6 +61,23 @@ enum MediaJobStatus {
   FAILED
 }
 
+enum GoogleCalendarConnectionStatus {
+  CONNECTED
+  PAUSED
+}
+
+enum GoogleCalendarSyncOperation {
+  UPSERT
+  DELETE
+}
+
+enum GoogleCalendarSyncStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum Locale {
   en
   fa
@@ -105,6 +122,7 @@ model User {
   acceptedInvitations Invitation[]          @relation("InvitationRecipient")
   auditEvents         AuditLog[]             @relation("AuditActor")
   connectedInstagram InstagramConnection[]  @relation("InstagramConnector")
+  connectedGoogleCalendars GoogleCalendarConnection[] @relation("GoogleCalendarConnector")
   notificationReceipts NotificationReceipt[]
   recordedPayments     AppointmentPayment[] @relation("PaymentRecorder")
 }
@@ -151,6 +169,9 @@ model Business {
   notificationReceipts  NotificationReceipt[]
   instagramConnection   InstagramConnection?
   instagramPosts        InstagramPost[]
+  googleCalendarConnection GoogleCalendarConnection?
+  googleCalendarEvents  GoogleCalendarEvent[]
+  googleCalendarSyncJobs GoogleCalendarSyncJob[]
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   @@index([active, deletedAt])
@@ -375,14 +396,14 @@ model Appointment {
   payments                AppointmentPayment[]
   notes                   String?
   completionNotes         String?
-  calendarEventId         String?
+  importSourceId          String?
   calendarSyncError       String?
   completedAt             DateTime?                  @db.Timestamptz(3)
   deletedAt               DateTime?
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
 
-  @@unique([businessId, calendarEventId])
+  @@unique([businessId, importSourceId])
   @@index([businessId, startAt])
   @@index([businessId, customerId, startAt])
   @@index([businessId, serviceId, startAt])
@@ -390,6 +411,68 @@ model Appointment {
   @@index([businessId, status, completedAt])
   @@index([businessId, paymentStatus])
   @@index([businessId, deletedAt])
+}
+
+model GoogleCalendarConnection {
+  id                    String                         @id @default(cuid())
+  businessId            String                         @unique
+  business              Business                       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectedById         String
+  connectedBy           User                           @relation("GoogleCalendarConnector", fields: [connectedById], references: [id], onDelete: Restrict)
+  googleAccountEmail    String
+  calendarId            String                         @default("primary")
+  encryptedRefreshToken String
+  grantedScopes         String
+  status                GoogleCalendarConnectionStatus @default(CONNECTED)
+  lastSuccessfulSyncAt  DateTime?
+  lastError             String?
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  events                GoogleCalendarEvent[]
+  jobs                  GoogleCalendarSyncJob[]
+
+  @@index([status, updatedAt])
+}
+
+model GoogleCalendarEvent {
+  id             String                   @id @default(cuid())
+  businessId     String
+  business       Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectionId   String
+  connection     GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  appointmentId  String
+  googleEventId  String
+  etag           String?
+  lastSyncedAt   DateTime                  @default(now())
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([businessId, appointmentId])
+  @@unique([connectionId, googleEventId])
+  @@index([businessId, lastSyncedAt])
+}
+
+model GoogleCalendarSyncJob {
+  id             String                   @id @default(cuid())
+  businessId     String
+  business       Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectionId   String
+  connection     GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  appointmentId  String
+  operation      GoogleCalendarSyncOperation
+  googleEventId  String?
+  status         GoogleCalendarSyncStatus  @default(PENDING)
+  attempts       Int                       @default(0)
+  revision       Int                       @default(1)
+  availableAt    DateTime                  @default(now())
+  lockedAt       DateTime?
+  lastError      String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([businessId, appointmentId])
+  @@index([status, availableAt])
+  @@index([connectionId, status])
 }
 
 model PaymentMethod {

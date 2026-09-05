@@ -7,6 +7,8 @@ const serverEnvSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_AUTH_REDIRECT_URI: z.string().url().optional(),
+  GOOGLE_CALENDAR_REDIRECT_URI: z.string().url().optional(),
+  GOOGLE_CALENDAR_SYNC_SECRET: z.string().min(32).optional(),
   GOOGLE_AUTH_ALLOW_SIGNUP: z.enum(["true", "false"]).default("false"),
   GOOGLE_CALENDAR_ID: z.string().default("primary"),
   UPLOADS_DIR: z.string().min(1).optional(),
@@ -34,6 +36,8 @@ export function getServerEnv() {
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || undefined,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || undefined,
     GOOGLE_AUTH_REDIRECT_URI: process.env.GOOGLE_AUTH_REDIRECT_URI || undefined,
+    GOOGLE_CALENDAR_REDIRECT_URI: process.env.GOOGLE_CALENDAR_REDIRECT_URI || undefined,
+    GOOGLE_CALENDAR_SYNC_SECRET: process.env.GOOGLE_CALENDAR_SYNC_SECRET || undefined,
     GOOGLE_AUTH_ALLOW_SIGNUP: process.env.GOOGLE_AUTH_ALLOW_SIGNUP || "false",
     GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
     UPLOADS_DIR: process.env.UPLOADS_DIR || undefined,
@@ -60,7 +64,8 @@ export function secureCookiesEnabled() {
 }
 
 export function googleCalendarConfigured() {
-  return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  const env = getServerEnv();
+  return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_CALENDAR_REDIRECT_URI?.startsWith("https://") && env.INTEGRATION_ENCRYPTION_KEY);
 }
 
 export function googleAuthConfigured() {
