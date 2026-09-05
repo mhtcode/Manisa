@@ -61,7 +61,11 @@ export async function GET(request: NextRequest) {
         return created;
       });
     }
-    const memberships = await prisma.businessMembership.findMany({ where: { userId: user.id, active: true, deletedAt: null }, select: { businessId: true }, take: 2 });
+    const [memberships, platformAccess] = await Promise.all([
+      prisma.businessMembership.findMany({ where: { userId: user.id, active: true, deletedAt: null, business: { active: true, deletedAt: null } }, select: { businessId: true }, take: 2 }),
+      prisma.platformAccess.findFirst({ where: { userId: user.id, active: true, deletedAt: null }, select: { userId: true } }),
+    ]);
+    if (!memberships.length && !platformAccess) return loginRedirect(request, "inactive");
     await createSession(user.id, memberships.length === 1 ? memberships[0].businessId : undefined);
     const response = NextResponse.redirect(new URL(memberships.length === 1 ? "/report" : memberships.length > 1 ? "/workspaces" : "/platform", request.url));
     response.cookies.delete(STATE_COOKIE);

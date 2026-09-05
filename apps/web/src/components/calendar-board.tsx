@@ -213,7 +213,6 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
           <div className="flex items-center gap-1.5">
             <button className="flex h-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] px-2.5 text-xs font-semibold text-slate-200 transition active:scale-95 active:bg-white/[0.08]" onClick={goToday} type="button">Today</button>
             <button aria-label="Next period" className="flex size-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(1)} type="button"><ChevronRight size={19} /></button>
-            <Link aria-label={`Add appointment on ${selectedKey}`} className="button size-10 min-h-10 p-0" href={`/appointments/new?date=${selectedKey}`}><Plus size={18} /></Link>
           </div>
         </div>
 
@@ -300,7 +299,7 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
           </div>
           {visibleDays.map((day) => (
             <div className={`relative border-e border-white/8 last:border-e-0 ${day.isToday ? "bg-teal-300/[0.025]" : ""}`} key={day.key} style={{ height: hours.length * slotHeight }}>
-              {hours.map((hour, index) => <Link aria-label={`Add appointment on ${day.weekday} at ${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`} className="absolute inset-x-0 z-0 border-t border-white/[0.055] transition hover:bg-teal-300/[0.035]" href={`/appointments/new?date=${day.key}&time=${String(hour).padStart(2,"0")}:00`} key={hour} style={{ top: index * slotHeight, height: slotHeight }} />)}
+              {hours.map((hour, index) => <Link aria-label={`Add appointment on ${day.weekday} at ${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? "PM" : "AM"}`} className="group absolute inset-x-0 z-0 flex items-center justify-center border-t border-white/[0.055] transition hover:bg-teal-300/[0.035]" href={`/appointments/new?date=${day.key}&time=${String(hour).padStart(2,"0")}:00`} key={hour} style={{ top: index * slotHeight, height: slotHeight }}><Plus className="text-teal-200 opacity-0 transition group-hover:opacity-80" size={17}/></Link>)}
               {(itemsByDay.get(day.key) ?? []).map((item) => {
                 const top = Math.max(0, ((item.startMinutes / 60) - startHour) * slotHeight);
                 const height = Math.max(42, (item.durationMinutes / 60) * slotHeight - 3);
@@ -360,13 +359,15 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             const dayItems = itemsByDay.get(day.key) ?? [];
             const selected = day.key === selectedKey;
             return (
-              <button className={`min-h-32 border-b border-e border-white/[0.065] p-2 text-start transition last:border-e-0 hover:bg-white/[0.025] ${!day.isCurrentMonth ? "bg-black/10 opacity-45" : ""} ${selected ? "bg-teal-300/[0.045] shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : ""}`} key={day.key} onClick={() => setSelectedKey(day.key)} type="button">
-                <span className={`flex size-7 items-center justify-center rounded-full text-xs font-semibold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-teal-300/15 text-teal-200" : "text-slate-400"}`}>{day.dayNumber}</span>
-                <span className="mt-2 block space-y-1">
+              <div className={`relative min-h-32 border-b border-e border-white/[0.065] p-2 text-start transition last:border-e-0 hover:bg-white/[0.025] ${!day.isCurrentMonth ? "bg-black/10 opacity-45" : ""} ${selected ? "bg-teal-300/[0.045] shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : ""}`} key={day.key}>
+                <button aria-label={`Select ${day.weekday}, ${day.monthLabel} ${day.dayNumber}`} className="absolute inset-0 z-0" onClick={() => setSelectedKey(day.key)} type="button"/>
+                <span className={`pointer-events-none relative z-[1] flex size-7 items-center justify-center rounded-full text-xs font-semibold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-teal-300/15 text-teal-200" : "text-slate-400"}`}>{day.dayNumber}</span>
+                {selected && <Link aria-label={`Add appointment on ${day.weekday}, ${day.monthLabel} ${day.dayNumber}`} className="absolute end-2 top-2 z-10 flex size-7 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400" href={`/appointments/new?date=${day.key}`}><Plus size={15}/></Link>}
+                <span className="pointer-events-none relative z-[1] mt-2 block space-y-1">
                   {dayItems.slice(0, maxItems).map((item) => <span className={`block truncate rounded-md border px-2 py-1 text-[10px] ${eventColors[item.colorIndex % eventColors.length]}`} key={item.id}><strong className="font-semibold">{item.time}</strong> {item.customer}</span>)}
                   {dayItems.length > maxItems && <span className="block px-1 text-[10px] font-medium text-slate-500">+{dayItems.length - maxItems} more</span>}
                 </span>
-              </button>
+              </div>
             );
           })}
         </div>

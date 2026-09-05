@@ -16,6 +16,9 @@ export async function login(_: LoginState, formData: FormData): Promise<LoginSta
     return { error: "The email or password is incorrect." };
   }
   const membership = user.memberships[0];
+  if (!membership && !user.platformAccess?.active) {
+    return { error: "Your account or workspace access is disabled. Contact the owner." };
+  }
   await createSession(user.id, user.memberships.length === 1 ? membership?.businessId : undefined);
   if (user.memberships.length > 1) redirect("/workspaces");
   if (membership) redirect("/report");

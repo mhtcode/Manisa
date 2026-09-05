@@ -4,8 +4,9 @@ import argon2 from "argon2";
 import { createHash, randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createSession, requirePlatformPermission } from "@/lib/auth";
+import { createSession, requireBusinessPermission, requirePlatformPermission } from "@/lib/auth";
 import { getServerEnv } from "@/lib/env";
+import { businessPermissionKeys, hasBusinessPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 
 export type SetupState = { error?: string };
@@ -126,11 +127,10 @@ export async function acceptInvitation(_: SetupState, formData: FormData): Promi
 }
 
 export async function inviteBusinessMember(_: InvitationState, formData: FormData): Promise<InvitationState> {
-  const { requireBusinessPermission } = await import("@/lib/auth");
   const user = await requireBusinessPermission("members.manage");
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const roleValue = String(formData.get("role") || "STAFF");
-  const role = (["ADMIN", "MANAGER", "STAFF"] as const).includes(roleValue as never) ? roleValue as "ADMIN" | "MANAGER" | "STAFF" : "STAFF";
+  const role = (["ADMIN", "STAFF"] as const).includes(roleValue as never) ? roleValue as "ADMIN" | "STAFF" : "STAFF";
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "Enter a valid email." };
   const rawToken = randomBytes(32).toString("base64url");
   const invitation = await prisma.invitation.create({ data: { tokenHash: createHash("sha256").update(rawToken).digest("hex"), email, kind: "BUSINESS", businessId: user.businessId, businessRole: role, invitedById: user.id, expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000) } });
@@ -140,12 +140,46 @@ export async function inviteBusinessMember(_: InvitationState, formData: FormDat
 }
 
 export async function setMembershipActive(membershipId: string, active: boolean) {
-  const { requireBusinessPermission } = await import("@/lib/auth");
   const user = await requireBusinessPermission("members.manage");
   const membership = await prisma.businessMembership.findFirst({ where: { id: membershipId, businessId: user.businessId }, include: { user: true } });
   if (!membership || membership.role === "OWNER") throw new Error("The business owner cannot be disabled.");
   if (membership.userId === user.id) throw new Error("You cannot disable your own active membership.");
   await prisma.businessMembership.update({ where: { id: membership.id }, data: { active } });
   await prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: active ? "membership.enable" : "membership.disable", targetType: "BusinessMembership", targetId: membership.id, before: { active: membership.active }, after: { active } } });
+  revalidatePath("/settings/members");
+}
+
+export async function updateMembershipAccess(membershipId: string, formData: FormData) {
+  const user = await requireBusinessPermission("members.manage");
+  const membership = await prisma.businessMembership.findFirst({ where: { id: membershipId, businessId: user.businessId }, include: { user: true } });
+  if (!membership || membership.role === "OWNER") throw new Error("Owner access is changed only through ownership transfer.");
+  if (membership.userId === user.id) throw new Error("You cannot change your own role or permissions.");
+  const requestedRole = String(formData.get("role") || "STAFF");
+  const role = requestedRole === "ADMIN" ? "ADMIN" : "STAFF";
+  const permissionOverrides = Object.fromEntries(businessPermissionKeys.map((key) => [key, formData.has(`permission:${key}`)]));
+  for (const key of businessPermissionKeys) {
+    if (permissionOverrides[key] && !user.elevated && !hasBusinessPermission(user.membership.role, user.membership.permissionOverrides, key)) {
+      throw new Error(`You cannot grant the ${key} permission.`);
+    }
+  }
+  await prisma.$transaction([
+    prisma.businessMembership.update({ where: { id: membership.id }, data: { role, permissionOverrides } }),
+    prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: "membership.access.update", targetType: "BusinessMembership", targetId: membership.id, before: { role: membership.role, permissionOverrides: membership.permissionOverrides }, after: { role, permissionOverrides } } }),
+  ]);
+  revalidatePath("/settings/members");
+}
+
+export async function transferBusinessOwnership(membershipId: string) {
+  const user = await requireBusinessPermission("members.manage");
+  const business = await prisma.business.findUnique({ where: { id: user.businessId }, select: { primaryOwnerId: true } });
+  if (!business || (!user.elevated && business.primaryOwnerId !== user.id)) throw new Error("Only the current owner can transfer ownership.");
+  const target = await prisma.businessMembership.findFirst({ where: { id: membershipId, businessId: user.businessId, active: true, deletedAt: null }, include: { user: true } });
+  if (!target || target.userId === business.primaryOwnerId) return;
+  await prisma.$transaction(async (tx) => {
+    await tx.businessMembership.updateMany({ where: { businessId: user.businessId, role: "OWNER" }, data: { role: "ADMIN" } });
+    await tx.businessMembership.update({ where: { id: target.id }, data: { role: "OWNER", active: true } });
+    await tx.business.update({ where: { id: user.businessId }, data: { primaryOwnerId: target.userId } });
+    await tx.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: "business.ownership.transfer", targetType: "User", targetId: target.userId, before: { ownerId: business.primaryOwnerId }, after: { ownerId: target.userId } } });
+  });
   revalidatePath("/settings/members");
 }

@@ -53,10 +53,12 @@ export async function StudioLanding({ slug }: { slug: string }) {
 }
 
 export default async function Home() {
-  const [user, studios, setupComplete] = await Promise.all([
-    getCurrentUser(),
-    prisma.business.findMany({ where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 12, select: { name: true, slug: true } }),
+  const [manisaStudio, firstStudio, setupComplete] = await Promise.all([
+    prisma.business.findFirst({ where: { slug: "manisa", active: true, deletedAt: null }, select: { slug: true } }),
+    prisma.business.findFirst({ where: { active: true, deletedAt: null }, orderBy: { createdAt: "asc" }, select: { slug: true } }),
     prisma.platformAccess.count({ where: { role: "ROOT_OWNER" } }),
   ]);
-  return <main className="min-h-screen bg-[#070a10] text-white"><header className="border-b border-white/10"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4"><span className="flex items-center gap-3 font-semibold"><span className="flex size-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300"><Sparkles size={18}/></span>Manisa</span><Link className="button-secondary" href={user ? "/report" : setupComplete ? "/login" : "/setup"}>{user ? "Open management" : setupComplete ? "Sign in" : "Set up"}</Link></div></header><section className="mx-auto max-w-6xl px-5 py-20 sm:py-28"><p className="text-sm font-semibold uppercase tracking-[.18em] text-blue-300">Business management platform</p><h1 className="mt-5 max-w-4xl text-5xl font-semibold tracking-[-.055em] sm:text-7xl">One clear platform for every business you manage.</h1><p className="mt-6 max-w-2xl text-lg leading-8 text-slate-400">Secure workspaces for appointments, customers, payments, reporting, teams, and fast media delivery.</p>{studios.length ? <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{studios.map((studio) => <Link className="panel flex items-center justify-between p-5 transition hover:border-blue-400/30" href={`/studio/${studio.slug}`} key={studio.slug}><span className="font-semibold">{studio.name}</span><ArrowRight className="text-blue-300" size={17}/></Link>)}</div> : null}</section></main>;
+  const studio = manisaStudio || firstStudio;
+  if (studio) return <StudioLanding slug={studio.slug}/>;
+  return <main className="flex min-h-screen items-center justify-center bg-[#070a10] px-5 text-white"><section className="panel max-w-lg p-8 text-center"><span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-300"><Sparkles size={22}/></span><h1 className="mt-5 text-3xl font-semibold">Set up Manisa</h1><p className="mt-3 leading-7 text-slate-400">Create the first system owner and the Manisa business workspace.</p><Link className="button mt-7" href={setupComplete ? "/login" : "/setup"}>{setupComplete ? "Sign in" : "Create system owner"}<ArrowRight size={16}/></Link></section></main>;
 }
