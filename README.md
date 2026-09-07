@@ -99,7 +99,15 @@ The language setting switches between English and فارسی and changes directi
 
 Customer avatars and finalized-appointment albums are stored in private MinIO objects with responsive WebP variants. Staff can filter the private Gallery and explicitly feature appointment photos. Featuring copies a derivative into the public bucket; customer identity and avatars are never published. Storage remains counted through the seven-day Trash period and is released only after object purge.
 
-The public landing page reads active service categories and selected Gallery work from PostgreSQL. Configure `NEXT_PUBLIC_BUSINESS_ADDRESS` and `NEXT_PUBLIC_INSTAGRAM_URL` for the public contact details.
+The public landing page reads active service categories and selected Gallery work from PostgreSQL. Owners can manage its tagline, biography, booking URL, phone, and email in **Settings → Business profile**. The bundled editorial hair and manicure photography is self-hosted; source and license records live in `apps/web/public/landing/SOURCES.md`.
+
+## Cashbook and data exports
+
+**Settings → Financial** is a cash-basis cashbook rather than a double-entry accounting system. It manages financial accounts, income and expense categories, vendors, income, expenses, transfers, supplier bills and partial payments, recurring draft bills, customer invoices, appointment-payment deposits, receipt attachments, retention, and cash-flow reports. A transfer moves value between two accounts atomically and is excluded from consolidated cash flow. Appointment payments and their ledger transactions are created or changed in the same database transaction.
+
+Financial evidence moves to Trash immediately and stops affecting current balances and reports. After seven days it becomes a locked archive; the default permanent-retention period is 2,190 days (six years). Owners can shorten it to a minimum of seven days only after considering their legal record-keeping obligations.
+
+**Settings → Data transfer** combines JSON/calendar import and secure date-range export. `export-worker` produces a private ZIP containing normalized CSV tables, a versioned relationship manifest, printable invoice PDFs, referenced appointment photos and customer avatars, financial attachments, and archived financial records in the selected period. Downloads are authorization-proxied, audited, checksummed, and expire after 24 hours. Only one export may run per business at a time.
 
 ## Instagram Professional integration
 
@@ -121,11 +129,7 @@ The `calendar-worker` Compose service drains a durable database outbox every 15 
 
 Manisa encrypts the long-lived access token with AES-256-GCM, validates signed OAuth state against a short-lived HTTP-only cookie, requests read-only access, and caches optimized covers locally. Landing-page requests use the cache and schedule a background refresh when it is older than 15 minutes; a failed refresh keeps the last successful feed online. Disconnecting removes the connection and unpublishes cached database records.
 
-## Google Calendar
-
-Settings includes a safe historical importer for Google Calendar `.ics` exports. Event titles must use `Customer name | Service name`; optional `Phone:` and `Email:` lines may be included in the event description. Missing customers and services are created, repeat imports are deduplicated, and imported visits are tagged `historical · unreported` so they never affect income or working-hour totals.
-
-Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and optionally `GOOGLE_CALENDAR_ID` to expose live-integration configuration status. OAuth connection and retry delivery are intentionally not enabled yet; core workflows do not depend on Google availability, and Manisa remains the source of truth.
+The Data transfer import tab also includes a safe historical importer for Google Calendar `.ics` exports. Event titles use `Customer name | Service name`; optional `Phone:` and `Email:` lines may be included in the description. Missing customers and services are created, repeat imports are deduplicated, and imported visits remain `historical · unreported` so they never affect income or working-hour totals.
 
 ## PWA and offline behavior
 
@@ -153,7 +157,8 @@ compose.yaml             # web, API, initializer, and PostgreSQL stack
 
 ## Current limitations
 
-- Google Calendar export import is available; OAuth connection and durable two-way synchronization remain future work.
+- Google Calendar synchronization is intentionally one-way from Manisa; inbound Google edits and two-way conflict resolution are outside scope.
+- The financial module is a cashbook. Taxes, payroll, inventory, bank feeds, automated reconciliation, and statutory filing remain outside scope.
 - Web Push is not enabled; it requires a deliberate permission and delivery design.
 - The responsive calendar supports day, compact mobile week, month, and agenda views, plus two-finger or button zoom; drag-and-drop rescheduling remains future work.
 - Instagram requires a Meta app, a Professional account, and a publicly reachable HTTPS OAuth callback; it is hidden gracefully when not configured.

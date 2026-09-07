@@ -11,8 +11,10 @@ const labels: Record<BusinessPermission, string> = {
   "services.view": "View services", "services.manage": "Edit services",
   "gallery.view": "View gallery", "gallery.manage": "Edit gallery",
   "reports.view": "View reports", "financial.view": "View financial data",
+  "financial.manage": "Manage financial records",
   "payments.manage": "Manage payments", "business.manage": "Change business settings",
   "integrations.manage": "Manage integrations", "members.manage": "Manage administrators",
+  "data.import": "Import business data", "data.export": "Export business data",
   "trash.manage": "Delete, restore, and purge items",
 };
 

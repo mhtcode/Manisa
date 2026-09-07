@@ -38,6 +38,43 @@ enum MediaOwnerType {
   APPOINTMENT_PHOTO
 }
 
+enum FinancialAccountType {
+  CASH
+  BANK
+  CARD
+  E_WALLET
+  OTHER
+}
+
+enum FinancialCategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinancialTransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+  OPENING_ADJUSTMENT
+  APPOINTMENT_PAYMENT
+  BILL_PAYMENT
+}
+
+enum RecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum ExportJobStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+  EXPIRED
+}
+
 enum MediaStatus {
   STAGING
   PROCESSING
@@ -105,26 +142,29 @@ enum PaymentStatus {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  name                String
-  passwordHash        String?
-  googleSubject       String?              @unique
-  role                Role                 @default(ADMIN)
-  active              Boolean              @default(true)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  preferences         UserPreference?
-  platformAccess      PlatformAccess?
-  memberships         BusinessMembership[]
-  ownedBusinesses     Business[]            @relation("BusinessPrimaryOwner")
-  sentInvitations     Invitation[]          @relation("InvitationSender")
-  acceptedInvitations Invitation[]          @relation("InvitationRecipient")
-  auditEvents         AuditLog[]             @relation("AuditActor")
-  connectedInstagram InstagramConnection[]  @relation("InstagramConnector")
-  connectedGoogleCalendars GoogleCalendarConnection[] @relation("GoogleCalendarConnector")
-  notificationReceipts NotificationReceipt[]
-  recordedPayments     AppointmentPayment[] @relation("PaymentRecorder")
+  id                           String                     @id @default(cuid())
+  email                        String                     @unique
+  name                         String
+  passwordHash                 String?
+  googleSubject                String?                    @unique
+  role                         Role                       @default(ADMIN)
+  active                       Boolean                    @default(true)
+  createdAt                    DateTime                   @default(now())
+  updatedAt                    DateTime                   @updatedAt
+  preferences                  UserPreference?
+  platformAccess               PlatformAccess?
+  memberships                  BusinessMembership[]
+  ownedBusinesses              Business[]                 @relation("BusinessPrimaryOwner")
+  sentInvitations              Invitation[]               @relation("InvitationSender")
+  acceptedInvitations          Invitation[]               @relation("InvitationRecipient")
+  auditEvents                  AuditLog[]                 @relation("AuditActor")
+  connectedInstagram           InstagramConnection[]      @relation("InstagramConnector")
+  connectedGoogleCalendars     GoogleCalendarConnection[] @relation("GoogleCalendarConnector")
+  notificationReceipts         NotificationReceipt[]
+  recordedPayments             AppointmentPayment[]       @relation("PaymentRecorder")
+  createdFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionCreator")
+  updatedFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionUpdater")
+  requestedExports             ExportJob[]                @relation("ExportRequester")
 }
 
 model PlatformAccess {
@@ -137,72 +177,92 @@ model PlatformAccess {
   deletedAt           DateTime?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
+
   @@index([role, active])
   @@index([deletedAt])
 }
 
 model Business {
-  id                   String               @id @default(cuid())
-  name                 String
-  slug                 String               @unique
-  template             BusinessTemplate     @default(BLANK)
-  active               Boolean              @default(true)
-  primaryOwnerId       String
-  primaryOwner         User                 @relation("BusinessPrimaryOwner", fields: [primaryOwnerId], references: [id], onDelete: Restrict)
-  storageQuotaBytes    BigInt                @default(10737418240)
-  storageUsedBytes     BigInt                @default(0)
-  storageReservedBytes BigInt                @default(0)
-  deletedAt            DateTime?
-  settings             BusinessSettings?
-  memberships          BusinessMembership[]
-  invitations          Invitation[]
-  auditLogs             AuditLog[]
-  customers             Customer[]
-  categories            StudioCategory[]
-  services              Service[]
-  appointments          Appointment[]
-  paymentMethods        PaymentMethod[]
-  payments              AppointmentPayment[]
-  appointmentServices   AppointmentService[]
-  actualServices        AppointmentActualService[]
-  mediaAssets           MediaAsset[]
-  notificationReceipts  NotificationReceipt[]
-  instagramConnection   InstagramConnection?
-  instagramPosts        InstagramPost[]
+  id                       String                     @id @default(cuid())
+  name                     String
+  slug                     String                     @unique
+  template                 BusinessTemplate           @default(BLANK)
+  active                   Boolean                    @default(true)
+  primaryOwnerId           String
+  primaryOwner             User                       @relation("BusinessPrimaryOwner", fields: [primaryOwnerId], references: [id], onDelete: Restrict)
+  storageQuotaBytes        BigInt                     @default(10737418240)
+  storageUsedBytes         BigInt                     @default(0)
+  storageReservedBytes     BigInt                     @default(0)
+  deletedAt                DateTime?
+  settings                 BusinessSettings?
+  memberships              BusinessMembership[]
+  invitations              Invitation[]
+  auditLogs                AuditLog[]
+  customers                Customer[]
+  categories               StudioCategory[]
+  services                 Service[]
+  appointments             Appointment[]
+  paymentMethods           PaymentMethod[]
+  payments                 AppointmentPayment[]
+  appointmentServices      AppointmentService[]
+  actualServices           AppointmentActualService[]
+  mediaAssets              MediaAsset[]
+  notificationReceipts     NotificationReceipt[]
+  instagramConnection      InstagramConnection?
+  instagramPosts           InstagramPost[]
   googleCalendarConnection GoogleCalendarConnection?
-  googleCalendarEvents  GoogleCalendarEvent[]
-  googleCalendarSyncJobs GoogleCalendarSyncJob[]
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  googleCalendarEvents     GoogleCalendarEvent[]
+  googleCalendarSyncJobs   GoogleCalendarSyncJob[]
+  financialAccounts        FinancialAccount[]
+  financialCategories      FinancialCategory[]
+  vendors                  Vendor[]
+  financialTransactions    FinancialTransaction[]
+  supplierBills            SupplierBill[]
+  recurringBillTemplates   RecurringBillTemplate[]
+  customerInvoices         CustomerInvoice[]
+  financialAttachments     FinancialAttachment[]
+  exportJobs               ExportJob[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+
   @@index([active, deletedAt])
   @@index([primaryOwnerId])
 }
 
 model BusinessSettings {
-  id          String   @id @default(cuid())
-  businessId  String   @unique
-  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  currency    String   @default("CAD") @db.VarChar(3)
-  timezone    String   @default("America/Toronto")
-  address     String?
-  instagramUrl String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  businessId             String   @unique
+  business               Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  currency               String   @default("CAD") @db.VarChar(3)
+  timezone               String   @default("America/Toronto")
+  address                String?
+  instagramUrl           String?
+  publicPhone            String?
+  publicEmail            String?
+  bookingUrl             String?
+  studioTagline          String?
+  studioBiography        String?
+  financialRetentionDays Int      @default(2190)
+  invoicePrefix          String   @default("INV")
+  nextInvoiceNumber      Int      @default(1)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 model BusinessMembership {
-  id                  String       @id @default(cuid())
+  id                  String                @id @default(cuid())
   userId              String
   businessId          String
-  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business            Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business            Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   role                BusinessRole
-  permissionOverrides Json         @default("{}")
-  active              Boolean      @default(true)
+  permissionOverrides Json                  @default("{}")
+  active              Boolean               @default(true)
   deletedAt           DateTime?
   preferences         MembershipPreference?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
   @@unique([userId, businessId])
   @@index([businessId, role, active])
   @@index([userId, active])
@@ -221,57 +281,59 @@ model MembershipPreference {
 }
 
 model Invitation {
-  id                  String          @id @default(cuid())
-  tokenHash           String          @unique
+  id                  String         @id @default(cuid())
+  tokenHash           String         @unique
   email               String
-  kind                 InvitationKind
-  platformRole         PlatformRole?
-  businessId           String?
-  business             Business?      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  businessRole         BusinessRole?
-  permissionOverrides  Json            @default("{}")
-  invitedById          String
-  invitedBy            User            @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
-  acceptedById         String?
-  acceptedBy           User?           @relation("InvitationRecipient", fields: [acceptedById], references: [id], onDelete: SetNull)
-  expiresAt            DateTime
-  acceptedAt           DateTime?
-  revokedAt            DateTime?
-  createdAt            DateTime        @default(now())
+  kind                InvitationKind
+  platformRole        PlatformRole?
+  businessId          String?
+  business            Business?      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessRole        BusinessRole?
+  permissionOverrides Json           @default("{}")
+  invitedById         String
+  invitedBy           User           @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
+  acceptedById        String?
+  acceptedBy          User?          @relation("InvitationRecipient", fields: [acceptedById], references: [id], onDelete: SetNull)
+  expiresAt           DateTime
+  acceptedAt          DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime       @default(now())
+
   @@index([email, expiresAt])
   @@index([businessId, expiresAt])
 }
 
 model AuditLog {
-  id             String    @id @default(cuid())
-  actorId        String?
-  actor          User?     @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
-  actorSnapshot  String
-  businessId     String?
-  business       Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
-  elevated       Boolean   @default(false)
-  action         String
-  targetType     String
-  targetId       String?
-  before         Json?
-  after          Json?
-  ipAddress      String?
-  userAgent      String?
-  createdAt      DateTime  @default(now())
+  id            String    @id @default(cuid())
+  actorId       String?
+  actor         User?     @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorSnapshot String
+  businessId    String?
+  business      Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  elevated      Boolean   @default(false)
+  action        String
+  targetType    String
+  targetId      String?
+  before        Json?
+  after         Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+
   @@index([businessId, createdAt])
   @@index([actorId, createdAt])
   @@index([action, createdAt])
 }
 
 model NotificationReceipt {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  key       String
-  readAt    DateTime @default(now())
-  createdAt DateTime @default(now())
+  key        String
+  readAt     DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@unique([userId, businessId, key])
   @@index([userId, businessId, readAt])
@@ -291,6 +353,7 @@ model UserPreference {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
   @@map("Settings")
 }
 
@@ -312,7 +375,7 @@ model Customer {
   active            Boolean       @default(true)
   deletedAt         DateTime?
   appointments      Appointment[]
-  profilePhotos     MediaAsset[]   @relation("CustomerAvatar")
+  profilePhotos     MediaAsset[]  @relation("CustomerAvatar")
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -373,35 +436,36 @@ model Service {
 }
 
 model Appointment {
-  id                      String                     @id @default(cuid())
-  businessId              String
-  business                Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customerId              String
-  serviceId               String?
-  customer                Customer                   @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  service                 Service?                   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  serviceLines            AppointmentService[]
-  actualServiceLines      AppointmentActualService[]
-  photos                  MediaAsset[]
-  serviceNameSnapshot     String
-  startAt                 DateTime                   @db.Timestamptz(3)
-  expectedDurationMinutes Int
-  actualDurationMinutes   Int?
-  status                  AppointmentStatus          @default(SCHEDULED)
-  expectedPrice           Decimal                    @db.Decimal(12, 2)
-  finalPrice              Decimal?                   @db.Decimal(12, 2)
-  currency                String                     @default("CAD") @db.VarChar(3)
-  paymentStatus           PaymentStatus              @default(UNPAID)
-  paymentReconciliationRequired Boolean               @default(false)
-  payments                AppointmentPayment[]
-  notes                   String?
-  completionNotes         String?
-  importSourceId          String?
-  calendarSyncError       String?
-  completedAt             DateTime?                  @db.Timestamptz(3)
-  deletedAt               DateTime?
-  createdAt               DateTime                   @default(now())
-  updatedAt               DateTime                   @updatedAt
+  id                            String                     @id @default(cuid())
+  businessId                    String
+  business                      Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId                    String
+  serviceId                     String?
+  customer                      Customer                   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  service                       Service?                   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceLines                  AppointmentService[]
+  actualServiceLines            AppointmentActualService[]
+  photos                        MediaAsset[]
+  serviceNameSnapshot           String
+  startAt                       DateTime                   @db.Timestamptz(3)
+  expectedDurationMinutes       Int
+  actualDurationMinutes         Int?
+  status                        AppointmentStatus          @default(SCHEDULED)
+  expectedPrice                 Decimal                    @db.Decimal(12, 2)
+  finalPrice                    Decimal?                   @db.Decimal(12, 2)
+  currency                      String                     @default("CAD") @db.VarChar(3)
+  paymentStatus                 PaymentStatus              @default(UNPAID)
+  paymentReconciliationRequired Boolean                    @default(false)
+  payments                      AppointmentPayment[]
+  invoices                      CustomerInvoice[]
+  notes                         String?
+  completionNotes               String?
+  importSourceId                String?
+  calendarSyncError             String?
+  completedAt                   DateTime?                  @db.Timestamptz(3)
+  deletedAt                     DateTime?
+  createdAt                     DateTime                   @default(now())
+  updatedAt                     DateTime                   @updatedAt
 
   @@unique([businessId, importSourceId])
   @@index([businessId, startAt])
@@ -435,17 +499,17 @@ model GoogleCalendarConnection {
 }
 
 model GoogleCalendarEvent {
-  id             String                   @id @default(cuid())
-  businessId     String
-  business       Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  connectionId   String
-  connection     GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  appointmentId  String
-  googleEventId  String
-  etag           String?
-  lastSyncedAt   DateTime                  @default(now())
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  id            String                   @id @default(cuid())
+  businessId    String
+  business      Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  appointmentId String
+  googleEventId String
+  etag          String?
+  lastSyncedAt  DateTime                 @default(now())
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
   @@unique([businessId, appointmentId])
   @@unique([connectionId, googleEventId])
@@ -453,22 +517,22 @@ model GoogleCalendarEvent {
 }
 
 model GoogleCalendarSyncJob {
-  id             String                   @id @default(cuid())
-  businessId     String
-  business       Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  connectionId   String
-  connection     GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  appointmentId  String
-  operation      GoogleCalendarSyncOperation
-  googleEventId  String?
-  status         GoogleCalendarSyncStatus  @default(PENDING)
-  attempts       Int                       @default(0)
-  revision       Int                       @default(1)
-  availableAt    DateTime                  @default(now())
-  lockedAt       DateTime?
-  lastError      String?
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  id            String                      @id @default(cuid())
+  businessId    String
+  business      Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    GoogleCalendarConnection    @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  appointmentId String
+  operation     GoogleCalendarSyncOperation
+  googleEventId String?
+  status        GoogleCalendarSyncStatus    @default(PENDING)
+  attempts      Int                         @default(0)
+  revision      Int                         @default(1)
+  availableAt   DateTime                    @default(now())
+  lockedAt      DateTime?
+  lastError     String?
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
 
   @@unique([businessId, appointmentId])
   @@index([status, availableAt])
@@ -476,46 +540,304 @@ model GoogleCalendarSyncJob {
 }
 
 model PaymentMethod {
-  id        String               @id @default(cuid())
-  businessId String
-  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name      String
-  icon      String               @default("wallet")
-  position  Int                  @default(0)
-  active    Boolean              @default(true)
-  deletedAt DateTime?
-  payments  AppointmentPayment[]
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  id               String               @id @default(cuid())
+  businessId       String
+  business         Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name             String
+  icon             String               @default("wallet")
+  position         Int                  @default(0)
+  active           Boolean              @default(true)
+  deletedAt        DateTime?
+  payments         AppointmentPayment[]
+  defaultAccountId String?
+  defaultAccount   FinancialAccount?    @relation(fields: [defaultAccountId], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   @@unique([businessId, name])
   @@index([businessId, active, position])
   @@index([businessId, deletedAt])
+  @@index([businessId, defaultAccountId])
 }
 
 model AppointmentPayment {
-  id                 String         @id @default(cuid())
+  id                 String                @id @default(cuid())
   businessId         String
-  business           Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business           Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointmentId      String
-  appointment        Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointment        Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   paymentMethodId    String?
-  paymentMethod      PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  paymentMethod      PaymentMethod?        @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
   methodNameSnapshot String
-  amount             Decimal        @db.Decimal(12, 2)
-  paidAt             DateTime       @default(now()) @db.Timestamptz(3)
+  amount             Decimal               @db.Decimal(12, 2)
+  paidAt             DateTime              @default(now()) @db.Timestamptz(3)
   note               String?
   recordedById       String?
-  recordedBy         User?          @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  recordedBy         User?                 @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  transactionId      String?               @unique
+  transaction        FinancialTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
   voidedAt           DateTime?
   voidReason         String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 
   @@index([businessId, appointmentId, voidedAt])
   @@index([businessId, paymentMethodId, paidAt])
   @@index([businessId, paidAt])
   @@index([businessId, voidedAt])
+}
+
+model FinancialAccount {
+  id                      String                 @id @default(cuid())
+  businessId              String
+  business                Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name                    String
+  type                    FinancialAccountType
+  openingBalance          Decimal                @default(0) @db.Decimal(12, 2)
+  openedAt                DateTime               @default(now()) @db.Timestamptz(3)
+  active                  Boolean                @default(true)
+  position                Int                    @default(0)
+  deletedAt               DateTime?
+  archivedAt              DateTime?
+  purgeAt                 DateTime?
+  sourceTransactions      FinancialTransaction[] @relation("FinancialTransactionSourceAccount")
+  destinationTransactions FinancialTransaction[] @relation("FinancialTransactionDestinationAccount")
+  paymentMethods          PaymentMethod[]
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId, active, position])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model FinancialCategory {
+  id                 String                  @id @default(cuid())
+  businessId         String
+  business           Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name               String
+  type               FinancialCategoryType
+  active             Boolean                 @default(true)
+  position           Int                     @default(0)
+  deletedAt          DateTime?
+  archivedAt         DateTime?
+  purgeAt            DateTime?
+  transactions       FinancialTransaction[]
+  billLines          BillLine[]
+  recurringTemplates RecurringBillTemplate[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([businessId, type, name])
+  @@index([businessId, type, active, position])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model Vendor {
+  id                 String                  @id @default(cuid())
+  businessId         String
+  business           Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name               String
+  email              String?
+  phone              String?
+  notes              String?
+  active             Boolean                 @default(true)
+  deletedAt          DateTime?
+  archivedAt         DateTime?
+  purgeAt            DateTime?
+  transactions       FinancialTransaction[]
+  bills              SupplierBill[]
+  recurringTemplates RecurringBillTemplate[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@unique([businessId, name])
+  @@index([businessId, active, name])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model FinancialTransaction {
+  id                      String                   @id @default(cuid())
+  businessId              String
+  business                Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type                    FinancialTransactionType
+  accountId               String
+  account                 FinancialAccount         @relation("FinancialTransactionSourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
+  destinationAccountId    String?
+  destinationAccount      FinancialAccount?        @relation("FinancialTransactionDestinationAccount", fields: [destinationAccountId], references: [id], onDelete: Restrict)
+  categoryId              String?
+  category                FinancialCategory?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  vendorId                String?
+  vendor                  Vendor?                  @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  billId                  String?
+  bill                    SupplierBill?            @relation(fields: [billId], references: [id], onDelete: SetNull)
+  accountNameSnapshot     String
+  destinationNameSnapshot String?
+  categoryNameSnapshot    String?
+  vendorNameSnapshot      String?
+  amount                  Decimal                  @db.Decimal(12, 2)
+  currency                String                   @db.VarChar(3)
+  occurredAt              DateTime                 @db.Timestamptz(3)
+  description             String
+  reference               String?
+  appointmentPayment      AppointmentPayment?
+  attachments             FinancialAttachment[]
+  createdById             String?
+  createdBy               User?                    @relation("FinancialTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedById             String?
+  updatedBy               User?                    @relation("FinancialTransactionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  deletedAt               DateTime?
+  archivedAt              DateTime?
+  purgeAt                 DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  @@index([businessId, occurredAt])
+  @@index([businessId, type, occurredAt])
+  @@index([businessId, accountId, occurredAt])
+  @@index([businessId, categoryId, occurredAt])
+  @@index([businessId, vendorId])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model SupplierBill {
+  id                  String                 @id @default(cuid())
+  businessId          String
+  business            Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  vendorId            String?
+  vendor              Vendor?                @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorNameSnapshot  String
+  billNumber          String?
+  issueDate           DateTime               @db.Timestamptz(3)
+  dueDate             DateTime?              @db.Timestamptz(3)
+  currency            String                 @db.VarChar(3)
+  total               Decimal                @db.Decimal(12, 2)
+  notes               String?
+  draft               Boolean                @default(false)
+  recurringTemplateId String?
+  recurringTemplate   RecurringBillTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
+  lines               BillLine[]
+  payments            FinancialTransaction[]
+  attachments         FinancialAttachment[]
+  deletedAt           DateTime?
+  archivedAt          DateTime?
+  purgeAt             DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  @@index([businessId, issueDate])
+  @@index([businessId, dueDate])
+  @@index([businessId, vendorId])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model BillLine {
+  id                   String             @id @default(cuid())
+  billId               String
+  bill                 SupplierBill       @relation(fields: [billId], references: [id], onDelete: Cascade)
+  categoryId           String?
+  category             FinancialCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryNameSnapshot String
+  description          String
+  amount               Decimal            @db.Decimal(12, 2)
+  position             Int                @default(0)
+}
+
+model RecurringBillTemplate {
+  id                   String              @id @default(cuid())
+  businessId           String
+  business             Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  vendorId             String?
+  vendor               Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorNameSnapshot   String
+  categoryId           String?
+  category             FinancialCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryNameSnapshot String
+  description          String
+  amount               Decimal             @db.Decimal(12, 2)
+  frequency            RecurrenceFrequency
+  nextIssueDate        DateTime            @db.Timestamptz(3)
+  dueAfterDays         Int                 @default(0)
+  active               Boolean             @default(true)
+  bills                SupplierBill[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@index([businessId, active, nextIssueDate])
+}
+
+model CustomerInvoice {
+  id               String      @id @default(cuid())
+  businessId       String
+  business         Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId    String
+  appointment      Appointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  invoiceNumber    Int
+  invoicePrefix    String
+  revision         Int         @default(1)
+  businessSnapshot Json
+  customerSnapshot Json
+  serviceSnapshot  Json
+  amount           Decimal     @db.Decimal(12, 2)
+  currency         String      @db.VarChar(3)
+  issueDate        DateTime    @db.Timestamptz(3)
+  dueDate          DateTime?   @db.Timestamptz(3)
+  notes            String?
+  voidedAt         DateTime?
+  deletedAt        DateTime?
+  archivedAt       DateTime?
+  purgeAt          DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([businessId, invoiceNumber])
+  @@unique([appointmentId, revision])
+  @@index([businessId, issueDate])
+  @@index([businessId, deletedAt, purgeAt])
+}
+
+model FinancialAttachment {
+  id            String                @id @default(cuid())
+  businessId    String
+  business      Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  transactionId String?
+  transaction   FinancialTransaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  billId        String?
+  bill          SupplierBill?         @relation(fields: [billId], references: [id], onDelete: Cascade)
+  originalName  String
+  mimeType      String
+  objectKey     String                @unique
+  sizeBytes     Int
+  deletedAt     DateTime?
+  createdAt     DateTime              @default(now())
+
+  @@index([businessId, transactionId])
+  @@index([businessId, billId])
+  @@index([businessId, deletedAt])
+}
+
+model ExportJob {
+  id            String          @id @default(cuid())
+  businessId    String
+  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User            @relation("ExportRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  fromDate      DateTime        @db.Timestamptz(3)
+  toDate        DateTime        @db.Timestamptz(3)
+  status        ExportJobStatus @default(QUEUED)
+  progress      Int             @default(0)
+  objectKey     String?
+  checksum      String?
+  sizeBytes     Int?
+  fileCount     Int?
+  errorMessage  String?
+  expiresAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([businessId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([expiresAt])
 }
 
 model AppointmentService {
@@ -559,28 +881,28 @@ model AppointmentActualService {
 }
 
 model MediaAsset {
-  id            String      @id @default(cuid())
+  id            String               @id @default(cuid())
   businessId    String
-  business      Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  ownerType     MediaOwnerType @default(APPOINTMENT_PHOTO)
+  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  ownerType     MediaOwnerType       @default(APPOINTMENT_PHOTO)
   customerId    String?
-  customer      Customer?   @relation("CustomerAvatar", fields: [customerId], references: [id], onDelete: Cascade)
+  customer      Customer?            @relation("CustomerAvatar", fields: [customerId], references: [id], onDelete: Cascade)
   appointmentId String?
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointment   Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   originalName  String
-  objectKey     String?     @unique
-  imagePath     String?     @unique
-  thumbnailPath String?     @unique
+  objectKey     String?              @unique
+  imagePath     String?              @unique
+  thumbnailPath String?              @unique
   width         Int
   height        Int
   sizeBytes     Int
-  status        MediaStatus @default(READY)
+  status        MediaStatus          @default(READY)
   errorMessage  String?
   featuredAt    DateTime?
   deletedAt     DateTime?
   variants      MediaVariant[]
   jobs          MediaProcessingJob[]
-  createdAt     DateTime    @default(now())
+  createdAt     DateTime             @default(now())
 
   @@index([businessId, appointmentId, createdAt])
   @@index([businessId, customerId])
@@ -601,6 +923,7 @@ model MediaVariant {
   sizeBytes Int
   format    String           @default("webp")
   createdAt DateTime         @default(now())
+
   @@unique([assetId, kind])
   @@index([assetId])
 }
@@ -616,6 +939,7 @@ model MediaProcessingJob {
   lockedAt    DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
   @@index([status, availableAt])
 }
 

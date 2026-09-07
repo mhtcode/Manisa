@@ -9,6 +9,7 @@ import { getServerEnv } from "@/lib/env";
 import { businessPermissionKeys, hasBusinessPermission } from "@/lib/permissions";
 import { passwordIsValid } from "@/lib/password-policy";
 import { prisma } from "@/lib/prisma";
+import { connectPaymentMethodDefaults, createFinancialDefaults } from "@/server/financial-defaults";
 
 export type SetupState = { error?: string };
 export type InvitationState = { error?: string; link?: string };
@@ -41,6 +42,8 @@ export async function setupPlatform(_: SetupState, formData: FormData): Promise<
         memberships: { create: { userId: user.id, role: "OWNER", preferences: { create: {} } } },
       } });
       await Promise.all(["Cash", "Debit card", "Credit card", "Interac e-Transfer", "Other"].map((method, position) => tx.paymentMethod.create({ data: { businessId: business.id, name: method, position } })));
+      const accounts = await createFinancialDefaults(tx, business.id);
+      await connectPaymentMethodDefaults(tx, business.id, { cash: accounts.cash.id, bank: accounts.bank.id, undeposited: accounts.undeposited.id });
       await tx.auditLog.create({ data: { actorId: user.id, actorSnapshot: `${name} <${email}>`, businessId: business.id, action: "platform.setup", targetType: "Business", targetId: business.id, after: { name: businessName } } });
       return { user, business };
     }, { isolationLevel: "Serializable" });
@@ -62,6 +65,8 @@ export async function createBusiness(formData: FormData) {
   const business = await prisma.$transaction(async (tx) => {
     const created = await tx.business.create({ data: { name, slug: requestedSlug, template, primaryOwnerId: user.id, storageQuotaBytes: getServerEnv().DEFAULT_STORAGE_QUOTA_BYTES, settings: { create: {} }, memberships: { create: { userId: user.id, role: "OWNER", preferences: { create: {} } } } } });
     if (template === "NAIL_HAIR") await Promise.all(["Cash", "Debit card", "Credit card", "Interac e-Transfer", "Other"].map((method, position) => tx.paymentMethod.create({ data: { businessId: created.id, name: method, position } })));
+    const accounts = await createFinancialDefaults(tx, created.id);
+    await connectPaymentMethodDefaults(tx, created.id, { cash: accounts.cash.id, bank: accounts.bank.id, undeposited: accounts.undeposited.id });
     await tx.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: created.id, action: "business.create", targetType: "Business", targetId: created.id, elevated: true, after: { name, slug: requestedSlug, template } } });
     return created;
   });

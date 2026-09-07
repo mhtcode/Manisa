@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -24,7 +24,7 @@ const groups = [
       ["/settings/financial", "Financial", "Payments, methods, balances, and collections", WalletCards],
       ["/settings/business", "Studio profile & appearance", "Name, language, currency, timezone, and theme", SlidersHorizontal],
       ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
-      ["/settings/calendar-import", "Calendar import", "Bring earlier calendar or JSON appointments into Manisa", CalendarSync],
+      ["/settings/data-transfer", "Data transfer", "Import records and create secure business exports", ArrowLeftRight],
       ["/settings/google-calendar", "Google Calendar", "One-way appointment synchronization", CalendarSync],
       ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
       ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
@@ -38,7 +38,7 @@ const contextualDestinations = new Set(["/appointments", "/customers", "/service
 const requiredPermission: Record<string, BusinessPermission> = {
   "/appointments": "appointments.view", "/customers": "customers.view", "/settings/referrals": "customers.view", "/services": "services.view",
   "/settings/categories": "services.manage", "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/business": "business.manage",
-  "/settings/navigation": "business.manage", "/settings/calendar-import": "appointments.manage", "/settings/instagram": "integrations.manage",
+  "/settings/navigation": "business.manage", "/settings/data-transfer": "data.import", "/settings/instagram": "integrations.manage",
   "/settings/google-calendar": "integrations.manage",
   "/settings/members": "members.manage", "/settings/trash": "trash.manage",
 };

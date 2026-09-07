@@ -34,10 +34,16 @@ export async function updateSettings(formData: FormData) {
   const theme = themeValue === "LIGHT" || themeValue === "SYSTEM" ? themeValue : "DARK";
   const businessName = String(formData.get("businessName") || "Manisa").trim().slice(0, 120);
   const currency = String(formData.get("currency") || "CAD").toUpperCase().slice(0, 3);
+  const optional = (name: string, max: number) => String(formData.get(name) || "").trim().slice(0, max) || null;
+  const publicPhone = optional("publicPhone", 50);
+  const publicEmail = optional("publicEmail", 160);
+  const bookingUrl = optional("bookingUrl", 500);
+  const studioTagline = optional("studioTagline", 160);
+  const studioBiography = optional("studioBiography", 1200);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
     prisma.business.update({ where: { id: user.businessId }, data: { name: businessName } }),
-    prisma.businessSettings.upsert({ where: { businessId: user.businessId }, create: { businessId: user.businessId, currency }, update: { currency } }),
+    prisma.businessSettings.upsert({ where: { businessId: user.businessId }, create: { businessId: user.businessId, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
   ]);
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });

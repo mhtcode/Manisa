@@ -6,7 +6,7 @@ import { removeObject } from "@/lib/object-storage";
 import { prisma } from "@/lib/prisma";
 import { TRASH_RETENTION_DAYS } from "@/lib/trash-lifecycle";
 
-export type TrashPurgeResult = { appointments: number; categories: number; customers: number; photos: number; services: number; paymentMethods: number };
+export type TrashPurgeResult = { appointments: number; categories: number; customers: number; photos: number; services: number; paymentMethods: number; financialArchived: number; financialPurged: number };
 
 export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeResult> {
   const cutoff = subDays(now, TRASH_RETENTION_DAYS);
@@ -45,7 +45,26 @@ export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeRes
     const services = await transaction.service.deleteMany({ where: { deletedAt: { lte: cutoff } } });
     const categories = await transaction.studioCategory.deleteMany({ where: { deletedAt: { lte: cutoff }, services: { none: {} } } });
     const paymentMethods = await transaction.paymentMethod.deleteMany({ where: { deletedAt: { lte: cutoff } } });
-    return { appointments, categories: categories.count, customers: customers.count, photos, services: services.count, paymentMethods: paymentMethods.count };
+    let financialArchived = 0; let financialPurged = 0;
+    const retentionWhere = { deletedAt: { lte: cutoff }, archivedAt: null, OR: [{ purgeAt: null }, { purgeAt: { gt: now } }] };
+    const purgeWhere = { deletedAt: { lte: cutoff }, purgeAt: { lte: now } };
+    const financialFiles = await transaction.financialAttachment.findMany({ where: { OR: [{ transaction: purgeWhere }, { bill: purgeWhere }] }, select: { objectKey: true, sizeBytes: true, businessId: true } });
+    const releasedFinancialBytes = new Map<string, bigint>();
+    for (const file of financialFiles) { objectKeys.add(file.objectKey); releasedFinancialBytes.set(file.businessId, (releasedFinancialBytes.get(file.businessId) || BigInt(0)) + BigInt(file.sizeBytes)); }
+    for (const [businessId, bytes] of releasedFinancialBytes) await transaction.business.update({ where: { id: businessId }, data: { storageUsedBytes: { decrement: bytes } } });
+    const transactionPurge = await transaction.financialTransaction.deleteMany({ where: purgeWhere }); financialPurged += transactionPurge.count;
+    const billPurge = await transaction.supplierBill.deleteMany({ where: purgeWhere }); financialPurged += billPurge.count;
+    const invoicePurge = await transaction.customerInvoice.deleteMany({ where: purgeWhere }); financialPurged += invoicePurge.count;
+    const accountPurge = await transaction.financialAccount.deleteMany({ where: purgeWhere }); financialPurged += accountPurge.count;
+    const categoryPurge = await transaction.financialCategory.deleteMany({ where: purgeWhere }); financialPurged += categoryPurge.count;
+    const vendorPurge = await transaction.vendor.deleteMany({ where: purgeWhere }); financialPurged += vendorPurge.count;
+    const transactionArchive = await transaction.financialTransaction.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += transactionArchive.count;
+    const billArchive = await transaction.supplierBill.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += billArchive.count;
+    const invoiceArchive = await transaction.customerInvoice.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += invoiceArchive.count;
+    const accountArchive = await transaction.financialAccount.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += accountArchive.count;
+    const categoryArchive = await transaction.financialCategory.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += categoryArchive.count;
+    const vendorArchive = await transaction.vendor.updateMany({ where: retentionWhere, data: { archivedAt: now } }); financialArchived += vendorArchive.count;
+    return { appointments, categories: categories.count, customers: customers.count, photos, services: services.count, paymentMethods: paymentMethods.count, financialArchived, financialPurged };
   }, { timeout: 60_000 });
 
   await removePreparedPhotos(removedPhotoFiles);

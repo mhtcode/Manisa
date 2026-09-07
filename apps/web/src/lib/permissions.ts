@@ -4,7 +4,7 @@ export const businessPermissionKeys = [
   "customers.view", "customers.manage", "appointments.view", "appointments.manage",
   "services.view", "services.manage", "gallery.view", "gallery.manage", "reports.view",
   "financial.view", "payments.manage", "business.manage", "integrations.manage",
-  "members.manage", "trash.manage",
+  "financial.manage", "data.import", "data.export", "members.manage", "trash.manage",
 ] as const;
 
 export type BusinessPermission = typeof businessPermissionKeys[number];
@@ -14,7 +14,7 @@ const allBusinessPermissions = new Set<BusinessPermission>(businessPermissionKey
 const rolePermissions: Record<BusinessRole, Set<BusinessPermission>> = {
   OWNER: allBusinessPermissions,
   ADMIN: allBusinessPermissions,
-  MANAGER: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage", "reports.view", "financial.view", "payments.manage"]),
+  MANAGER: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage", "reports.view", "financial.view", "payments.manage", "data.import"]),
   STAFF: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage"]),
 };
 

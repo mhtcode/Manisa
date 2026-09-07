@@ -10,7 +10,7 @@ type Result = { id: string; type: string; title: string; subtitle: string; href:
 const settings = [
   ["Settings", "Business preferences", "/settings", "business.manage"], ["Financial", "Payments and collections", "/settings/financial", "financial.view"],
   ["Members", "Roles and permissions", "/settings/members", "members.manage"], ["Categories", "Service organization", "/settings/categories", "services.manage"],
-  ["Calendar import", "Batch and calendar imports", "/settings/calendar-import", "appointments.manage"], ["Google Calendar", "One-way appointment synchronization", "/settings/google-calendar", "integrations.manage"], ["Trash", "Deleted items", "/settings/trash", "trash.manage"],
+  ["Data transfer", "Imports and secure exports", "/settings/data-transfer", "data.import"], ["Google Calendar", "One-way appointment synchronization", "/settings/google-calendar", "integrations.manage"], ["Trash", "Deleted items", "/settings/trash", "trash.manage"],
 ] as const;
 
 function ResultIcon({ type }: { type: string }) {

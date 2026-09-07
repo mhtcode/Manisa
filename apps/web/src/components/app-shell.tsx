@@ -16,7 +16,7 @@ import { GlobalSearch } from "@/components/global-search";
 export function AppShell({ children, locale, userName, businessId, businessName, workspaces, elevated, mobileNavOrder, notifications, timezone, permissions }: { children: React.ReactNode; locale: AppLocale; userName: string; businessId: string; businessName: string; workspaces: Array<{ businessId: string; name: string }>; elevated: boolean; mobileNavOrder?: string | null; notifications: ActionNotification[]; timezone: string; permissions: BusinessPermission[] }) {
   const t = getMessages(locale);
   const mobileOrder = parseMobileNavigation(mobileNavOrder);
-  return <div className="app-background min-h-screen md:grid md:grid-cols-[17rem_1fr]" dir={locale === "fa" ? "rtl" : "ltr"}>
+  return <div className="app-background min-h-screen md:grid md:grid-cols-[17rem_1fr]" dir={locale === "fa" ? "rtl" : "ltr"} lang={locale}>
     <aside className="sticky top-0 hidden h-screen border-e border-white/8 bg-[#090d13]/95 p-4 md:flex md:flex-col">
       <Link href="/report" prefetch={false} className="flex h-14 items-center gap-3 px-2"><span className="flex size-9 items-center justify-center rounded-xl border border-blue-400/25 bg-blue-500/10 text-blue-300 shadow-[inset_0_1px_rgba(255,255,255,.12)]"><Sparkles size={18}/></span><span className="truncate font-semibold">{businessName}</span></Link>
       <DesktopNavigation locale={locale} permissions={permissions}/>

@@ -134,12 +134,17 @@ export async function completeAppointment(id: string, formData: FormData) {
   const actualDurationMinutes = actualLines.reduce((sum, line) => sum + line.actualDurationMinutes, 0);
   const finalPrice = actualLines.reduce((sum, line) => sum + Number(line.finalPrice), 0).toFixed(2);
   const paymentInputs = parsePaymentInputs(formData);
-  const methods = await prisma.paymentMethod.findMany({ where: { businessId: user.businessId, id: { in: paymentInputs.map((item) => item.methodId) }, active: true, deletedAt: null } });
+  const methods = await prisma.paymentMethod.findMany({ where: { businessId: user.businessId, id: { in: paymentInputs.map((item) => item.methodId) }, active: true, deletedAt: null }, include: { defaultAccount: true } });
   if (methods.length !== new Set(paymentInputs.map((item) => item.methodId)).size) return { error: "Choose a valid payment method for every payment." };
   if (paymentInputs.some((item) => !/^\d{1,10}(\.\d{1,2})?$/.test(item.amount) || Number(item.amount) <= 0)) return { error: "Enter a valid positive amount for every payment." };
   const paidAmount = paymentInputs.reduce((sum, item) => sum + Number(item.amount), 0);
   if (paidAmount > Number(finalPrice) + 0.001) return { error: "Recorded payments cannot exceed the final price." };
   const primaryService = orderedServices[0];
+  const [incomeCategory, fallbackAccount] = await Promise.all([
+    prisma.financialCategory.findFirst({ where: { businessId: user.businessId, name: "Appointment services", type: "INCOME", deletedAt: null } }),
+    prisma.financialAccount.findFirst({ where: { businessId: user.businessId, name: "Undeposited funds", deletedAt: null } }),
+  ]);
+  if (paymentInputs.length && (!incomeCategory || !fallbackAccount)) return { error: "Configure financial accounts before recording payments." };
   let photos;
   try { photos = await prepareAppointmentPhotos(id, formData); }
   catch (error) { return { error: error instanceof PhotoUploadError ? error.message : "The photos could not be uploaded." }; }
@@ -158,8 +163,13 @@ export async function completeAppointment(id: string, formData: FormData) {
       currency: primaryService.currency,
       actualServiceLines: { deleteMany: {}, create: actualLines },
       photos: { create: photos.map((photo) => ({ ...photo, businessId: user.businessId })) },
-      payments: { create: paymentInputs.map((payment) => { const method = methods.find((item) => item.id === payment.methodId)!; return { businessId: user.businessId, paymentMethodId: method.id, methodNameSnapshot: method.name, amount: payment.amount, recordedById: user.id }; }) },
       } });
+      for (const payment of paymentInputs) {
+        const method = methods.find((item) => item.id === payment.methodId)!;
+        const account = method.defaultAccount || fallbackAccount!;
+        const transaction = await tx.financialTransaction.create({ data: { businessId: user.businessId, type: "APPOINTMENT_PAYMENT", accountId: account.id, categoryId: incomeCategory!.id, accountNameSnapshot: account.name, categoryNameSnapshot: incomeCategory!.name, amount: payment.amount, currency: primaryService.currency, occurredAt: new Date(), description: `Appointment payment · ${orderedServices.map((service) => service.name).join(" + ")}`, createdById: user.id } });
+        await tx.appointmentPayment.create({ data: { businessId: user.businessId, appointmentId: id, paymentMethodId: method.id, methodNameSnapshot: method.name, amount: payment.amount, recordedById: user.id, transactionId: transaction.id } });
+      }
       await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
     });
   } catch (error) {
@@ -203,12 +213,6 @@ export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO
     await enqueueGoogleCalendarSync(tx, user.businessId, [id], "UPSERT");
   });
   revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/report");
-}
-
-export async function markPaid(id: string) {
-  const user = await requireBusinessPermission("appointments.manage");
-  await prisma.appointment.updateMany({ where: { id, businessId: user.businessId, deletedAt: null, status: "COMPLETED" }, data: { paymentStatus: "PAID" } });
-  revalidatePath(`/appointments/${id}`); revalidatePath("/report");
 }
 
 export async function setAppointmentPhotoFeatured(photoId: string, featured: boolean) {

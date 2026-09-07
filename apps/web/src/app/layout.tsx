@@ -15,10 +15,9 @@ export const viewport = { themeColor: "#080b10", colorScheme: "dark" };
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const locale = (await cookies()).get("manisa_locale")?.value === "fa" ? "fa" : "en";
   const theme = (await cookies()).get("manisa_theme")?.value || "dark";
   return (
-    <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"} data-theme={theme}>
+    <html lang="en" dir="ltr" data-theme={theme}>
       <body>{children}<ServiceWorkerRegistration /></body>
     </html>
   );

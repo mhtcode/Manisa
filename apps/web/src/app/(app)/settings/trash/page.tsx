@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, ImageIcon, Layers3, Scissors, Trash2, UserRound, WalletCards, type LucideIcon } from "lucide-react";
+import { CalendarClock, ImageIcon, Layers3, RotateCcw, Scissors, Trash2, UserRound, WalletCards, ReceiptText, type LucideIcon } from "lucide-react";
 import { BulkSelection, SelectableItem } from "@/components/bulk-selection";
 import { PageHeading } from "@/components/page-heading";
 import { customerName } from "@/lib/format";
@@ -10,9 +10,11 @@ import { type TrashEntityType } from "@/lib/trash-lifecycle";
 import { TrashCountdown } from "@/components/trash-countdown";
 import { formatBusinessDate } from "@/lib/time";
 import { bulkDeletePermanently, bulkRestoreFromTrash } from "@/server/actions/trash";
+import { restoreFinancialRecord } from "@/server/actions/cashbook";
+import { hasBusinessPermission } from "@/lib/permissions";
 
-const filters = ["all", "customer", "appointment", "photo", "service", "category", "paymentMethod"] as const;
-const filterLabels = { all: "All items", customer: "Customers", appointment: "Appointments", photo: "Photos", service: "Services", category: "Categories", paymentMethod: "Payment methods" } as const;
+const filters = ["all", "customer", "appointment", "photo", "service", "category", "paymentMethod", "financial"] as const;
+const filterLabels = { all: "All items", customer: "Customers", appointment: "Appointments", photo: "Photos", service: "Services", category: "Categories", paymentMethod: "Payment methods", financial: "Financial" } as const;
 type TrashFilter = (typeof filters)[number];
 
 function TrashRow({ children, deletedAt, icon: Icon, title, type, id, permanentBlocked, restoreBlocked }: {
@@ -34,15 +36,19 @@ function TrashRow({ children, deletedAt, icon: Icon, title, type, id, permanentB
 export default async function TrashPage({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
   const [query, user] = await Promise.all([searchParams, requireBusinessPermission("trash.manage")]);
   const selected: TrashFilter = filters.includes(query.type as TrashFilter) ? query.type as TrashFilter : "all";
-  const [customers, appointments, photos, services, categories, paymentMethods] = await Promise.all([
+  const showFinancial = (selected === "all" || selected === "financial") && (user.elevated || hasBusinessPermission(user.membership.role, user.membership.permissionOverrides, "financial.view"));
+  const [customers, appointments, photos, services, categories, paymentMethods, financialTransactions, bills, invoices] = await Promise.all([
     selected === "all" || selected === "customer" ? prisma.customer.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, orderBy: { deletedAt: "desc" } }) : [],
     selected === "all" || selected === "appointment" ? prisma.appointment.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, include: { customer: true, _count: { select: { photos: true } } }, orderBy: { deletedAt: "desc" } }) : [],
     selected === "all" || selected === "photo" ? prisma.mediaAsset.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, include: { appointment: { include: { customer: true } } }, orderBy: { deletedAt: "desc" } }) : [],
     selected === "all" || selected === "service" ? prisma.service.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, include: { category: true }, orderBy: { deletedAt: "desc" } }) : [],
     selected === "all" || selected === "category" ? prisma.studioCategory.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, include: { _count: { select: { services: true } } }, orderBy: { deletedAt: "desc" } }) : [],
     selected === "all" || selected === "paymentMethod" ? prisma.paymentMethod.findMany({ where: { businessId: user.businessId, deletedAt: { not: null } }, orderBy: { deletedAt: "desc" } }) : [],
+    showFinancial ? prisma.financialTransaction.findMany({ where: { businessId: user.businessId, deletedAt: { not: null }, archivedAt: null }, orderBy: { deletedAt: "desc" } }) : [],
+    showFinancial ? prisma.supplierBill.findMany({ where: { businessId: user.businessId, deletedAt: { not: null }, archivedAt: null }, orderBy: { deletedAt: "desc" } }) : [],
+    showFinancial ? prisma.customerInvoice.findMany({ where: { businessId: user.businessId, deletedAt: { not: null }, archivedAt: null }, orderBy: { deletedAt: "desc" } }) : [],
   ]);
-  const total = customers.length + appointments.length + photos.length + services.length + categories.length + paymentMethods.length;
+  const total = customers.length + appointments.length + photos.length + services.length + categories.length + paymentMethods.length + financialTransactions.length + bills.length + invoices.length;
   const allIds = [...customers.map((item) => `customer:${item.id}`), ...appointments.map((item) => `appointment:${item.id}`), ...photos.map((item) => `photo:${item.id}`), ...services.map((item) => `service:${item.id}`), ...categories.map((item) => `category:${item.id}`), ...paymentMethods.map((item) => `paymentMethod:${item.id}`)];
 
   return <>
@@ -59,5 +65,8 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
       {categories.map((category) => <TrashRow deletedAt={category.deletedAt!} icon={Layers3} id={category.id} key={`category-${category.id}`} permanentBlocked={category._count.services ? `Delete ${category._count.services} related ${category._count.services === 1 ? "service" : "services"} first.` : undefined} title={category.name} type="category">Service category · {category._count.services} related services</TrashRow>)}
       {paymentMethods.map((method) => <TrashRow deletedAt={method.deletedAt!} icon={WalletCards} id={method.id} key={`payment-${method.id}`} title={method.name} type="paymentMethod">Payment method</TrashRow>)}
     </section></BulkSelection>
+    {(financialTransactions.length > 0 || bills.length > 0 || invoices.length > 0) && <section className="panel mt-5 overflow-hidden"><div className="panel-header"><h2 className="font-semibold">Financial records</h2></div><div className="divide-y divide-white/8">{financialTransactions.map((item) => <FinancialTrashRow action={restoreFinancialRecord.bind(null, "transaction", item.id)} deletedAt={item.deletedAt!} key={item.id} title={item.description}/>) }{bills.map((item) => <FinancialTrashRow action={restoreFinancialRecord.bind(null, "bill", item.id)} deletedAt={item.deletedAt!} key={item.id} title={`${item.vendorNameSnapshot} · ${item.billNumber || "Bill"}`}/>)}{invoices.map((item) => <FinancialTrashRow action={restoreFinancialRecord.bind(null, "invoice", item.id)} deletedAt={item.deletedAt!} key={item.id} title={`${item.invoicePrefix}-${String(item.invoiceNumber).padStart(5, "0")}`}/>)}</div></section>}
   </>;
 }
+
+function FinancialTrashRow({ action, deletedAt, title }: { action: () => Promise<void>; deletedAt: Date; title: string }) { return <article className="flex min-w-0 items-center gap-3 p-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[.04] text-slate-400"><ReceiptText size={17}/></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium" dir="auto">{title}</p><TrashCountdown deletedAt={deletedAt.toISOString()}/></div><form action={action}><button aria-label="Restore" className="icon-button" title="Restore"><RotateCcw size={16}/></button></form></article>; }
