@@ -11,7 +11,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const contentType = request.headers.get("content-type")?.split(";", 1)[0].toLowerCase() || "";
   const declaredLength = Number(request.headers.get("content-length") || 0);
   if (!allowedTypes.has(contentType) || (declaredLength && declaredLength > maxBytes)) return NextResponse.json({ error: "Invalid photo" }, { status: 400 });
-  const asset = await prisma.mediaAsset.findFirst({ where: { id: (await params).id, businessId: user.businessId, status: "STAGING" }, select: { objectKey: true, sizeBytes: true } });
+  const asset = await prisma.mediaAsset.findFirst({ where: { id: (await params).id, status: "STAGING" }, select: { objectKey: true, sizeBytes: true } });
   if (!asset?.objectKey) return NextResponse.json({ error: "Upload not found" }, { status: 404 });
   const buffer = await request.arrayBuffer();
   if (!buffer.byteLength || buffer.byteLength > maxBytes || buffer.byteLength > Math.max(asset.sizeBytes, 1)) return NextResponse.json({ error: "Invalid photo size" }, { status: 400 });

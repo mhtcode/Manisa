@@ -35,7 +35,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
   const timezone = user.settings?.timezone || "America/Toronto";
   const locale = user.settings?.locale || "en";
   const currency = user.settings?.currency || "CAD";
-  const data = await getReportData(user.businessId, query, timezone, locale);
+  const data = await getReportData(query, timezone, locale);
   const view = collectionView(user.settings?.collectionViews, "reportRecords", "list");
   const metricCards = [
     ["Revenue", formatMoney(data.current.metrics.revenue, currency, locale), data.current.metrics.revenue, data.previous.metrics.revenue, Banknote],

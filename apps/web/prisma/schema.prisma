@@ -8,29 +8,12 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-}
-
-enum PlatformRole {
-  ROOT_OWNER
-  PLATFORM_ADMIN
-}
-
-enum BusinessRole {
   OWNER
   ADMIN
   MANAGER
   STAFF
-}
 
-enum BusinessTemplate {
-  BLANK
-  NAIL_HAIR
-}
-
-enum InvitationKind {
-  PLATFORM
-  BUSINESS
+  @@map("AccountRole")
 }
 
 enum MediaOwnerType {
@@ -147,14 +130,13 @@ model User {
   name                         String
   passwordHash                 String?
   googleSubject                String?                    @unique
-  role                         Role                       @default(ADMIN)
+  role                         Role                       @default(STAFF)
+  permissionOverrides          Json                       @default("{}")
   active                       Boolean                    @default(true)
+  deletedAt                    DateTime?
   createdAt                    DateTime                   @default(now())
   updatedAt                    DateTime                   @updatedAt
   preferences                  UserPreference?
-  platformAccess               PlatformAccess?
-  memberships                  BusinessMembership[]
-  ownedBusinesses              Business[]                 @relation("BusinessPrimaryOwner")
   sentInvitations              Invitation[]               @relation("InvitationSender")
   acceptedInvitations          Invitation[]               @relation("InvitationRecipient")
   auditEvents                  AuditLog[]                 @relation("AuditActor")
@@ -165,74 +147,17 @@ model User {
   createdFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionCreator")
   updatedFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionUpdater")
   requestedExports             ExportJob[]                @relation("ExportRequester")
-}
-
-model PlatformAccess {
-  id                  String       @id @default(cuid())
-  userId              String       @unique
-  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role                PlatformRole
-  permissionOverrides Json         @default("{}")
-  active              Boolean      @default(true)
-  deletedAt           DateTime?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
 
   @@index([role, active])
   @@index([deletedAt])
 }
 
-model Business {
-  id                       String                     @id @default(cuid())
-  name                     String
-  slug                     String                     @unique
-  template                 BusinessTemplate           @default(BLANK)
-  active                   Boolean                    @default(true)
-  primaryOwnerId           String
-  primaryOwner             User                       @relation("BusinessPrimaryOwner", fields: [primaryOwnerId], references: [id], onDelete: Restrict)
-  storageQuotaBytes        BigInt                     @default(10737418240)
-  storageUsedBytes         BigInt                     @default(0)
-  storageReservedBytes     BigInt                     @default(0)
-  deletedAt                DateTime?
-  settings                 BusinessSettings?
-  memberships              BusinessMembership[]
-  invitations              Invitation[]
-  auditLogs                AuditLog[]
-  customers                Customer[]
-  categories               StudioCategory[]
-  services                 Service[]
-  appointments             Appointment[]
-  paymentMethods           PaymentMethod[]
-  payments                 AppointmentPayment[]
-  appointmentServices      AppointmentService[]
-  actualServices           AppointmentActualService[]
-  mediaAssets              MediaAsset[]
-  notificationReceipts     NotificationReceipt[]
-  instagramConnection      InstagramConnection?
-  instagramPosts           InstagramPost[]
-  googleCalendarConnection GoogleCalendarConnection?
-  googleCalendarEvents     GoogleCalendarEvent[]
-  googleCalendarSyncJobs   GoogleCalendarSyncJob[]
-  financialAccounts        FinancialAccount[]
-  financialCategories      FinancialCategory[]
-  vendors                  Vendor[]
-  financialTransactions    FinancialTransaction[]
-  supplierBills            SupplierBill[]
-  recurringBillTemplates   RecurringBillTemplate[]
-  customerInvoices         CustomerInvoice[]
-  financialAttachments     FinancialAttachment[]
-  exportJobs               ExportJob[]
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime                   @updatedAt
-
-  @@index([active, deletedAt])
-  @@index([primaryOwnerId])
-}
-
-model BusinessSettings {
-  id                     String   @id @default(cuid())
-  businessId             String   @unique
-  business               Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+model StudioSettings {
+  id                     String   @id @default("studio")
+  name                   String   @default("Manisa")
+  storageQuotaBytes      BigInt   @default(10737418240)
+  storageUsedBytes       BigInt   @default(0)
+  storageReservedBytes   BigInt   @default(0)
   currency               String   @default("CAD") @db.VarChar(3)
   timezone               String   @default("America/Toronto")
   address                String?
@@ -249,68 +174,29 @@ model BusinessSettings {
   updatedAt              DateTime @updatedAt
 }
 
-model BusinessMembership {
-  id                  String                @id @default(cuid())
-  userId              String
-  businessId          String
-  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  business            Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  role                BusinessRole
-  permissionOverrides Json                  @default("{}")
-  active              Boolean               @default(true)
-  deletedAt           DateTime?
-  preferences         MembershipPreference?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-
-  @@unique([userId, businessId])
-  @@index([businessId, role, active])
-  @@index([userId, active])
-  @@index([deletedAt])
-}
-
-model MembershipPreference {
-  id                String             @id @default(cuid())
-  membershipId      String             @unique
-  membership        BusinessMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
-  mobileNavOrder    String             @default("report,calendar,gallery,settings")
-  collectionViews   Json               @default("{}")
-  collapsedSections Json               @default("{}")
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-}
-
 model Invitation {
-  id                  String         @id @default(cuid())
-  tokenHash           String         @unique
+  id                  String    @id @default(cuid())
+  tokenHash           String    @unique
   email               String
-  kind                InvitationKind
-  platformRole        PlatformRole?
-  businessId          String?
-  business            Business?      @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  businessRole        BusinessRole?
-  permissionOverrides Json           @default("{}")
+  role                Role      @default(STAFF)
+  permissionOverrides Json      @default("{}")
   invitedById         String
-  invitedBy           User           @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
+  invitedBy           User      @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: Restrict)
   acceptedById        String?
-  acceptedBy          User?          @relation("InvitationRecipient", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedBy          User?     @relation("InvitationRecipient", fields: [acceptedById], references: [id], onDelete: SetNull)
   expiresAt           DateTime
   acceptedAt          DateTime?
   revokedAt           DateTime?
-  createdAt           DateTime       @default(now())
+  createdAt           DateTime  @default(now())
 
   @@index([email, expiresAt])
-  @@index([businessId, expiresAt])
 }
 
 model AuditLog {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   actorId       String?
-  actor         User?     @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor         User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
   actorSnapshot String
-  businessId    String?
-  business      Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
-  elevated      Boolean   @default(false)
   action        String
   targetType    String
   targetId      String?
@@ -318,35 +204,29 @@ model AuditLog {
   after         Json?
   ipAddress     String?
   userAgent     String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
-  @@index([businessId, createdAt])
   @@index([actorId, createdAt])
   @@index([action, createdAt])
 }
 
 model NotificationReceipt {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  key        String
-  readAt     DateTime @default(now())
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  readAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  @@unique([userId, businessId, key])
-  @@index([userId, businessId, readAt])
+  @@unique([userId, key])
+  @@index([userId, readAt])
 }
 
 model UserPreference {
   id                String   @id @default(cuid())
   userId            String   @unique
-  businessName      String   @default("Manisa")
   locale            Locale   @default(en)
   theme             Theme    @default(DARK)
-  currency          String   @default("CAD") @db.VarChar(3)
-  timezone          String   @default("America/Toronto")
   mobileNavOrder    String   @default("report,calendar,gallery,settings")
   collectionViews   Json     @default("{}")
   collapsedSections Json     @default("{}")
@@ -359,8 +239,6 @@ model UserPreference {
 
 model Customer {
   id                String        @id @default(cuid())
-  businessId        String
-  business          Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   referrerId        String?
   referrer          Customer?     @relation("CustomerReferrals", fields: [referrerId], references: [id], onDelete: SetNull)
   referrals         Customer[]    @relation("CustomerReferrals")
@@ -379,19 +257,17 @@ model Customer {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  @@index([businessId, firstName, lastName])
-  @@index([businessId, phone])
-  @@index([businessId, email])
-  @@index([businessId, active])
-  @@index([businessId, createdAt])
-  @@index([businessId, referrerId])
-  @@index([businessId, deletedAt])
+  @@index([firstName, lastName])
+  @@index([phone])
+  @@index([email])
+  @@index([active])
+  @@index([createdAt])
+  @@index([referrerId])
+  @@index([deletedAt])
 }
 
 model StudioCategory {
   id          String    @id @default(cuid())
-  businessId  String
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   slug        String
   name        String
   description String?
@@ -404,15 +280,13 @@ model StudioCategory {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  @@unique([businessId, slug])
-  @@index([businessId, active, position])
-  @@index([businessId, deletedAt])
+  @@unique([slug])
+  @@index([active, position])
+  @@index([deletedAt])
 }
 
 model Service {
   id                        String                     @id @default(cuid())
-  businessId                String
-  business                  Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name                      String
   description               String?
   defaultDurationMinutes    Int
@@ -429,16 +303,14 @@ model Service {
   createdAt                 DateTime                   @default(now())
   updatedAt                 DateTime                   @updatedAt
 
-  @@index([businessId, name])
-  @@index([businessId, active])
-  @@index([businessId, categoryId, active])
-  @@index([businessId, deletedAt])
+  @@index([name])
+  @@index([active])
+  @@index([categoryId, active])
+  @@index([deletedAt])
 }
 
 model Appointment {
   id                            String                     @id @default(cuid())
-  businessId                    String
-  business                      Business                   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customerId                    String
   serviceId                     String?
   customer                      Customer                   @relation(fields: [customerId], references: [id], onDelete: Restrict)
@@ -467,20 +339,19 @@ model Appointment {
   createdAt                     DateTime                   @default(now())
   updatedAt                     DateTime                   @updatedAt
 
-  @@unique([businessId, importSourceId])
-  @@index([businessId, startAt])
-  @@index([businessId, customerId, startAt])
-  @@index([businessId, serviceId, startAt])
-  @@index([businessId, status, startAt])
-  @@index([businessId, status, completedAt])
-  @@index([businessId, paymentStatus])
-  @@index([businessId, deletedAt])
+  @@unique([importSourceId])
+  @@index([startAt])
+  @@index([customerId, startAt])
+  @@index([serviceId, startAt])
+  @@index([status, startAt])
+  @@index([status, completedAt])
+  @@index([paymentStatus])
+  @@index([deletedAt])
 }
 
 model GoogleCalendarConnection {
   id                    String                         @id @default(cuid())
-  businessId            String                         @unique
-  business              Business                       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  singletonKey          Int                            @unique @default(1)
   connectedById         String
   connectedBy           User                           @relation("GoogleCalendarConnector", fields: [connectedById], references: [id], onDelete: Restrict)
   googleAccountEmail    String
@@ -500,8 +371,6 @@ model GoogleCalendarConnection {
 
 model GoogleCalendarEvent {
   id            String                   @id @default(cuid())
-  businessId    String
-  business      Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
   connectionId  String
   connection    GoogleCalendarConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   appointmentId String
@@ -511,15 +380,13 @@ model GoogleCalendarEvent {
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
 
-  @@unique([businessId, appointmentId])
+  @@unique([appointmentId])
   @@unique([connectionId, googleEventId])
-  @@index([businessId, lastSyncedAt])
+  @@index([lastSyncedAt])
 }
 
 model GoogleCalendarSyncJob {
   id            String                      @id @default(cuid())
-  businessId    String
-  business      Business                    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   connectionId  String
   connection    GoogleCalendarConnection    @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   appointmentId String
@@ -534,15 +401,13 @@ model GoogleCalendarSyncJob {
   createdAt     DateTime                    @default(now())
   updatedAt     DateTime                    @updatedAt
 
-  @@unique([businessId, appointmentId])
+  @@unique([appointmentId])
   @@index([status, availableAt])
   @@index([connectionId, status])
 }
 
 model PaymentMethod {
   id               String               @id @default(cuid())
-  businessId       String
-  business         Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name             String
   icon             String               @default("wallet")
   position         Int                  @default(0)
@@ -554,16 +419,14 @@ model PaymentMethod {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
 
-  @@unique([businessId, name])
-  @@index([businessId, active, position])
-  @@index([businessId, deletedAt])
-  @@index([businessId, defaultAccountId])
+  @@unique([name])
+  @@index([active, position])
+  @@index([deletedAt])
+  @@index([defaultAccountId])
 }
 
 model AppointmentPayment {
   id                 String                @id @default(cuid())
-  businessId         String
-  business           Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointmentId      String
   appointment        Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   paymentMethodId    String?
@@ -581,16 +444,14 @@ model AppointmentPayment {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
 
-  @@index([businessId, appointmentId, voidedAt])
-  @@index([businessId, paymentMethodId, paidAt])
-  @@index([businessId, paidAt])
-  @@index([businessId, voidedAt])
+  @@index([appointmentId, voidedAt])
+  @@index([paymentMethodId, paidAt])
+  @@index([paidAt])
+  @@index([voidedAt])
 }
 
 model FinancialAccount {
   id                      String                 @id @default(cuid())
-  businessId              String
-  business                Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name                    String
   type                    FinancialAccountType
   openingBalance          Decimal                @default(0) @db.Decimal(12, 2)
@@ -606,15 +467,13 @@ model FinancialAccount {
   createdAt               DateTime               @default(now())
   updatedAt               DateTime               @updatedAt
 
-  @@unique([businessId, name])
-  @@index([businessId, active, position])
-  @@index([businessId, deletedAt, purgeAt])
+  @@unique([name])
+  @@index([active, position])
+  @@index([deletedAt, purgeAt])
 }
 
 model FinancialCategory {
   id                 String                  @id @default(cuid())
-  businessId         String
-  business           Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name               String
   type               FinancialCategoryType
   active             Boolean                 @default(true)
@@ -628,15 +487,13 @@ model FinancialCategory {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
-  @@unique([businessId, type, name])
-  @@index([businessId, type, active, position])
-  @@index([businessId, deletedAt, purgeAt])
+  @@unique([type, name])
+  @@index([type, active, position])
+  @@index([deletedAt, purgeAt])
 }
 
 model Vendor {
   id                 String                  @id @default(cuid())
-  businessId         String
-  business           Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name               String
   email              String?
   phone              String?
@@ -651,15 +508,13 @@ model Vendor {
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
-  @@unique([businessId, name])
-  @@index([businessId, active, name])
-  @@index([businessId, deletedAt, purgeAt])
+  @@unique([name])
+  @@index([active, name])
+  @@index([deletedAt, purgeAt])
 }
 
 model FinancialTransaction {
   id                      String                   @id @default(cuid())
-  businessId              String
-  business                Business                 @relation(fields: [businessId], references: [id], onDelete: Cascade)
   type                    FinancialTransactionType
   accountId               String
   account                 FinancialAccount         @relation("FinancialTransactionSourceAccount", fields: [accountId], references: [id], onDelete: Restrict)
@@ -692,18 +547,16 @@ model FinancialTransaction {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
-  @@index([businessId, occurredAt])
-  @@index([businessId, type, occurredAt])
-  @@index([businessId, accountId, occurredAt])
-  @@index([businessId, categoryId, occurredAt])
-  @@index([businessId, vendorId])
-  @@index([businessId, deletedAt, purgeAt])
+  @@index([occurredAt])
+  @@index([type, occurredAt])
+  @@index([accountId, occurredAt])
+  @@index([categoryId, occurredAt])
+  @@index([vendorId])
+  @@index([deletedAt, purgeAt])
 }
 
 model SupplierBill {
   id                  String                 @id @default(cuid())
-  businessId          String
-  business            Business               @relation(fields: [businessId], references: [id], onDelete: Cascade)
   vendorId            String?
   vendor              Vendor?                @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   vendorNameSnapshot  String
@@ -725,10 +578,10 @@ model SupplierBill {
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
-  @@index([businessId, issueDate])
-  @@index([businessId, dueDate])
-  @@index([businessId, vendorId])
-  @@index([businessId, deletedAt, purgeAt])
+  @@index([issueDate])
+  @@index([dueDate])
+  @@index([vendorId])
+  @@index([deletedAt, purgeAt])
 }
 
 model BillLine {
@@ -745,8 +598,6 @@ model BillLine {
 
 model RecurringBillTemplate {
   id                   String              @id @default(cuid())
-  businessId           String
-  business             Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   vendorId             String?
   vendor               Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   vendorNameSnapshot   String
@@ -763,13 +614,11 @@ model RecurringBillTemplate {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  @@index([businessId, active, nextIssueDate])
+  @@index([active, nextIssueDate])
 }
 
 model CustomerInvoice {
   id               String      @id @default(cuid())
-  businessId       String
-  business         Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointmentId    String
   appointment      Appointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
   invoiceNumber    Int
@@ -790,16 +639,14 @@ model CustomerInvoice {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  @@unique([businessId, invoiceNumber])
+  @@unique([invoiceNumber])
   @@unique([appointmentId, revision])
-  @@index([businessId, issueDate])
-  @@index([businessId, deletedAt, purgeAt])
+  @@index([issueDate])
+  @@index([deletedAt, purgeAt])
 }
 
 model FinancialAttachment {
   id            String                @id @default(cuid())
-  businessId    String
-  business      Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
   transactionId String?
   transaction   FinancialTransaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
   billId        String?
@@ -811,15 +658,13 @@ model FinancialAttachment {
   deletedAt     DateTime?
   createdAt     DateTime              @default(now())
 
-  @@index([businessId, transactionId])
-  @@index([businessId, billId])
-  @@index([businessId, deletedAt])
+  @@index([transactionId])
+  @@index([billId])
+  @@index([deletedAt])
 }
 
 model ExportJob {
   id            String          @id @default(cuid())
-  businessId    String
-  business      Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   requestedById String
   requestedBy   User            @relation("ExportRequester", fields: [requestedById], references: [id], onDelete: Restrict)
   fromDate      DateTime        @db.Timestamptz(3)
@@ -835,15 +680,12 @@ model ExportJob {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  @@index([businessId, status, createdAt])
   @@index([status, createdAt])
   @@index([expiresAt])
 }
 
 model AppointmentService {
   id                  String      @id @default(cuid())
-  businessId          String
-  business            Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointmentId       String
   serviceId           String?
   appointment         Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
@@ -862,8 +704,6 @@ model AppointmentService {
 
 model AppointmentActualService {
   id                    String      @id @default(cuid())
-  businessId            String
-  business              Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
   appointmentId         String
   serviceId             String?
   appointment           Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
@@ -882,8 +722,6 @@ model AppointmentActualService {
 
 model MediaAsset {
   id            String               @id @default(cuid())
-  businessId    String
-  business      Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
   ownerType     MediaOwnerType       @default(APPOINTMENT_PHOTO)
   customerId    String?
   customer      Customer?            @relation("CustomerAvatar", fields: [customerId], references: [id], onDelete: Cascade)
@@ -904,11 +742,11 @@ model MediaAsset {
   jobs          MediaProcessingJob[]
   createdAt     DateTime             @default(now())
 
-  @@index([businessId, appointmentId, createdAt])
-  @@index([businessId, customerId])
-  @@index([businessId, featuredAt])
-  @@index([businessId, status, createdAt])
-  @@index([businessId, deletedAt])
+  @@index([appointmentId, createdAt])
+  @@index([customerId])
+  @@index([featuredAt])
+  @@index([status, createdAt])
+  @@index([deletedAt])
   @@map("AppointmentPhoto")
 }
 
@@ -945,8 +783,7 @@ model MediaProcessingJob {
 
 model InstagramConnection {
   id                   String          @id @default(cuid())
-  businessId           String          @unique
-  business             Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  singletonKey         Int             @unique @default(1)
   connectedById        String?
   connectedBy          User?           @relation("InstagramConnector", fields: [connectedById], references: [id], onDelete: SetNull)
   instagramUserId      String
@@ -962,8 +799,6 @@ model InstagramConnection {
 
 model InstagramPost {
   id              String              @id @default(cuid())
-  businessId      String
-  business        Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   connectionId    String
   connection      InstagramConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   remoteMediaId   String
@@ -977,7 +812,7 @@ model InstagramPost {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
-  @@unique([businessId, remoteMediaId])
-  @@index([businessId, active, publishedAt])
-  @@index([businessId, connectionId, publishedAt])
+  @@unique([remoteMediaId])
+  @@index([active, publishedAt])
+  @@index([connectionId, publishedAt])
 }

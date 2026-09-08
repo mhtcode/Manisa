@@ -11,8 +11,8 @@ export default async function NewAppointmentPage({ searchParams }: { searchParam
   const user = await requireBusinessPermission("appointments.manage");
   const [{ customerId, date, time }, customers, services] = await Promise.all([
     searchParams,
-    prisma.customer.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
-    prisma.service.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
+    prisma.customer.findMany({ where: { active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
+    prisma.service.findMany({ where: { active: true, deletedAt: null, category: { active: true, deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
   ]);
   const nextHour = addHours(new Date(), 1);
   const nextBusinessHour = Number(formatInTimeZone(nextHour, "America/Toronto", "H"));

@@ -30,14 +30,14 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
   const customerId = query.customerId || "";
   const serviceId = query.serviceId || "";
   const cursor = decodeCursor(query.cursor);
-  const albumWhere: Prisma.AppointmentWhereInput = { businessId: user.businessId, deletedAt: null, status: "COMPLETED", photos: { some: { deletedAt: null } }, ...(customerId ? { customerId } : {}), ...(serviceId ? { OR: [{ actualServiceLines: { some: { serviceId } } }, { serviceLines: { some: { serviceId } } }, { serviceId }] } : {}) };
+  const albumWhere: Prisma.AppointmentWhereInput = { deletedAt: null, status: "COMPLETED", photos: { some: { deletedAt: null } }, ...(customerId ? { customerId } : {}), ...(serviceId ? { OR: [{ actualServiceLines: { some: { serviceId } } }, { serviceLines: { some: { serviceId } } }, { serviceId }] } : {}) };
   const where: Prisma.AppointmentWhereInput = { ...albumWhere, ...(cursor ? { AND: [{ OR: [{ startAt: { lt: cursor.startAt } }, { startAt: cursor.startAt, id: { lt: cursor.id } }] }] } : {}) };
 
   const [results, allAlbumIds, customers, services] = await Promise.all([
     prisma.appointment.findMany({ where, take: PAGE_SIZE + 1, orderBy: [{ startAt: "desc" }, { id: "desc" }], include: { customer: true, actualServiceLines: { orderBy: { position: "asc" } }, photos: { where: { deletedAt: null }, take: 4, orderBy: [{ createdAt: "desc" }, { id: "desc" }] }, _count: { select: { photos: { where: { deletedAt: null } } } } } }),
     prisma.appointment.findMany({ where: albumWhere, select: { id: true }, take: 10_000 }),
-    prisma.customer.findMany({ where: { businessId: user.businessId, deletedAt: null, appointments: { some: { deletedAt: null, photos: { some: { deletedAt: null } } } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
-    prisma.service.findMany({ where: { businessId: user.businessId, deletedAt: null, OR: [{ actualAppointmentServices: { some: { appointment: { deletedAt: null, photos: { some: { deletedAt: null } } } } } }, { appointmentServices: { some: { appointment: { deletedAt: null, photos: { some: { deletedAt: null } } } } } }, { appointments: { some: { deletedAt: null, photos: { some: { deletedAt: null } } } } }] }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
+    prisma.customer.findMany({ where: { deletedAt: null, appointments: { some: { deletedAt: null, photos: { some: { deletedAt: null } } } } }, orderBy: [{ firstName: "asc" }, { lastName: "asc" }] }),
+    prisma.service.findMany({ where: { deletedAt: null, OR: [{ actualAppointmentServices: { some: { appointment: { deletedAt: null, photos: { some: { deletedAt: null } } } } } }, { appointmentServices: { some: { appointment: { deletedAt: null, photos: { some: { deletedAt: null } } } } } }, { appointments: { some: { deletedAt: null, photos: { some: { deletedAt: null } } } } }] }, orderBy: [{ category: { position: "asc" } }, { name: "asc" }] }),
   ]);
   const hasMore = results.length > PAGE_SIZE;
   const albums = results.slice(0, PAGE_SIZE);

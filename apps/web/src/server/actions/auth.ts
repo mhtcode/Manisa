@@ -14,19 +14,12 @@ export type PasswordChangeState = { error?: string; success?: string };
 export async function login(_: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = loginSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: "Enter a valid email and password." };
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email }, include: { memberships: { where: { active: true, deletedAt: null, business: { active: true, deletedAt: null } }, orderBy: { createdAt: "asc" } }, platformAccess: true } });
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || !user.active || !user.passwordHash || !(await argon2.verify(user.passwordHash, parsed.data.password))) {
     return { error: "The email or password is incorrect." };
   }
-  const membership = user.memberships[0];
-  if (!membership && !user.platformAccess?.active) {
-    return { error: "Your account or workspace access is disabled. Contact the owner." };
-  }
-  await createSession(user.id, user.memberships.length === 1 ? membership?.businessId : undefined);
-  if (user.memberships.length > 1) redirect("/workspaces");
-  if (membership) redirect("/report");
-  if (user.platformAccess?.active) redirect("/platform");
-  redirect("/login?error=no-access");
+  await createSession(user.id);
+  redirect("/report");
 }
 
 export async function logout() {
@@ -48,7 +41,7 @@ export async function changeOwnPassword(_: PasswordChangeState, formData: FormDa
   const passwordHash = await argon2.hash(password);
   await prisma.$transaction([
     prisma.user.update({ where: { id: user.id }, data: { passwordHash } }),
-    prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, businessId: user.businessId, action: "account.password.change", targetType: "User", targetId: user.id } }),
+    prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, action: "account.password.change", targetType: "User", targetId: user.id } }),
   ]);
   revalidatePath("/settings/security");
   return { success: "Password changed successfully." };

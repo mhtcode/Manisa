@@ -42,8 +42,7 @@ export async function updateSettings(formData: FormData) {
   const studioBiography = optional("studioBiography", 1200);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
-    prisma.business.update({ where: { id: user.businessId }, data: { name: businessName } }),
-    prisma.businessSettings.upsert({ where: { businessId: user.businessId }, create: { businessId: user.businessId, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
+    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { name: businessName, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
   ]);
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
@@ -56,7 +55,7 @@ export async function updateMobileNavigation(formData: FormData) {
   const items = formData.getAll("mobileNavItems").map(String);
   const valid = items.length === 4 && new Set(items).size === 4 && items.every((item) => mobileNavigationKeys.includes(item as (typeof mobileNavigationKeys)[number]));
   if (!valid) throw new Error("Choose four unique destinations for the mobile navigation.");
-  await prisma.membershipPreference.upsert({ where: { membershipId: user.membership.id }, create: { membershipId: user.membership.id, mobileNavOrder: items.join(",") }, update: { mobileNavOrder: items.join(",") } });
+  await prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, mobileNavOrder: items.join(",") }, update: { mobileNavOrder: items.join(",") } });
   revalidatePath("/", "layout");
 }
 
@@ -64,9 +63,9 @@ export async function updateCollectionView(page: CollectionKey, mode: "grid" | "
   const user = await requireUser();
   if (!collectionKeys.includes(page) || !["grid", "list"].includes(mode)) throw new Error("Invalid collection preference.");
   const current = preferenceObject(user.settings?.collectionViews);
-  await prisma.membershipPreference.upsert({
-    where: { membershipId: user.membership.id },
-    create: { membershipId: user.membership.id, collectionViews: { ...current, [page]: mode } },
+  await prisma.userPreference.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, collectionViews: { ...current, [page]: mode } },
     update: { collectionViews: { ...current, [page]: mode } },
   });
   revalidatePath("/", "layout");
@@ -76,9 +75,9 @@ export async function updateCollapsedSection(sectionId: string, collapsed: boole
   const user = await requireUser();
   if (!/^[-_a-zA-Z0-9]{1,100}$/.test(sectionId)) throw new Error("Invalid section preference.");
   const current = preferenceObject(user.settings?.collapsedSections);
-  await prisma.membershipPreference.upsert({
-    where: { membershipId: user.membership.id },
-    create: { membershipId: user.membership.id, collapsedSections: { ...current, [sectionId]: collapsed } },
+  await prisma.userPreference.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, collapsedSections: { ...current, [sectionId]: collapsed } },
     update: { collapsedSections: { ...current, [sectionId]: collapsed } },
   });
   revalidatePath("/services");
@@ -112,13 +111,13 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
   try {
     result = await prisma.$transaction(async (transaction) => {
     const [customers, services, existingAppointments, otherCategory] = await Promise.all([
-      transaction.customer.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true } }),
-      transaction.service.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, name: true } }),
-      transaction.appointment.findMany({ where: { businessId: user.businessId, importSourceId: { in: parsed.events.map((event) => event.sourceId) } }, select: { importSourceId: true } }),
+      transaction.customer.findMany({ where: { deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true } }),
+      transaction.service.findMany({ where: { deletedAt: null }, select: { id: true, name: true } }),
+      transaction.appointment.findMany({ where: { importSourceId: { in: parsed.events.map((event) => event.sourceId) } }, select: { importSourceId: true } }),
       transaction.studioCategory.upsert({
-        where: { businessId_slug: { businessId: user.businessId, slug: "other" } },
+        where: { slug: "other" },
         update: { active: true, deletedAt: null },
-        create: { businessId: user.businessId, slug: "other", name: "Other services", description: "Additional and imported services", icon: "sparkles", accentColor: "#64748B", position: 999 },
+        create: { slug: "other", name: "Other services", description: "Additional and imported services", icon: "sparkles", accentColor: "#64748B", position: 999 },
         select: { id: true },
       }),
     ]);
@@ -133,19 +132,19 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
       const customerKey = normalized(event.customerName);
       let customerId = customerIds.get(customerKey);
       if (!customerId) {
-        const customer = await transaction.customer.create({ data: { businessId: user.businessId, firstName: event.customerName, displayName: event.customerName, phone: event.phone, email: event.email } });
+        const customer = await transaction.customer.create({ data: { firstName: event.customerName, displayName: event.customerName, phone: event.phone, email: event.email } });
         customerId = customer.id;
         customerIds.set(customerKey, customerId);
       }
       const serviceKey = normalized(event.serviceName);
       let serviceId = serviceIds.get(serviceKey);
       if (!serviceId) {
-        const service = await transaction.service.create({ data: { businessId: user.businessId, name: event.serviceName, description: "Imported from Google Calendar; review pricing before future booking.", categoryId: otherCategory.id, defaultDurationMinutes: event.durationMinutes, defaultPrice: 0, currency } });
+        const service = await transaction.service.create({ data: { name: event.serviceName, description: "Imported from Google Calendar; review pricing before future booking.", categoryId: otherCategory.id, defaultDurationMinutes: event.durationMinutes, defaultPrice: 0, currency } });
         serviceId = service.id;
         serviceIds.set(serviceKey, serviceId);
       }
       await transaction.appointment.create({ data: {
-        businessId: user.businessId, customerId,
+        customerId,
         serviceId,
         serviceNameSnapshot: event.serviceName,
         startAt: event.startAt,
@@ -155,7 +154,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
         status: "HISTORICAL",
         importSourceId: event.sourceId,
         notes: [event.description, "Imported from Google Calendar. Manually added/unreported; excluded from income and working-hour totals."].filter(Boolean).join("\n\n"),
-        serviceLines: { create: { businessId: user.businessId, serviceId, serviceNameSnapshot: event.serviceName, durationMinutes: event.durationMinutes, price: 0 } },
+        serviceLines: { create: { serviceId, serviceNameSnapshot: event.serviceName, durationMinutes: event.durationMinutes, price: 0 } },
       } });
       sourceIds.add(event.sourceId);
       imported += 1;
@@ -198,10 +197,10 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
   try {
     const result = await prisma.$transaction(async (transaction) => {
       const [customers, categories, services, existingAppointments] = await Promise.all([
-        transaction.customer.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true, phone: true, email: true } }),
-        transaction.studioCategory.findMany({ where: { businessId: user.businessId }, select: { id: true, name: true, slug: true, active: true, deletedAt: true } }),
-        transaction.service.findMany({ where: { businessId: user.businessId, deletedAt: null }, select: { id: true, name: true, categoryId: true, active: true } }),
-        transaction.appointment.findMany({ where: { businessId: user.businessId, importSourceId: { in: parsed.appointments.map((appointment) => appointment.sourceId) } }, select: { importSourceId: true } }),
+        transaction.customer.findMany({ where: { deletedAt: null }, select: { id: true, firstName: true, lastName: true, displayName: true, phone: true, email: true } }),
+        transaction.studioCategory.findMany({ where: { }, select: { id: true, name: true, slug: true, active: true, deletedAt: true } }),
+        transaction.service.findMany({ where: { deletedAt: null }, select: { id: true, name: true, categoryId: true, active: true } }),
+        transaction.appointment.findMany({ where: { importSourceId: { in: parsed.appointments.map((appointment) => appointment.sourceId) } }, select: { importSourceId: true } }),
       ]);
       const customersByIdentity = new Map<string, string>();
       customers.forEach((customer) => {
@@ -223,12 +222,12 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
         const customerKeys = [customer.phone && `phone:${normalizedImportValue(customer.phone)}`, customer.email && `email:${normalizedImportValue(customer.email)}`, `name:${normalizedImportValue(customer.name)}`].filter(Boolean) as string[];
         let customerId = customerKeys.map((key) => customersByIdentity.get(key)).find(Boolean);
         if (!customerId) {
-          const created = await transaction.customer.create({ data: { businessId: user.businessId, firstName: customer.name, displayName: customer.name, phone: customer.phone, email: customer.email || undefined, notes: customer.notes, preferredLanguage: customer.preferredLanguage } });
+          const created = await transaction.customer.create({ data: { firstName: customer.name, displayName: customer.name, phone: customer.phone, email: customer.email || undefined, notes: customer.notes, preferredLanguage: customer.preferredLanguage } });
           customerId = created.id;
           customerKeys.forEach((key) => customersByIdentity.set(key, created.id));
         }
 
-        const lineData: { businessId: string; serviceId: string; serviceNameSnapshot: string; durationMinutes: number; price: number; selectedColor?: string; position: number }[] = [];
+        const lineData: { serviceId: string; serviceNameSnapshot: string; durationMinutes: number; price: number; selectedColor?: string; position: number }[] = [];
         for (const [position, importedService] of appointment.services.entries()) {
           const categoryData = importCategory(importedService.category);
           const categoryKey = normalizedImportValue(categoryData.name);
@@ -240,7 +239,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
             let slug = base;
             let suffix = 2;
             while (usedSlugs.has(slug)) { slug = `${base}-${suffix}`; suffix += 1; }
-            const created = await transaction.studioCategory.create({ data: { businessId: user.businessId, name: categoryData.name, slug, description: categoryData.description, icon: categoryData.icon || "sparkles", accentColor: categoryData.accentColor?.toUpperCase() || "#4F8CFF", position: categoriesByName.size } });
+            const created = await transaction.studioCategory.create({ data: { name: categoryData.name, slug, description: categoryData.description, icon: categoryData.icon || "sparkles", accentColor: categoryData.accentColor?.toUpperCase() || "#4F8CFF", position: categoriesByName.size } });
             categoryId = created.id;
             categoriesByName.set(categoryKey, { id: created.id, active: true });
             usedSlugs.add(slug);
@@ -250,16 +249,16 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
           let serviceId = existingService?.id;
           if (existingService && !existingService.active) await transaction.service.update({ where: { id: existingService.id }, data: { active: true } });
           if (!serviceId) {
-            const created = await transaction.service.create({ data: { businessId: user.businessId, name: importedService.name, description: importedService.description, categoryId, supportsColor: importedService.supportsColor, defaultDurationMinutes: importedService.durationMinutes, defaultPrice: importedService.price, currency } });
+            const created = await transaction.service.create({ data: { name: importedService.name, description: importedService.description, categoryId, supportsColor: importedService.supportsColor, defaultDurationMinutes: importedService.durationMinutes, defaultPrice: importedService.price, currency } });
             serviceId = created.id;
             servicesByCategoryAndName.set(serviceKey, { id: created.id, active: true });
           }
-          lineData.push({ businessId: user.businessId, serviceId, serviceNameSnapshot: importedService.name, durationMinutes: importedService.durationMinutes, price: importedService.price, selectedColor: importedService.color, position });
+          lineData.push({ serviceId, serviceNameSnapshot: importedService.name, durationMinutes: importedService.durationMinutes, price: importedService.price, selectedColor: importedService.color, position });
         }
         const duration = lineData.reduce((total, line) => total + line.durationMinutes, 0);
         const price = lineData.reduce((total, line) => total + line.price, 0);
         await transaction.appointment.create({ data: {
-          businessId: user.businessId, customerId,
+          customerId,
           serviceId: lineData[0].serviceId,
           serviceNameSnapshot: lineData.map((line) => line.serviceNameSnapshot).join(" + "),
           startAt: appointment.startDate,

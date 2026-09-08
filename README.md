@@ -1,12 +1,12 @@
 # Manisa
 
-Manisa is a mobile-first, bilingual, multi-tenant business platform. One deployment hosts isolated business workspaces with their own teams, customers, appointments, payments, reports, media quotas, integrations, and public studio pages.
+Manisa is a mobile-first, bilingual management platform for one home hair-and-nail studio. One deployment contains one studio, its team, customers, appointments, payments, reports, media, integrations, and public landing page.
 
 ## Architecture
 
 The production application is a modular monolith. The Next.js application in `apps/web` provides the UI, protected server components, server actions, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations. The separately deployable FastAPI application in `apps/api` currently provides the API foundation and health endpoint; feature APIs can be added there without introducing microservices.
 
-Authentication uses Argon2id password hashes and signed, HTTP-only, same-site session cookies. PostgreSQL stores tenant-scoped application and media metadata. MinIO stores private originals/variants and public featured derivatives through an S3-compatible interface; MongoDB is intentionally not used for binary objects.
+Authentication uses Argon2id password hashes and signed, HTTP-only, same-site session cookies. PostgreSQL stores application and media metadata. MinIO stores private originals/variants and public featured derivatives through an S3-compatible interface; MongoDB is intentionally not used for binary objects.
 
 ## Requirements
 
@@ -29,7 +29,6 @@ Generate separate values for `AUTH_SECRET` and `PLATFORM_SETUP_TOKEN`, then open
 
 - Public website: `http://localhost:3000`
 - One-time setup: `http://localhost:3000/setup`
-- Platform console: `http://localhost:3000/platform`
 - MinIO console (host-only): `http://localhost:9001`
 - Private reporting: `http://localhost:3000/report`
 - Web health: `http://localhost:3000/api/health`
@@ -37,7 +36,7 @@ Generate separate values for `AUTH_SECRET` and `PLATFORM_SETUP_TOKEN`, then open
 - API health: `http://localhost:8000/health`
 - API database readiness: `http://localhost:8000/ready`
 
-The one-shot `web-init` container applies migrations only. On a fresh deployment, visit `/setup` and use `PLATFORM_SETUP_TOKEN` to create the sole root owner and first business. Setup closes permanently afterward. Run `npm run db:seed` explicitly only for development. Set `S3_PUBLIC_ENDPOINT` to the server address browsers and phones can reach.
+The one-shot `web-init` container applies migrations only. On a fresh deployment, visit `/setup` and use `PLATFORM_SETUP_TOKEN` to create the studio's sole owner. Setup closes permanently afterward. Run `npm run db:seed` explicitly only for development. Set `S3_PUBLIC_ENDPOINT` to the server address browsers and phones can reach.
 
 Use `docker compose logs -f web media-worker api` to follow logs. Copy legacy local images into MinIO, without deleting the old volume, with `docker compose --profile migration run --rm legacy-media-migrate`.
 
@@ -45,9 +44,9 @@ Use `docker compose logs -f web media-worker api` to follow logs. Copy legacy lo
 
 Back up both stores together: use `pg_dump` for PostgreSQL and `mc mirror` for both MinIO buckets. Restore PostgreSQL first, then both buckets with their original keys. Keep `AUTH_SECRET`, S3 credentials, and the integration encryption key in a separate encrypted backup. `docker compose down -v` permanently removes PostgreSQL and MinIO volumes.
 
-## Workspaces and permissions
+## Team and permissions
 
-The platform owner manages businesses under `/platform`. Business owners and admins invite members from Settings → Members with single-use 72-hour links. Users with multiple memberships select or switch workspaces. The root owner’s elevated workspace entry is visibly marked and audited. Public registration is disabled; Google links existing accounts or accepts a valid invitation. Public business pages live at `/studio/[slug]`, including `/studio/manisa` for the migrated installation.
+The studio has exactly one owner. The owner and authorized administrators invite team members from Settings → Members with single-use 72-hour links and assign fixed roles plus individual permission overrides. Ownership transfer is explicit, and the active owner cannot be disabled or deleted. Public registration is disabled; Google links an existing account or accepts a valid invitation. The public studio page lives at `/`.
 
 ## Run in development mode
 
@@ -107,7 +106,7 @@ The public landing page reads active service categories and selected Gallery wor
 
 Financial evidence moves to Trash immediately and stops affecting current balances and reports. After seven days it becomes a locked archive; the default permanent-retention period is 2,190 days (six years). Owners can shorten it to a minimum of seven days only after considering their legal record-keeping obligations.
 
-**Settings → Data transfer** combines JSON/calendar import and secure date-range export. `export-worker` produces a private ZIP containing normalized CSV tables, a versioned relationship manifest, printable invoice PDFs, referenced appointment photos and customer avatars, financial attachments, and archived financial records in the selected period. Downloads are authorization-proxied, audited, checksummed, and expire after 24 hours. Only one export may run per business at a time.
+**Settings → Data transfer** combines JSON/calendar import and secure date-range export. `export-worker` produces a private ZIP containing normalized CSV tables, a versioned relationship manifest, printable invoice PDFs, referenced appointment photos and customer avatars, financial attachments, and archived financial records in the selected period. Downloads are authorization-proxied, audited, checksummed, and expire after 24 hours. Only one export may run at a time.
 
 ## Instagram Professional integration
 

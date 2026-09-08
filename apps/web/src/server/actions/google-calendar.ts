@@ -10,12 +10,12 @@ import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
 
 export async function retryGoogleCalendar() {
   const user = await requireBusinessPermission("integrations.manage");
-  const connection = await prisma.googleCalendarConnection.findUnique({ where: { businessId: user.businessId } });
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { singletonKey: 1 } });
   if (!connection) redirect("/settings/google-calendar?error=not-connected");
   if (connection.status === "PAUSED") redirect("/settings/google-calendar?error=reconnect");
-  const failed = await prisma.googleCalendarSyncJob.findMany({ where: { businessId: user.businessId, status: "FAILED" }, select: { appointmentId: true, operation: true } });
+  const failed = await prisma.googleCalendarSyncJob.findMany({ where: { status: "FAILED" }, select: { appointmentId: true, operation: true } });
   await prisma.$transaction(async (tx) => {
-    for (const job of failed) await enqueueGoogleCalendarSync(tx, user.businessId, [job.appointmentId], job.operation);
+    for (const job of failed) await enqueueGoogleCalendarSync(tx, [job.appointmentId], job.operation);
     await tx.googleCalendarConnection.update({ where: { id: connection.id }, data: { lastError: null } });
   });
   revalidatePath("/settings/google-calendar");
@@ -24,7 +24,7 @@ export async function retryGoogleCalendar() {
 
 export async function disconnectGoogleCalendar() {
   const user = await requireBusinessPermission("integrations.manage");
-  const connection = await prisma.googleCalendarConnection.findUnique({ where: { businessId: user.businessId }, select: { id: true, encryptedRefreshToken: true } });
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true, encryptedRefreshToken: true } });
   if (!connection) redirect("/settings/google-calendar");
   const env = getServerEnv();
   if (env.INTEGRATION_ENCRYPTION_KEY) {

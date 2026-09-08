@@ -19,21 +19,21 @@ export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeRes
     let appointments = 0;
     const expiredPhotos = await transaction.mediaAsset.findMany({
       where: { OR: [{ deletedAt: { lte: cutoff } }, { appointment: { deletedAt: { lte: cutoff } } }, { customer: { deletedAt: { lte: cutoff } } }] },
-      select: { id: true, businessId: true, featuredAt: true, objectKey: true, imagePath: true, thumbnailPath: true, variants: { select: { objectKey: true, sizeBytes: true } } },
+      select: { id: true, featuredAt: true, objectKey: true, imagePath: true, thumbnailPath: true, variants: { select: { objectKey: true, sizeBytes: true } } },
     });
-    const releasedByBusiness = new Map<string, bigint>();
+    let releasedMediaBytes = BigInt(0);
     for (const photo of expiredPhotos) {
       const deleted = await transaction.mediaAsset.deleteMany({ where: { id: photo.id } });
       if (deleted.count) {
         photos += 1; removedPhotoFiles.push(photo);
         if (photo.objectKey) objectKeys.add(photo.objectKey);
         for (const variant of photo.variants) objectKeys.add(variant.objectKey);
-        if (photo.featuredAt) publicKeys.add(`${photo.businessId}/featured/${photo.id}.webp`);
+        if (photo.featuredAt) publicKeys.add(`studio/featured/${photo.id}.webp`);
         const bytes = BigInt(photo.variants.reduce((sum, variant) => sum + variant.sizeBytes, 0));
-        releasedByBusiness.set(photo.businessId, (releasedByBusiness.get(photo.businessId) || BigInt(0)) + bytes);
+        releasedMediaBytes += bytes;
       }
     }
-    for (const [businessId, bytes] of releasedByBusiness) if (bytes) await transaction.business.update({ where: { id: businessId }, data: { storageUsedBytes: { decrement: bytes } } });
+    if (releasedMediaBytes) await transaction.studioSettings.update({ where: { id: "studio" }, data: { storageUsedBytes: { decrement: releasedMediaBytes } } });
 
     const expiredAppointments = await transaction.appointment.findMany({ where: { deletedAt: { lte: cutoff } }, select: { id: true } });
     for (const appointment of expiredAppointments) {
@@ -48,10 +48,10 @@ export async function purgeExpiredTrash(now = new Date()): Promise<TrashPurgeRes
     let financialArchived = 0; let financialPurged = 0;
     const retentionWhere = { deletedAt: { lte: cutoff }, archivedAt: null, OR: [{ purgeAt: null }, { purgeAt: { gt: now } }] };
     const purgeWhere = { deletedAt: { lte: cutoff }, purgeAt: { lte: now } };
-    const financialFiles = await transaction.financialAttachment.findMany({ where: { OR: [{ transaction: purgeWhere }, { bill: purgeWhere }] }, select: { objectKey: true, sizeBytes: true, businessId: true } });
-    const releasedFinancialBytes = new Map<string, bigint>();
-    for (const file of financialFiles) { objectKeys.add(file.objectKey); releasedFinancialBytes.set(file.businessId, (releasedFinancialBytes.get(file.businessId) || BigInt(0)) + BigInt(file.sizeBytes)); }
-    for (const [businessId, bytes] of releasedFinancialBytes) await transaction.business.update({ where: { id: businessId }, data: { storageUsedBytes: { decrement: bytes } } });
+    const financialFiles = await transaction.financialAttachment.findMany({ where: { OR: [{ transaction: purgeWhere }, { bill: purgeWhere }] }, select: { objectKey: true, sizeBytes: true } });
+    const releasedFinancialBytes = financialFiles.reduce((sum, file) => sum + BigInt(file.sizeBytes), BigInt(0));
+    for (const file of financialFiles) objectKeys.add(file.objectKey);
+    if (releasedFinancialBytes) await transaction.studioSettings.update({ where: { id: "studio" }, data: { storageUsedBytes: { decrement: releasedFinancialBytes } } });
     const transactionPurge = await transaction.financialTransaction.deleteMany({ where: purgeWhere }); financialPurged += transactionPurge.count;
     const billPurge = await transaction.supplierBill.deleteMany({ where: purgeWhere }); financialPurged += billPurge.count;
     const invoicePurge = await transaction.customerInvoice.deleteMany({ where: purgeWhere }); financialPurged += invoicePurge.count;

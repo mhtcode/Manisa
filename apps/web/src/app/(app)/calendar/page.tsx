@@ -30,7 +30,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "month";
 
   const appointments = await prisma.appointment.findMany({
-    where: { businessId: user.businessId, deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
+    where: { deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
     include: { customer: true },
     orderBy: { startAt: "asc" },
   });

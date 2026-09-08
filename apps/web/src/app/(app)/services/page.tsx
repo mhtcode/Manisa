@@ -15,7 +15,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: Pro
   const [query, user] = await Promise.all([searchParams, requireBusinessPermission("services.view")]);
   const view = collectionView(user.settings?.collectionViews, "services", "grid");
   const categories = await prisma.studioCategory.findMany({
-    where: { businessId: user.businessId, deletedAt: null, OR: [{ active: true }, { services: { some: { deletedAt: null } } }] },
+    where: { deletedAt: null, OR: [{ active: true }, { services: { some: { deletedAt: null } } }] },
     include: {
       services: {
         where: { deletedAt: null },

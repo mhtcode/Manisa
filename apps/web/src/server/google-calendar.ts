@@ -10,16 +10,16 @@ export function stableGoogleEventId(appointmentId: string) {
   return `manisa${createHash("sha256").update(appointmentId).digest("hex")}`;
 }
 
-export async function enqueueGoogleCalendarSync(db: Db, businessId: string, appointmentIds: string[], operation: Operation) {
+export async function enqueueGoogleCalendarSync(db: Db, appointmentIds: string[], operation: Operation) {
   if (!appointmentIds.length) return 0;
-  const connection = await db.googleCalendarConnection.findUnique({ where: { businessId }, select: { id: true } });
+  const connection = await db.googleCalendarConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true } });
   if (!connection) return 0;
-  const mappings = operation === "DELETE" ? await db.googleCalendarEvent.findMany({ where: { businessId, appointmentId: { in: appointmentIds } }, select: { appointmentId: true, googleEventId: true } }) : [];
+  const mappings = operation === "DELETE" ? await db.googleCalendarEvent.findMany({ where: { appointmentId: { in: appointmentIds } }, select: { appointmentId: true, googleEventId: true } }) : [];
   const map = new Map(mappings.map((item) => [item.appointmentId, item.googleEventId]));
   for (const appointmentId of [...new Set(appointmentIds)]) {
     await db.googleCalendarSyncJob.upsert({
-      where: { businessId_appointmentId: { businessId, appointmentId } },
-      create: { businessId, connectionId: connection.id, appointmentId, operation, googleEventId: map.get(appointmentId), status: "PENDING", availableAt: new Date() },
+      where: { appointmentId },
+      create: { connectionId: connection.id, appointmentId, operation, googleEventId: map.get(appointmentId), status: "PENDING", availableAt: new Date() },
       update: { connectionId: connection.id, operation, googleEventId: map.get(appointmentId), status: "PENDING", attempts: 0, revision: { increment: 1 }, availableAt: new Date(), lockedAt: null, lastError: null },
     });
   }
@@ -64,14 +64,14 @@ export async function processGoogleCalendarJobs(prisma: PrismaClient, limit = 10
       if (job.connection.status !== "CONNECTED") throw new Error("RECONNECT_REQUIRED");
       const env = getServerEnv();
       const token = await accessToken(decryptSecret(job.connection.encryptedRefreshToken, env.INTEGRATION_ENCRYPTION_KEY!));
-      const mapping = await prisma.googleCalendarEvent.findUnique({ where: { businessId_appointmentId: { businessId: job.businessId, appointmentId: job.appointmentId } } });
-      const appointment = await prisma.appointment.findFirst({ where: { id: job.appointmentId, businessId: job.businessId }, include: { customer: { select: { firstName: true, lastName: true, displayName: true } } } });
+      const mapping = await prisma.googleCalendarEvent.findUnique({ where: { appointmentId: job.appointmentId } });
+      const appointment = await prisma.appointment.findFirst({ where: { id: job.appointmentId, }, include: { customer: { select: { firstName: true, lastName: true, displayName: true } } } });
       const shouldDelete = job.operation === "DELETE" || !appointment || Boolean(appointment.deletedAt);
       const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(job.connection.calendarId)}/events`;
       if (shouldDelete) {
         const eventId = job.googleEventId || mapping?.googleEventId;
         if (eventId) { const response = await googleRequest(token, `${base}/${encodeURIComponent(eventId)}?sendUpdates=none`, { method: "DELETE" }); if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google event deletion failed (${response.status}).`); }
-        await prisma.$transaction([prisma.googleCalendarEvent.deleteMany({ where: { businessId: job.businessId, appointmentId: job.appointmentId } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } })]);
+        await prisma.$transaction([prisma.googleCalendarEvent.deleteMany({ where: { appointmentId: job.appointmentId } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } })]);
       } else {
         const payload = googleEventPayload(appointment, new URL(env.GOOGLE_CALENDAR_REDIRECT_URI!).origin);
         const eventId = mapping?.googleEventId || payload.id;
@@ -80,7 +80,7 @@ export async function processGoogleCalendarJobs(prisma: PrismaClient, limit = 10
         if (!mapping && response.status === 409) response = await googleRequest(token, `${base}/${encodeURIComponent(eventId)}?sendUpdates=none`, { method: "PATCH", body: JSON.stringify(payload) });
         if (!response.ok) throw new Error(`Google event synchronization failed (${response.status}).`);
         const result = await response.json() as { id?: string; etag?: string };
-        await prisma.$transaction([prisma.googleCalendarEvent.upsert({ where: { businessId_appointmentId: { businessId: job.businessId, appointmentId: job.appointmentId } }, create: { businessId: job.businessId, connectionId: job.connectionId, appointmentId: job.appointmentId, googleEventId: result.id || eventId, etag: result.etag }, update: { connectionId: job.connectionId, googleEventId: result.id || eventId, etag: result.etag, lastSyncedAt: new Date() } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } }), prisma.appointment.updateMany({ where: { id: job.appointmentId, businessId: job.businessId }, data: { calendarSyncError: null } })]);
+        await prisma.$transaction([prisma.googleCalendarEvent.upsert({ where: { appointmentId: job.appointmentId }, create: { connectionId: job.connectionId, appointmentId: job.appointmentId, googleEventId: result.id || eventId, etag: result.etag }, update: { connectionId: job.connectionId, googleEventId: result.id || eventId, etag: result.etag, lastSyncedAt: new Date() } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } }), prisma.appointment.updateMany({ where: { id: job.appointmentId, }, data: { calendarSyncError: null } })]);
       }
       processed += 1;
     } catch (error) {
@@ -90,7 +90,7 @@ export async function processGoogleCalendarJobs(prisma: PrismaClient, limit = 10
       await prisma.$transaction([
         prisma.googleCalendarSyncJob.updateMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" }, data: { status: reconnect || attempts >= 10 ? "FAILED" : "PENDING", lockedAt: null, lastError: reconnect ? "Google authorization expired. Reconnect the account." : message, availableAt: new Date(Date.now() + Math.min(3600, 30 * 2 ** Math.min(attempts, 7)) * 1000) } }),
         prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { status: reconnect ? "PAUSED" : undefined, lastError: reconnect ? "Google authorization expired. Reconnect the account." : message } }),
-        prisma.appointment.updateMany({ where: { id: job.appointmentId, businessId: job.businessId }, data: { calendarSyncError: message } }),
+        prisma.appointment.updateMany({ where: { id: job.appointmentId, }, data: { calendarSyncError: message } }),
       ]);
     }
   }

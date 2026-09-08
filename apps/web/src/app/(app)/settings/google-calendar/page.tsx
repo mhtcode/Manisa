@@ -13,9 +13,9 @@ const errors: Record<string, string> = { config: "Complete the server configurat
 export default async function GoogleCalendarSettings({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; queued?: string }> }) {
   const [query, user] = await Promise.all([searchParams, requireBusinessPermission("integrations.manage")]);
   const [connection, pending, failed] = await Promise.all([
-    prisma.googleCalendarConnection.findUnique({ where: { businessId: user.businessId } }),
-    prisma.googleCalendarSyncJob.count({ where: { businessId: user.businessId, status: { in: ["PENDING", "PROCESSING"] } } }),
-    prisma.googleCalendarSyncJob.count({ where: { businessId: user.businessId, status: "FAILED" } }),
+    prisma.googleCalendarConnection.findUnique({ where: { singletonKey: 1 } }),
+    prisma.googleCalendarSyncJob.count({ where: { status: { in: ["PENDING", "PROCESSING"] } } }),
+    prisma.googleCalendarSyncJob.count({ where: { status: "FAILED" } }),
   ]);
   const env = getServerEnv(); const configured = googleCalendarConfigured();
   const missing = [!env.GOOGLE_CLIENT_ID && "GOOGLE_CLIENT_ID", !env.GOOGLE_CLIENT_SECRET && "GOOGLE_CLIENT_SECRET", !env.GOOGLE_CALENDAR_REDIRECT_URI && "GOOGLE_CALENDAR_REDIRECT_URI", env.GOOGLE_CALENDAR_REDIRECT_URI && !env.GOOGLE_CALENDAR_REDIRECT_URI.startsWith("https://") && "GOOGLE_CALENDAR_REDIRECT_URI (HTTPS required)", !env.INTEGRATION_ENCRYPTION_KEY && "INTEGRATION_ENCRYPTION_KEY"].filter(Boolean) as string[];

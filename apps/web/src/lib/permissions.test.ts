@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { hasBusinessPermission, hasPlatformPermission } from "./permissions";
+import { canManageStudioMember, hasBusinessPermission } from "./permissions";
 
-describe("tenant permissions", () => {
+describe("studio permissions", () => {
   it("gives owners and administrators full business access", () => {
     expect(hasBusinessPermission("OWNER", {}, "members.manage")).toBe(true);
     expect(hasBusinessPermission("ADMIN", {}, "trash.manage")).toBe(true);
@@ -18,9 +18,13 @@ describe("tenant permissions", () => {
     expect(hasBusinessPermission("ADMIN", { "payments.manage": false }, "payments.manage")).toBe(false);
   });
 
-  it("reserves platform-administrator management for the root owner by default", () => {
-    expect(hasPlatformPermission("ROOT_OWNER", {}, "platformAdmins.manage")).toBe(true);
-    expect(hasPlatformPermission("PLATFORM_ADMIN", {}, "platformAdmins.manage")).toBe(false);
-    expect(hasPlatformPermission("PLATFORM_ADMIN", { "platformAdmins.manage": true }, "platformAdmins.manage")).toBe(true);
+  it("enforces the member-management hierarchy", () => {
+    expect(canManageStudioMember("OWNER", "ADMIN")).toBe(true);
+    expect(canManageStudioMember("OWNER", "STAFF")).toBe(true);
+    expect(canManageStudioMember("ADMIN", "STAFF")).toBe(true);
+    expect(canManageStudioMember("ADMIN", "ADMIN")).toBe(false);
+    expect(canManageStudioMember("ADMIN", "MANAGER")).toBe(false);
+    expect(canManageStudioMember("OWNER", "OWNER")).toBe(false);
   });
+
 });

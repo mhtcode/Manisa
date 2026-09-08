@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const user = await requireBusinessPermission("integrations.manage");
   if (!googleCalendarConfigured()) return NextResponse.redirect(new URL("/settings/google-calendar?error=config", request.url));
   const env = getServerEnv();
-  const created = createGoogleCalendarOAuthState(user.id, user.businessId, env.AUTH_SECRET);
+  const created = createGoogleCalendarOAuthState(user.id, env.AUTH_SECRET);
   (await cookies()).set(COOKIE, created.nonce, { httpOnly: true, sameSite: "lax", secure: secureCookiesEnabled(), path: "/", maxAge: 600 });
   const authorization = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authorization.searchParams.set("client_id", env.GOOGLE_CLIENT_ID!);

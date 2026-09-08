@@ -26,7 +26,7 @@ export function MemberAccessEditor({ id, name, role, permissions, canTransfer }:
       <section aria-label={`${name} access`} aria-modal="true" className="panel max-h-[88vh] w-full max-w-2xl overflow-y-auto p-5" role="dialog">
         <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{name}</h2><p className="text-xs text-slate-500">Role and permissions</p></div><button aria-label="Close" className="icon-button" onClick={() => setOpen(false)} type="button"><X size={17}/></button></div>
         <form action={updateMembershipAccess.bind(null, id)} className="mt-5">
-          <label className="label" htmlFor={`role-${id}`}>Role</label><select className="input" defaultValue={role === "ADMIN" ? "ADMIN" : "STAFF"} id={`role-${id}`} name="role"><option value="ADMIN">Admin</option><option value="STAFF">Staff</option></select>
+          <label className="label" htmlFor={`role-${id}`}>Role</label><select className="input" defaultValue={role} id={`role-${id}`} name="role"><option value="ADMIN">Admin</option><option value="MANAGER">Manager</option><option value="STAFF">Staff</option></select>
           <div className="mt-5 grid gap-2 sm:grid-cols-2">{businessPermissionKeys.map((key) => <label className="flex min-h-11 items-center gap-3 rounded-xl border border-white/8 bg-white/[.02] px-3 py-2 text-sm" key={key}><input defaultChecked={permissions[key]} name={`permission:${key}`} type="checkbox"/><span>{labels[key]}</span></label>)}</div>
           <button className="button mt-5 w-full">Save access</button>
         </form>

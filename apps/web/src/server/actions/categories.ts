@@ -14,11 +14,11 @@ function slugify(value: string) {
     .slice(0, 56) || "category";
 }
 
-async function uniqueSlug(businessId: string, name: string, excludeId?: string) {
+async function uniqueSlug(name: string, excludeId?: string) {
   const base = slugify(name);
   let slug = base;
   for (let suffix = 2; suffix < 100; suffix += 1) {
-    const match = await prisma.studioCategory.findUnique({ where: { businessId_slug: { businessId, slug } }, select: { id: true } });
+    const match = await prisma.studioCategory.findUnique({ where: { slug }, select: { id: true } });
     if (!match || match.id === excludeId) return slug;
     slug = `${base}-${suffix}`;
   }
@@ -28,8 +28,8 @@ async function uniqueSlug(businessId: string, name: string, excludeId?: string) 
 export async function createStudioCategory(formData: FormData) {
   const user = await requireBusinessPermission("services.manage");
   const data = studioCategorySchema.parse(Object.fromEntries(formData));
-  const aggregate = await prisma.studioCategory.aggregate({ where: { businessId: user.businessId, deletedAt: null }, _max: { position: true } });
-  await prisma.studioCategory.create({ data: { ...data, businessId: user.businessId, slug: await uniqueSlug(user.businessId, data.name), position: (aggregate._max.position ?? -1) + 1 } });
+  const aggregate = await prisma.studioCategory.aggregate({ where: { deletedAt: null }, _max: { position: true } });
+  await prisma.studioCategory.create({ data: { ...data, slug: await uniqueSlug(data.name), position: (aggregate._max.position ?? -1) + 1 } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
   revalidatePath("/");
@@ -38,7 +38,7 @@ export async function createStudioCategory(formData: FormData) {
 export async function updateStudioCategory(id: string, formData: FormData) {
   const user = await requireBusinessPermission("services.manage");
   const data = studioCategorySchema.parse(Object.fromEntries(formData));
-  await prisma.studioCategory.update({ where: { id, businessId: user.businessId, deletedAt: null }, data: { ...data, slug: await uniqueSlug(user.businessId, data.name, id) } });
+  await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { ...data, slug: await uniqueSlug(data.name, id) } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
   revalidatePath("/");
@@ -46,7 +46,7 @@ export async function updateStudioCategory(id: string, formData: FormData) {
 
 export async function toggleStudioCategory(id: string, active: boolean) {
   const user = await requireBusinessPermission("services.manage");
-  await prisma.studioCategory.update({ where: { id, businessId: user.businessId, deletedAt: null }, data: { active } });
+  await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { active } });
   revalidatePath("/services");
   revalidatePath("/settings/categories");
   revalidatePath("/");
@@ -54,7 +54,7 @@ export async function toggleStudioCategory(id: string, active: boolean) {
 
 export async function moveStudioCategory(id: string, direction: "up" | "down") {
   const user = await requireBusinessPermission("services.manage");
-  const categories = await prisma.studioCategory.findMany({ where: { businessId: user.businessId, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, position: true } });
+  const categories = await prisma.studioCategory.findMany({ where: { deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, position: true } });
   const index = categories.findIndex((category) => category.id === id);
   const targetIndex = direction === "up" ? index - 1 : index + 1;
   if (index < 0 || targetIndex < 0 || targetIndex >= categories.length) return;

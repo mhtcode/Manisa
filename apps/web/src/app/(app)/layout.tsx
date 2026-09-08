@@ -5,8 +5,8 @@ import { businessPermissionKeys, hasBusinessPermission } from "@/lib/permissions
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const settings = user.settings!;
-  const notifications = await getActionNotifications(user.id, user.businessId!);
-  const permissions = businessPermissionKeys.filter((permission) => user.elevated || hasBusinessPermission(user.membership.role, user.membership.permissionOverrides, permission));
-  return <AppShell businessId={user.businessId} businessName={settings.businessName} elevated={user.elevated} locale={settings.locale} mobileNavOrder={settings.mobileNavOrder} notifications={notifications} permissions={permissions} timezone={settings.timezone} userName={user.name} workspaces={user.memberships.map((membership) => ({ businessId: membership.businessId, name: membership.business.name }))}>{children}</AppShell>;
+  const settings = user.settings;
+  const notifications = await getActionNotifications(user.id);
+  const permissions = businessPermissionKeys.filter((permission) => hasBusinessPermission(user.role, user.permissionOverrides, permission));
+  return <AppShell businessName={settings.businessName} locale={settings.locale} mobileNavOrder={settings.mobileNavOrder} notifications={notifications} permissions={permissions} timezone={settings.timezone} userName={user.name}>{children}</AppShell>;
 }

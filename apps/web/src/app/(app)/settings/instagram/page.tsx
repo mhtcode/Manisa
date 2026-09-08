@@ -23,7 +23,7 @@ const errors: Record<string, string> = {
 export default async function InstagramSettingsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
   const [query, user] = await Promise.all([searchParams, requireBusinessPermission("integrations.manage")]);
   const [connection, env] = await Promise.all([
-    prisma.instagramConnection.findUnique({ where: { businessId: user.businessId }, include: { _count: { select: { posts: { where: { active: true } } } } } }),
+    prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, include: { _count: { select: { posts: { where: { active: true } } } } } }),
     Promise.resolve(getServerEnv()),
   ]);
   const configured = instagramConfigured();

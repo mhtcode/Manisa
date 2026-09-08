@@ -11,9 +11,9 @@ export default async function EditAppointmentPage({ params }: { params: Promise<
   const { id } = await params;
   const user = await requireBusinessPermission("appointments.manage");
   const [appointment, customers, services] = await Promise.all([
-    prisma.appointment.findUnique({ where: { id, businessId: user.businessId, deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } } } }),
-    prisma.customer.findMany({ where: { businessId: user.businessId, active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
-    prisma.service.findMany({ where: { businessId: user.businessId, deletedAt: null, category: { deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { active: "desc" }, { name: "asc" }] }),
+    prisma.appointment.findUnique({ where: { id, deletedAt: null }, include: { serviceLines: { orderBy: { position: "asc" } } } }),
+    prisma.customer.findMany({ where: { active: true, deletedAt: null }, orderBy: { firstName: "asc" } }),
+    prisma.service.findMany({ where: { deletedAt: null, category: { deletedAt: null } }, include: { category: true }, orderBy: [{ category: { position: "asc" } }, { active: "desc" }, { name: "asc" }] }),
   ]);
   if (!appointment) notFound();
   const savedLines = appointment.serviceLines.flatMap((line) => line.serviceId ? [{ ...line, serviceId: line.serviceId }] : []);

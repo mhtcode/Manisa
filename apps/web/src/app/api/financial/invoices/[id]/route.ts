@@ -5,7 +5,7 @@ const escape = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (char
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireBusinessPermission("financial.view");
-  const invoice = await prisma.customerInvoice.findFirst({ where: { id: (await params).id, businessId: user.businessId, deletedAt: null }, include: { appointment: { include: { payments: { where: { voidedAt: null } } } } } });
+  const invoice = await prisma.customerInvoice.findFirst({ where: { id: (await params).id, deletedAt: null }, include: { appointment: { include: { payments: { where: { voidedAt: null } } } } } });
   if (!invoice) return new Response("Invoice not found", { status: 404 });
   const business = invoice.businessSnapshot as Record<string, unknown>; const customer = invoice.customerSnapshot as Record<string, unknown>; const services = Array.isArray(invoice.serviceSnapshot) ? invoice.serviceSnapshot as Array<Record<string, unknown>> : [];
   const paid = invoice.appointment.payments.reduce((sum, payment) => sum + Number(payment.amount), 0); const balance = Math.max(0, Number(invoice.amount) - paid);

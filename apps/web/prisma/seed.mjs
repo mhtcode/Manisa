@@ -9,9 +9,6 @@ const password = process.env.SEED_ADMIN_PASSWORD;
 const businessName =
   process.env.SEED_BUSINESS_NAME?.trim() || "Manisa";
 
-const businessSlug =
-  process.env.SEED_BUSINESS_SLUG?.trim() || "manisa";
-
 const businessAddress =
   process.env.SEED_BUSINESS_ADDRESS?.trim() || null;
 
@@ -66,6 +63,7 @@ async function ensureAdminUser() {
         data: {
           passwordHash,
           active: true,
+          role: "OWNER",
         },
       });
     }
@@ -74,6 +72,7 @@ async function ensureAdminUser() {
       where: { id: existing.id },
       data: {
         active: true,
+        role: "OWNER",
       },
     });
   }
@@ -95,6 +94,7 @@ async function ensureAdminUser() {
       name: "Manisa Administrator",
       passwordHash,
       active: true,
+      role: "OWNER",
     },
   });
 }
@@ -129,88 +129,17 @@ async function main() {
 
   /*
    * -------------------------------------------------------
-   * 2. Business
+   * 2. Studio settings
    * -------------------------------------------------------
    */
 
-  const business = await prisma.business.upsert({
+  await prisma.studioSettings.upsert({
     where: {
-      slug: businessSlug,
+      id: "studio",
     },
 
     update: {
       name: businessName,
-      template: "NAIL_HAIR",
-      active: true,
-      deletedAt: null,
-    },
-
-    create: {
-      name: businessName,
-      slug: businessSlug,
-      template: "NAIL_HAIR",
-      active: true,
-      primaryOwnerId: user.id,
-    },
-  });
-
-  console.log(
-    `Business ready: ${business.name} (${business.id})`,
-  );
-
-  /*
-   * -------------------------------------------------------
-   * 3. Give admin access to the business
-   * -------------------------------------------------------
-   */
-
-  const membership =
-    await prisma.businessMembership.upsert({
-      where: {
-        userId_businessId: {
-          userId: user.id,
-          businessId: business.id,
-        },
-      },
-
-      update: {
-        role: "OWNER",
-        active: true,
-        deletedAt: null,
-      },
-
-      create: {
-        userId: user.id,
-        businessId: business.id,
-        role: "OWNER",
-        active: true,
-      },
-    });
-
-  await prisma.membershipPreference.upsert({
-    where: {
-      membershipId: membership.id,
-    },
-
-    update: {},
-
-    create: {
-      membershipId: membership.id,
-    },
-  });
-
-  /*
-   * -------------------------------------------------------
-   * 4. Business settings
-   * -------------------------------------------------------
-   */
-
-  await prisma.businessSettings.upsert({
-    where: {
-      businessId: business.id,
-    },
-
-    update: {
       currency: "CAD",
       timezone: "America/Toronto",
 
@@ -224,7 +153,8 @@ async function main() {
     },
 
     create: {
-      businessId: business.id,
+      id: "studio",
+      name: businessName,
       currency: "CAD",
       timezone: "America/Toronto",
       address: businessAddress,
@@ -290,9 +220,6 @@ async function main() {
         update: {
           ...values,
 
-          // REQUIRED by the new schema
-          businessId: business.id,
-
           deletedAt: null,
         },
 
@@ -300,8 +227,6 @@ async function main() {
           id,
           ...values,
 
-          // REQUIRED by the new schema
-          businessId: business.id,
         },
       });
 
@@ -363,7 +288,6 @@ async function main() {
 
         update: {
           ...values,
-          businessId: business.id,
           active: true,
           deletedAt: null,
         },
@@ -371,7 +295,6 @@ async function main() {
         create: {
           id,
           ...values,
-          businessId: business.id,
           active: true,
         },
       });
@@ -592,7 +515,6 @@ async function main() {
       ...values,
 
       // REQUIRED by new schema
-      businessId: business.id,
 
       categoryId: category.id,
       active: true,
@@ -655,7 +577,6 @@ async function main() {
       `seed_customer_${String(i + 1).padStart(2, "0")}`;
 
     const customerData = {
-      businessId: business.id,
       firstName,
       lastName,
       preferredLanguage,
@@ -795,9 +716,6 @@ async function main() {
       data: {
         id: appointmentId,
 
-        // REQUIRED
-        businessId: business.id,
-
         customerId: customer.id,
         serviceId: service.id,
 
@@ -832,14 +750,8 @@ async function main() {
 
         completedAt,
 
-        /*
-         * AppointmentService also requires businessId.
-         */
         serviceLines: {
           create: {
-            businessId:
-              business.id,
-
             serviceId:
               service.id,
 
@@ -854,16 +766,10 @@ async function main() {
           },
         },
 
-        /*
-         * AppointmentActualService also requires businessId.
-         */
         actualServiceLines:
           past && !cancelled
             ? {
                 create: {
-                  businessId:
-                    business.id,
-
                   serviceId:
                     service.id,
 
@@ -877,15 +783,9 @@ async function main() {
               }
             : undefined,
 
-        /*
-         * AppointmentPayment also requires businessId.
-         */
         payments: paid
           ? {
               create: {
-                businessId:
-                  business.id,
-
                 paymentMethodId:
                   cashPaymentMethod.id,
 

@@ -1,4 +1,7 @@
-import Link from "next/link";
+"use client";
+
+import { useState } from "react";
+import { WizardNavigation, WizardProgress } from "@/components/form-wizard";
 
 type ServiceValue = {
   name: string;
@@ -11,45 +14,29 @@ type ServiceValue = {
 };
 
 type CategoryOption = { id: string; name: string; active: boolean };
+const steps = [{ label: "Details" }, { label: "Price & time", shortLabel: "Pricing" }, { label: "Options" }];
 
 export function ServiceForm({ action, categories, service }: { action: (data: FormData) => void | Promise<void>; categories: CategoryOption[]; service?: ServiceValue }) {
-  return (
-    <form action={action} className="panel max-w-3xl p-5 sm:p-7">
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="name">Service name *</label>
-          <input className="field" dir="auto" id="name" name="name" defaultValue={service?.name} required />
-        </div>
-        <div>
-          <label className="label" htmlFor="categoryId">Category *</label>
-          <select className="field" id="categoryId" name="categoryId" defaultValue={service?.categoryId || categories.find((category) => category.active)?.id} required>
-            {categories.map((category) => <option disabled={!category.active && category.id !== service?.categoryId} key={category.id} value={category.id}>{category.name}{category.active ? "" : " (archived)"}</option>)}
-          </select>
-        </div>
-        <label className="mt-6 flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-3.5 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.045]">
-          <input className="size-4 accent-teal-300" defaultChecked={service?.supportsColor} name="supportsColor" type="checkbox" />
-          Let appointments record a chosen color
-        </label>
-        <div className="sm:col-span-2">
-          <label className="label" htmlFor="description">Description</label>
-          <textarea className="field min-h-24" dir="auto" id="description" name="description" defaultValue={service?.description || ""} />
-        </div>
-        <div>
-          <label className="label" htmlFor="defaultDurationMinutes">Default duration (minutes)</label>
-          <input className="field" id="defaultDurationMinutes" name="defaultDurationMinutes" type="number" min="5" step="5" defaultValue={service?.defaultDurationMinutes} placeholder="60" required />
-        </div>
-        <div>
-          <label className="label" htmlFor="defaultPrice">Default price</label>
-          <div className="flex gap-2">
-            <input className="field" id="defaultPrice" name="defaultPrice" inputMode="decimal" defaultValue={service?.defaultPrice.toString()} placeholder="0.00" required />
-            <select className="field max-w-24" name="currency" defaultValue={service?.currency || "CAD"}><option>CAD</option><option>USD</option></select>
-          </div>
-        </div>
-      </div>
-      <div className="mt-7 flex justify-end gap-3">
-        <Link className="button-secondary" href="/services">Cancel</Link>
-        <button className="button">Save service</button>
-      </div>
-    </form>
-  );
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState(service?.name || "");
+  const [duration, setDuration] = useState(String(service?.defaultDurationMinutes || ""));
+  const [price, setPrice] = useState(service?.defaultPrice.toString() || "");
+  const canContinue = step === 0 ? name.trim().length > 0 : step === 1 ? Number(duration) >= 5 && Number(price) >= 0 : true;
+  return <form action={action} className="panel mx-auto max-w-3xl p-5 sm:p-7">
+    <WizardProgress current={step} steps={steps}/>
+    <section className={step === 0 ? "grid gap-5" : "hidden"}>
+      <div><label className="label" htmlFor="name">Service name *</label><input className="field" dir="auto" id="name" name="name" onChange={(event) => setName(event.target.value)} required value={name}/></div>
+      <div><label className="label" htmlFor="categoryId">Category *</label><select className="field" id="categoryId" name="categoryId" defaultValue={service?.categoryId || categories.find((category) => category.active)?.id} required>{categories.map((category) => <option disabled={!category.active && category.id !== service?.categoryId} key={category.id} value={category.id}>{category.name}{category.active ? "" : " (archived)"}</option>)}</select></div>
+      <div><label className="label" htmlFor="description">Description</label><textarea className="field min-h-28" dir="auto" id="description" name="description" defaultValue={service?.description || ""}/></div>
+    </section>
+    <section className={step === 1 ? "grid gap-5 sm:grid-cols-2" : "hidden"}>
+      <div><label className="label" htmlFor="defaultDurationMinutes">Duration (minutes)</label><input className="field" id="defaultDurationMinutes" min="5" name="defaultDurationMinutes" onChange={(event) => setDuration(event.target.value)} required step="5" type="number" value={duration}/></div>
+      <div><label className="label" htmlFor="defaultPrice">Price</label><div className="flex gap-2"><input className="field min-w-0" id="defaultPrice" inputMode="decimal" name="defaultPrice" onChange={(event) => setPrice(event.target.value)} required value={price}/><select className="field w-24 shrink-0" name="currency" defaultValue={service?.currency || "CAD"}><option>CAD</option><option>USD</option></select></div></div>
+    </section>
+    <section className={step === 2 ? "block" : "hidden"}>
+      <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/[0.025] px-4 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.045]"><input className="size-4 accent-teal-300" defaultChecked={service?.supportsColor} name="supportsColor" type="checkbox"/><span>Allow a color to be recorded for this service</span></label>
+      <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.02] p-4"><p className="font-medium text-white" dir="auto">{name || "New service"}</p><p className="mt-2 text-sm text-slate-400">{duration || 0} min · {price || "0.00"}</p></div>
+    </section>
+    <WizardNavigation canContinue={canContinue} cancelHref="/services" count={steps.length} current={step} onBack={() => setStep((value) => Math.max(0, value - 1))} onNext={() => setStep((value) => Math.min(steps.length - 1, value + 1))} submitLabel="Save service"/>
+  </form>;
 }
