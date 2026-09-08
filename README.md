@@ -4,7 +4,7 @@ Manisa is a mobile-first, bilingual management platform for one home hair-and-na
 
 ## Architecture
 
-The production application is a modular monolith. The Next.js application in `apps/web` provides the UI, protected server components, server actions, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations. The separately deployable FastAPI application in `apps/api` currently provides the API foundation and health endpoint; feature APIs can be added there without introducing microservices.
+The production application is a modular monolith. The Next.js application in `apps/web` provides the UI, protected server components, server actions, API routes, background-worker endpoints, and health endpoint. PostgreSQL is the source of truth and Prisma owns the normalized schema and migrations.
 
 Authentication uses Argon2id password hashes and signed, HTTP-only, same-site session cookies. PostgreSQL stores application and media metadata. MinIO stores private originals/variants and public featured derivatives through an S3-compatible interface; MongoDB is intentionally not used for binary objects.
 
@@ -32,9 +32,6 @@ Generate separate values for `AUTH_SECRET` and `PLATFORM_SETUP_TOKEN`, then open
 - MinIO console (host-only): `http://localhost:9001`
 - Private reporting: `http://localhost:3000/report`
 - Web health: `http://localhost:3000/api/health`
-- API documentation: `http://localhost:8000/docs`
-- API health: `http://localhost:8000/health`
-- API database readiness: `http://localhost:8000/ready`
 
 The one-shot `web-init` container applies migrations only. The repository contains one single-studio baseline migration; fresh databases apply it directly. Installations already upgraded through `202609070001_single_studio_architecture` are schema-verified and have only their Prisma migration ledger reconciled to that baseline, without changing application data. A database still on an older multi-business schema must deploy commit `090ce36` once before upgrading to the squashed history. Back up PostgreSQL before every production deployment.
 
@@ -145,7 +142,6 @@ Application images run as non-root users where supported and include health chec
 
 ```text
 apps/
-├── api/                 # FastAPI application and container image
 └── web/
     ├── prisma/          # schema, migration, and demo seed
     ├── public/          # PWA assets and conservative service worker
@@ -154,7 +150,7 @@ apps/
         ├── components/  # reusable UI and forms
         ├── lib/         # auth, validation, formatting, i18n, time
         └── server/      # server actions, analytics, integrations
-compose.yaml             # web, API, initializer, and PostgreSQL stack
+compose.yaml             # web, workers, PostgreSQL, and MinIO stack
 ```
 
 ## Current limitations
@@ -165,4 +161,3 @@ compose.yaml             # web, API, initializer, and PostgreSQL stack
 - The responsive calendar supports day, compact mobile week, month, and agenda views, plus two-finger or button zoom; drag-and-drop rescheduling remains future work.
 - Instagram requires a Meta app, a Professional account, and a publicly reachable HTTPS OAuth callback; it is hidden gracefully when not configured.
 - Invitation links are copyable; outbound email delivery is intentionally deferred.
-- The FastAPI service remains independently deployable but is not required by the Next.js feature layer.

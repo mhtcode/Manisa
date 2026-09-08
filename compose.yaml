@@ -246,30 +246,6 @@ services:
     healthcheck:
       disable: true
 
-  api:
-    build:
-      context: ./apps/api
-    restart: unless-stopped
-    init: true
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
-    ports:
-      - "${BIND_ADDRESS:-0.0.0.0}:${API_PORT:-8000}:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
 volumes:
   manisa_postgres_data:
   manisa_uploads:
