@@ -19,8 +19,9 @@ ENV NODE_ENV=production
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY scripts/deploy-migrations.mjs ./scripts/deploy-migrations.mjs
 RUN npx prisma generate
-CMD ["sh", "-c", "npx prisma migrate deploy"]
+CMD ["node", "scripts/deploy-migrations.mjs"]
 
 FROM node:24-alpine AS media-worker
 WORKDIR /app

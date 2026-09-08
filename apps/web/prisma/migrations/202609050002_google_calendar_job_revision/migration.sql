@@ -1,1 +1,0 @@
-ALTER TABLE "GoogleCalendarSyncJob" ADD COLUMN "revision" INTEGER NOT NULL DEFAULT 1;

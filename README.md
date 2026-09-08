@@ -36,7 +36,9 @@ Generate separate values for `AUTH_SECRET` and `PLATFORM_SETUP_TOKEN`, then open
 - API health: `http://localhost:8000/health`
 - API database readiness: `http://localhost:8000/ready`
 
-The one-shot `web-init` container applies migrations only. On a fresh deployment, visit `/setup` and use `PLATFORM_SETUP_TOKEN` to create the studio's sole owner. Setup closes permanently afterward. Run `npm run db:seed` explicitly only for development. Set `S3_PUBLIC_ENDPOINT` to the server address browsers and phones can reach.
+The one-shot `web-init` container applies migrations only. The repository contains one single-studio baseline migration; fresh databases apply it directly. Installations already upgraded through `202609070001_single_studio_architecture` are schema-verified and have only their Prisma migration ledger reconciled to that baseline, without changing application data. A database still on an older multi-business schema must deploy commit `090ce36` once before upgrading to the squashed history. Back up PostgreSQL before every production deployment.
+
+On a fresh deployment, visit `/setup` and use `PLATFORM_SETUP_TOKEN` to create the studio's sole owner. Setup closes permanently afterward. Run `npm run db:seed` explicitly only for development. Set `S3_PUBLIC_ENDPOINT` to the server address browsers and phones can reach.
 
 Use `docker compose logs -f web media-worker api` to follow logs. Copy legacy local images into MinIO, without deleting the old volume, with `docker compose --profile migration run --rm legacy-media-migrate`.
 
@@ -79,6 +81,7 @@ npm run start        # production server
 npm run lint         # ESLint
 npm run typecheck    # strict TypeScript validation
 npm test             # Vitest business tests
+npm run db:deploy    # deploy or safely reconcile the production baseline
 npm run db:migrate   # create/apply a development migration
 npm run db:seed      # administrator and realistic demo-data seed
 npm run db:studio    # inspect data locally

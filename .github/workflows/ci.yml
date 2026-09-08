@@ -32,7 +32,9 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
       - run: npm run db:generate
-      - run: npx prisma migrate deploy
+      - run: npm run db:deploy
+      - run: npx prisma migrate status
+      - run: npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --exit-code
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
