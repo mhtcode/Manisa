@@ -7,7 +7,14 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Manisa — Hair & Nail Studio",
   description: "Manisa home hair-and-nail studio and its private appointment management application.",
-  icons: { icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icon.svg", type: "image/svg+xml" }], apple: "/icon-192.png" },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 };
 
 export const viewport = { themeColor: "#080b10", colorScheme: "dark" };

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { CalendarPlus, LogOut, Settings2, Sparkles } from "lucide-react";
+import { CalendarPlus, LogOut, Settings2 } from "lucide-react";
 import { DesktopNavigation, MobileNavigation } from "@/components/app-navigation";
+import { BrandLogo } from "@/components/brand-logo";
 import { LocaleRuntime } from "@/components/locale-runtime";
 import { NotificationCenter } from "@/components/notification-center";
 import { PageSwipeNavigation } from "@/components/page-swipe-navigation";
@@ -17,13 +18,13 @@ export function AppShell({ children, locale, userName, businessName, mobileNavOr
   const mobileOrder = parseMobileNavigation(mobileNavOrder);
   return <div className="app-background min-h-screen md:grid md:grid-cols-[17rem_1fr]" dir={locale === "fa" ? "rtl" : "ltr"} lang={locale}>
     <aside className="sticky top-0 hidden h-screen border-e border-white/8 bg-[#090d13]/95 p-4 md:flex md:flex-col">
-      <Link href="/report" prefetch={false} className="flex h-14 items-center gap-3 px-2"><span className="flex size-9 items-center justify-center rounded-xl border border-blue-400/25 bg-blue-500/10 text-blue-300 shadow-[inset_0_1px_rgba(255,255,255,.12)]"><Sparkles size={18}/></span><span className="truncate font-semibold">{businessName}</span></Link>
+      <Link href="/report" prefetch={false} className="flex h-14 items-center gap-3 px-2"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#071426] shadow-[inset_0_1px_rgba(255,255,255,.14),0_8px_24px_rgba(0,0,0,.3)]"><BrandLogo size={36}/></span><span className="truncate font-semibold">{businessName}</span></Link>
       <DesktopNavigation locale={locale} permissions={permissions}/>
       <div className="mt-auto border-t border-white/8 pt-4"><p className="truncate px-3 text-sm font-medium text-slate-300">{userName}</p><form action={logout}><button className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-500 hover:bg-white/[0.05] hover:text-white"><LogOut size={17}/>{t.signOut}</button></form></div>
     </aside>
     <div className="min-w-0">
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/8 bg-[#080b10]/88 px-4 backdrop-blur-xl md:px-8">
-        <Link href="/report" prefetch={false} className="flex min-w-0 items-center gap-2 font-semibold md:hidden"><span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-blue-400/25 bg-blue-500/10 text-blue-300"><Sparkles size={16}/></span><span className="truncate">{businessName}</span></Link>
+        <Link href="/report" prefetch={false} className="flex min-w-0 items-center gap-2 font-semibold md:hidden"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-[#071426]"><BrandLogo size={32}/></span><span className="truncate">{businessName}</span></Link>
         <div className="hidden text-sm text-slate-500 md:block">{new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: "full" }).format(new Date())}</div>
         <div className="flex items-center gap-2"><GlobalSearch permissions={permissions}/><NotificationCenter items={notifications} locale={locale} timezone={timezone}/><Link aria-label={t.settings} className="header-profile" href="/settings" prefetch={false} title={`${t.settings} · ${userName}`}><Settings2 size={17}/><span className="hidden sm:inline">{t.settings}</span></Link><Link href="/appointments/new" prefetch={false} className="button appointment-cta h-10 min-h-10 px-3 sm:px-4"><CalendarPlus size={17}/><span className="hidden min-[520px]:inline">{t.newAppointment}</span></Link></div>
       </header>

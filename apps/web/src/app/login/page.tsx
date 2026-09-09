@@ -4,7 +4,7 @@ import { GoogleAuthButton } from "@/components/google-auth-button";
 import { getCurrentUser } from "@/lib/auth";
 import { googleAuthConfigured } from "@/lib/env";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 const googleErrors: Record<string, string> = { "not-configured": "Google sign-in is not configured yet.", cancelled: "Google sign-in was cancelled.", "invalid-state": "That Google sign-in request expired. Please try again.", "token-exchange": "Google could not complete sign-in.", profile: "Your Google profile could not be read.", "unverified-email": "Use a verified Google email address.", inactive: "This account is inactive.", "email-linked": "That email is linked to another Google account.", "signup-disabled": "Google sign-up is disabled. Ask the administrator to enable it or link your existing email.", failed: "Google sign-in failed. Please try again." };
 
@@ -21,4 +21,4 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   </main>;
 }
 
-function BrandLink() { return <Link className="inline-flex items-center gap-3" href="/" aria-label="Manisa home"><span className="flex size-10 items-center justify-center rounded-xl border border-blue-300/20 bg-gradient-to-br from-[#19345f] to-[#0c1930] text-blue-200"><Sparkles size={19}/></span><span className="text-lg font-semibold">Manisa</span></Link>; }
+function BrandLink() { return <Link className="inline-flex items-center gap-3" href="/" aria-label="Manisa home"><span className="flex size-12 items-center justify-center rounded-xl bg-[#071426] shadow-[inset_0_1px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.28)]"><BrandLogo priority size={44}/></span><span className="text-lg font-semibold">Manisa</span></Link>; }

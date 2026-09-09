@@ -12,6 +12,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run src",
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
     "db:generate": "prisma generate",
     "db:deploy": "node scripts/deploy-migrations.mjs",
     "db:migrate": "prisma migrate dev",
