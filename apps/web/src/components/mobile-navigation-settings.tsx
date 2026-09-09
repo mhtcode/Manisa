@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowDown, ArrowUp, GripVertical, Save, Settings2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowUp, Check, GripVertical, LoaderCircle, Save, Settings2 } from "lucide-react";
 import { mobileNavigationKeys, mobileNavigationLabels, type MobileNavigationKey } from "@/lib/mobile-navigation";
 import { updateMobileNavigation } from "@/server/actions/settings";
 
@@ -9,6 +10,18 @@ const selectableItems = mobileNavigationKeys;
 
 export function MobileNavigationSettings({ initialOrder }: { initialOrder: MobileNavigationKey[] }) {
   const [items, setItems] = useState(initialOrder);
+  const [saved, setSaved] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  function save(formData: FormData) {
+    setSaved(false);
+    startTransition(async () => {
+      await updateMobileNavigation(formData);
+      setSaved(true);
+      router.refresh();
+    });
+  }
 
   function move(index: number, direction: -1 | 1) {
     const destination = index + direction;
@@ -18,13 +31,15 @@ export function MobileNavigationSettings({ initialOrder }: { initialOrder: Mobil
       [next[index], next[destination]] = [next[destination], next[index]];
       return next;
     });
+    setSaved(false);
   }
 
   function replace(index: number, value: MobileNavigationKey) {
     setItems((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+    setSaved(false);
   }
 
-  return <form action={updateMobileNavigation} className="panel overflow-hidden">
+  return <form action={save} className="panel overflow-hidden">
     <div className="panel-header"><div><h2 className="font-semibold text-white">Mobile navigation</h2><p className="mt-1 text-xs text-slate-400">Choose and reorder four direct destinations.</p></div><span className="badge border-blue-400/20 bg-blue-500/8 text-blue-200">4 slots</span></div>
     <div className="space-y-2 p-4 sm:p-5">
       <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-300/15 bg-blue-400/[0.055] p-3 text-xs leading-5 text-blue-100/80"><Settings2 className="mt-0.5 shrink-0 text-blue-300" size={16}/><p><strong className="font-semibold text-blue-100">Settings stays reachable:</strong> the permanent Settings button in the top bar is available even when Settings is not one of these four slots.</p></div>
@@ -38,7 +53,7 @@ export function MobileNavigationSettings({ initialOrder }: { initialOrder: Mobil
         <button aria-label={`Move ${mobileNavigationLabels[item]} down`} className="button-secondary size-9 min-h-9 shrink-0 p-0 sm:size-10 sm:min-h-10" disabled={index === items.length - 1} onClick={() => move(index, 1)} type="button"><ArrowDown size={15}/></button>
         <input name="mobileNavItems" type="hidden" value={item}/>
       </div>)}
-      <div className="flex justify-end pt-2"><button className="button"><Save size={16}/>Save mobile navigation</button></div>
+      <div className="flex items-center justify-end gap-3 pt-2">{saved && <span className="flex items-center gap-1.5 text-xs text-emerald-300"><Check size={14}/>Saved</span>}<button className="button" disabled={pending}>{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}Save mobile navigation</button></div>
     </div>
   </form>;
 }

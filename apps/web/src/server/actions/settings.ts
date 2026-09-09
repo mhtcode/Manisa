@@ -56,6 +56,7 @@ export async function updateMobileNavigation(formData: FormData) {
   const valid = items.length === 4 && new Set(items).size === 4 && items.every((item) => mobileNavigationKeys.includes(item as (typeof mobileNavigationKeys)[number]));
   if (!valid) throw new Error("Choose four unique destinations for the mobile navigation.");
   await prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, mobileNavOrder: items.join(",") }, update: { mobileNavOrder: items.join(",") } });
+  revalidatePath("/settings/navigation");
   revalidatePath("/", "layout");
 }
 

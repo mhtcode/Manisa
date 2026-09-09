@@ -3,6 +3,13 @@ import { requireBusinessPermission } from "@/lib/auth";
 import { inspectObject, removeObject } from "@/lib/object-storage";
 import { prisma } from "@/lib/prisma";
 
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  await requireBusinessPermission("gallery.view");
+  const asset = await prisma.mediaAsset.findUnique({ where: { id: (await params).id }, select: { status: true, errorMessage: true } });
+  if (!asset) return NextResponse.json({ error: "Upload not found" }, { status: 404 });
+  return NextResponse.json(asset, { headers: { "Cache-Control": "no-store" } });
+}
+
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await requireBusinessPermission("gallery.manage");
   const asset = await prisma.mediaAsset.findFirst({ where: { id: (await params).id, status: "STAGING" } });
