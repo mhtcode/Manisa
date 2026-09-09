@@ -109,6 +109,12 @@ enum Theme {
   SYSTEM
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
@@ -147,6 +153,7 @@ model User {
   createdFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionCreator")
   updatedFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionUpdater")
   requestedExports             ExportJob[]                @relation("ExportRequester")
+  approvedReviews              StudioReview[]             @relation("ReviewApprover")
 
   @@index([role, active])
   @@index([deletedAt])
@@ -235,6 +242,23 @@ model UserPreference {
   updatedAt         DateTime @updatedAt
 
   @@map("Settings")
+}
+
+model StudioReview {
+  id           String       @id @default(cuid())
+  reviewerName String
+  rating       Int
+  opinion      String
+  language     Locale       @default(en)
+  status       ReviewStatus @default(PENDING)
+  approvedById String?
+  approvedBy   User?        @relation("ReviewApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@index([approvedAt])
 }
 
 model Customer {

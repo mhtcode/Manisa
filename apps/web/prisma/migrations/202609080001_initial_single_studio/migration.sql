@@ -51,6 +51,9 @@ CREATE TYPE "Locale" AS ENUM ('en', 'fa');
 CREATE TYPE "Theme" AS ENUM ('DARK', 'LIGHT', 'SYSTEM');
 
 -- CreateEnum
+CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+-- CreateEnum
 CREATE TYPE "AppointmentStatus" AS ENUM ('SCHEDULED', 'CONFIRMED', 'COMPLETED', 'HISTORICAL', 'CANCELLED', 'NO_SHOW');
 
 -- CreateEnum
@@ -156,6 +159,23 @@ CREATE TABLE "Settings" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Settings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StudioReview" (
+    "id" TEXT NOT NULL,
+    "reviewerName" TEXT NOT NULL,
+    "rating" INTEGER NOT NULL,
+    "opinion" TEXT NOT NULL,
+    "language" "Locale" NOT NULL DEFAULT 'en',
+    "status" "ReviewStatus" NOT NULL DEFAULT 'PENDING',
+    "approvedById" TEXT,
+    "approvedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "StudioReview_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "StudioReview_rating_check" CHECK ("rating" BETWEEN 1 AND 5)
 );
 
 -- CreateTable
@@ -679,6 +699,12 @@ CREATE UNIQUE INDEX "NotificationReceipt_userId_key_key" ON "NotificationReceipt
 CREATE UNIQUE INDEX "Settings_userId_key" ON "Settings"("userId");
 
 -- CreateIndex
+CREATE INDEX "StudioReview_status_createdAt_idx" ON "StudioReview"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "StudioReview_approvedAt_idx" ON "StudioReview"("approvedAt");
+
+-- CreateIndex
 CREATE INDEX "Customer_firstName_lastName_idx" ON "Customer"("firstName", "lastName");
 
 -- CreateIndex
@@ -968,6 +994,9 @@ ALTER TABLE "NotificationReceipt" ADD CONSTRAINT "NotificationReceipt_userId_fke
 
 -- AddForeignKey
 ALTER TABLE "Settings" ADD CONSTRAINT "Settings_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StudioReview" ADD CONSTRAINT "StudioReview_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Customer" ADD CONSTRAINT "Customer_referrerId_fkey" FOREIGN KEY ("referrerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;

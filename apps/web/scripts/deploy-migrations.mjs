@@ -68,6 +68,40 @@ async function assertExistingSchemaIsCurrent() {
   throw new Error(`Prisma could not verify the existing database schema.${diagnostic ? `\n${diagnostic}` : ""}`);
 }
 
+async function ensureReviewSchema() {
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "StudioReview" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "reviewerName" TEXT NOT NULL,
+      "rating" INTEGER NOT NULL,
+      "opinion" TEXT NOT NULL,
+      "language" "Locale" NOT NULL DEFAULT 'en',
+      "status" "ReviewStatus" NOT NULL DEFAULT 'PENDING',
+      "approvedById" TEXT,
+      "approvedAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "StudioReview_status_createdAt_idx" ON "StudioReview"("status", "createdAt")');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "StudioReview_approvedAt_idx" ON "StudioReview"("approvedAt")');
+  const constraints = await prisma.$queryRaw`
+    SELECT conname FROM pg_catalog.pg_constraint
+    WHERE conrelid = '"StudioReview"'::regclass
+      AND conname IN ('StudioReview_rating_check', 'StudioReview_approvedById_fkey')
+  `;
+  const names = new Set(constraints.map((constraint) => constraint.conname));
+  if (!names.has("StudioReview_rating_check")) await prisma.$executeRawUnsafe('ALTER TABLE "StudioReview" ADD CONSTRAINT "StudioReview_rating_check" CHECK ("rating" BETWEEN 1 AND 5)');
+  if (!names.has("StudioReview_approvedById_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "StudioReview" ADD CONSTRAINT "StudioReview_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE');
+}
+
 async function ensureDatabaseOnlyIntegrityRules() {
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS "User_single_active_owner_key"
@@ -166,6 +200,7 @@ async function main() {
     return;
   }
 
+  await ensureReviewSchema();
   await assertExistingSchemaIsCurrent();
   await ensureDatabaseOnlyIntegrityRules();
   await normalizeMigrationLedger();

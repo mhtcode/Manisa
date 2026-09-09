@@ -19,8 +19,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
 
 @layer components {
-  .panel { @apply rounded-2xl border border-white/10 bg-[#0e131b] shadow-[0_18px_50px_rgba(0,0,0,0.2)]; }
-  .panel-header { @apply flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6; background: linear-gradient(180deg, #090d13 0%, #0a0f16 100%); box-shadow: inset 0 1px rgba(255,255,255,.025); }
+  .panel { @apply rounded-2xl border bg-[#0e131b] shadow-[0_18px_50px_rgba(0,0,0,0.18)]; border-color: rgba(255,255,255,.065); }
+  .panel-header { @apply flex items-center justify-between gap-3 border-b px-5 py-4 sm:px-6; border-color: rgba(255,255,255,.065); background: linear-gradient(180deg, #0d131b 0%, #0b1119 100%); box-shadow: inset 0 1px rgba(255,255,255,.018); }
   .page-title { @apply text-2xl font-semibold tracking-[-0.035em] text-white sm:text-3xl; }
   .page-copy { @apply mt-1 text-sm leading-6 text-slate-400; }
   .button { @apply inline-flex min-h-10 select-none items-center justify-center gap-2 rounded-[11px] border px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50; border-color: rgba(96,165,250,.55); background: linear-gradient(180deg, #1d4b82 0%, #12345f 100%); color: #eff6ff !important; text-shadow: 0 1px rgba(0,0,0,.22); box-shadow: inset 0 1px rgba(255,255,255,.16), inset 0 -1px rgba(0,0,0,.22), 0 7px 18px rgba(15,45,85,.28); transition: transform 120ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease; }
@@ -32,8 +32,8 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   .button-danger { @apply inline-flex min-h-10 select-none items-center justify-center gap-2 rounded-[11px] border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45; border-color: rgba(251,113,133,.3); background: linear-gradient(180deg, rgba(251,113,133,.15), rgba(251,113,133,.1)); color: #fecdd3; box-shadow: inset 0 1px rgba(255,255,255,.05); transition: transform 120ms ease, background 160ms ease, border-color 160ms ease; }
   .button-danger:hover:not(:disabled) { background: rgba(251,113,133,.2); color: #fff1f2; transform: translateY(-1px); }
   .button-danger:active:not(:disabled) { transform: translateY(1px) scale(.985); }
-  .icon-button { @apply inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-[#10203a] text-blue-200 transition disabled:cursor-not-allowed disabled:opacity-45; box-shadow: inset 0 1px rgba(255,255,255,.07); }
-  .icon-button:hover:not(:disabled) { border-color: rgba(96,165,250,.42); background: #162b4a; color: white; }
+  .icon-button { @apply inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-transparent bg-white/[0.045] text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-45; box-shadow: inset 0 1px rgba(255,255,255,.035); }
+  .icon-button:hover:not(:disabled) { border-color: rgba(96,165,250,.18); background: rgba(96,165,250,.12); color: #dbeafe; }
   .icon-button:active:not(:disabled) { transform: scale(.96); }
   .quick-action { @apply inline-flex min-h-10 select-none items-center gap-2 rounded-[11px] border pe-3 ps-2 text-sm font-semibold text-blue-50 shadow-[inset_0_1px_rgba(255,255,255,.07),0_3px_10px_rgba(0,0,0,.18)]; border-color: rgba(96,165,250,.22); background: linear-gradient(180deg, rgba(28,55,91,.72), rgba(15,34,61,.72)); transition: transform 120ms ease, border-color 160ms ease, background 160ms ease; }
   .quick-action > span { @apply flex size-7 items-center justify-center rounded-lg bg-blue-400/10 text-blue-300; }
@@ -45,7 +45,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
   .empty { @apply flex min-h-48 flex-col items-center justify-center px-6 text-center text-slate-500; }
-  .stat { @apply min-w-0 rounded-2xl border border-white/10 bg-gradient-to-b from-[#101721] to-[#0d131b] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)] sm:p-6; }
+  .stat { @apply min-w-0 rounded-2xl border bg-gradient-to-b from-[#101721] to-[#0d131b] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.15)] sm:p-6; border-color: rgba(255,255,255,.06); }
 }
 
 .app-background { overflow-x: clip; background-image: radial-gradient(circle at 70% 0%, rgba(59,130,246,.07), transparent 30rem); }
@@ -66,8 +66,9 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
 .view-toggle, .metric-switch { display: inline-flex; flex: none; align-items: center; gap: 2px; border: 1px solid rgba(96,165,250,.18); border-radius: .75rem; padding: 2px; background: rgba(8,17,31,.72); }
 .view-toggle button, .metric-switch button { display: inline-flex; min-height: 2rem; align-items: center; justify-content: center; gap: .35rem; border-radius: .55rem; padding: .35rem .55rem; color: #64748b; font-size: 10px; font-weight: 600; text-transform: capitalize; transition: background 150ms ease, color 150ms ease; }
 .view-toggle button.active, .metric-switch button.active { background: linear-gradient(180deg, rgba(37,99,235,.38), rgba(30,64,175,.28)); color: #dbeafe; box-shadow: inset 0 1px rgba(255,255,255,.08); }
-.filter-chip { display: inline-flex; min-height: 2.35rem; flex: none; align-items: center; border: 1px solid rgba(96,165,250,.15); border-radius: .7rem; padding: .4rem .75rem; color: #94a3b8; background: rgba(15,30,52,.55); font-size: .75rem; font-weight: 600; }
-.filter-chip.active { border-color: rgba(96,165,250,.42); color: #dbeafe; background: linear-gradient(180deg, rgba(37,99,235,.34), rgba(30,64,175,.22)); }
+.filter-chip { display: inline-flex; min-height: 2.35rem; flex: none; align-items: center; border: 1px solid transparent; border-radius: .7rem; padding: .4rem .75rem; color: #94a3b8; background: rgba(255,255,255,.045); font-size: .75rem; font-weight: 600; }
+.filter-chip:hover { color: #cbd5e1; background: rgba(255,255,255,.07); }
+.filter-chip.active { border-color: rgba(96,165,250,.2); color: #dbeafe; background: rgba(59,130,246,.15); }
 .chart-filter-link { display: inline-flex; max-width: 11rem; overflow: hidden; border: 1px solid rgba(96,165,250,.16); border-radius: .55rem; padding: .3rem .55rem; color: #93c5fd; background: rgba(30,64,175,.1); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .chart-panel .recharts-surface { overflow: hidden; }
 .report-stat { min-height: 7.2rem; }

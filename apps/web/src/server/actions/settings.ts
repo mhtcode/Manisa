@@ -47,7 +47,6 @@ export async function updateSettings(formData: FormData) {
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
   (await cookies()).set("manisa_theme", theme.toLowerCase(), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
-  revalidatePath("/", "layout");
 }
 
 export async function updateMobileNavigation(formData: FormData) {
