@@ -38,6 +38,7 @@ CMD ["node", "scripts/media-worker.mjs"]
 FROM node:24-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
+RUN apk add --no-cache fontconfig ttf-dejavu
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
