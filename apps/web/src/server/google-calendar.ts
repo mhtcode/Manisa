@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { getServerEnv } from "../lib/env";
+import { getGoogleCalendarOAuthConfig } from "../lib/google-calendar-config";
 import { decryptSecret } from "../lib/token-crypto";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -10,25 +11,27 @@ export function stableGoogleEventId(appointmentId: string) {
   return `manisa${createHash("sha256").update(appointmentId).digest("hex")}`;
 }
 
-export async function enqueueGoogleCalendarSync(db: Db, appointmentIds: string[], operation: Operation) {
+export async function enqueueGoogleCalendarSync(db: Db, appointmentIds: string[], operation: Operation, connectionIds?: string[]) {
   if (!appointmentIds.length) return 0;
-  const connection = await db.googleCalendarConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true } });
-  if (!connection) return 0;
-  const mappings = operation === "DELETE" ? await db.googleCalendarEvent.findMany({ where: { appointmentId: { in: appointmentIds } }, select: { appointmentId: true, googleEventId: true } }) : [];
-  const map = new Map(mappings.map((item) => [item.appointmentId, item.googleEventId]));
-  for (const appointmentId of [...new Set(appointmentIds)]) {
+  const connections = await db.googleCalendarConnection.findMany({ where: { status: "CONNECTED", id: connectionIds ? { in: connectionIds } : undefined }, select: { id: true } });
+  if (!connections.length) return 0;
+  const mappings = operation === "DELETE" ? await db.googleCalendarEvent.findMany({ where: { connectionId: { in: connections.map((item) => item.id) }, appointmentId: { in: appointmentIds } }, select: { connectionId: true, appointmentId: true, googleEventId: true } }) : [];
+  const map = new Map(mappings.map((item) => [`${item.connectionId}:${item.appointmentId}`, item.googleEventId]));
+  for (const connection of connections) for (const appointmentId of [...new Set(appointmentIds)]) {
+    const googleEventId = map.get(`${connection.id}:${appointmentId}`);
     await db.googleCalendarSyncJob.upsert({
-      where: { appointmentId },
-      create: { connectionId: connection.id, appointmentId, operation, googleEventId: map.get(appointmentId), status: "PENDING", availableAt: new Date() },
-      update: { connectionId: connection.id, operation, googleEventId: map.get(appointmentId), status: "PENDING", attempts: 0, revision: { increment: 1 }, availableAt: new Date(), lockedAt: null, lastError: null },
+      where: { connectionId_appointmentId: { connectionId: connection.id, appointmentId } },
+      create: { connectionId: connection.id, appointmentId, operation, googleEventId, status: "PENDING", availableAt: new Date() },
+      update: { operation, googleEventId, status: "PENDING", attempts: 0, revision: { increment: 1 }, availableAt: new Date(), lockedAt: null, lastError: null },
     });
   }
-  return appointmentIds.length;
+  return appointmentIds.length * connections.length;
 }
 
-async function accessToken(refreshToken: string) {
-  const env = getServerEnv();
-  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: env.GOOGLE_CLIENT_ID!, client_secret: env.GOOGLE_CLIENT_SECRET!, refresh_token: refreshToken, grant_type: "refresh_token" }), cache: "no-store" });
+export async function googleCalendarAccessToken(refreshToken: string) {
+  const config = await getGoogleCalendarOAuthConfig();
+  if (!config) throw new Error("Google Calendar credentials are not configured.");
+  const response = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: config.clientId, client_secret: config.clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }), cache: "no-store" });
   const body = await response.json().catch(() => ({})) as { access_token?: string; error?: string; error_description?: string };
   if (!response.ok || !body.access_token) throw new Error(body.error === "invalid_grant" ? "RECONNECT_REQUIRED" : body.error_description || `Google token refresh failed (${response.status}).`);
   return body.access_token;
@@ -63,24 +66,26 @@ export async function processGoogleCalendarJobs(prisma: PrismaClient, limit = 10
     try {
       if (job.connection.status !== "CONNECTED") throw new Error("RECONNECT_REQUIRED");
       const env = getServerEnv();
-      const token = await accessToken(decryptSecret(job.connection.encryptedRefreshToken, env.INTEGRATION_ENCRYPTION_KEY!));
-      const mapping = await prisma.googleCalendarEvent.findUnique({ where: { appointmentId: job.appointmentId } });
+      const config = await getGoogleCalendarOAuthConfig();
+      if (!config) throw new Error("Google Calendar credentials are not configured.");
+      const token = await googleCalendarAccessToken(decryptSecret(job.connection.encryptedRefreshToken, env.INTEGRATION_ENCRYPTION_KEY!));
+      const mapping = await prisma.googleCalendarEvent.findUnique({ where: { connectionId_appointmentId: { connectionId: job.connectionId, appointmentId: job.appointmentId } } });
       const appointment = await prisma.appointment.findFirst({ where: { id: job.appointmentId, }, include: { customer: { select: { firstName: true, lastName: true, displayName: true } } } });
       const shouldDelete = job.operation === "DELETE" || !appointment || Boolean(appointment.deletedAt);
       const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(job.connection.calendarId)}/events`;
       if (shouldDelete) {
         const eventId = job.googleEventId || mapping?.googleEventId;
         if (eventId) { const response = await googleRequest(token, `${base}/${encodeURIComponent(eventId)}?sendUpdates=none`, { method: "DELETE" }); if (!response.ok && response.status !== 404 && response.status !== 410) throw new Error(`Google event deletion failed (${response.status}).`); }
-        await prisma.$transaction([prisma.googleCalendarEvent.deleteMany({ where: { appointmentId: job.appointmentId } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } })]);
+        await prisma.$transaction([prisma.googleCalendarEvent.deleteMany({ where: { connectionId: job.connectionId, appointmentId: job.appointmentId } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } })]);
       } else {
-        const payload = googleEventPayload(appointment, new URL(env.GOOGLE_CALENDAR_REDIRECT_URI!).origin);
+        const payload = googleEventPayload(appointment, new URL(config.redirectUri).origin);
         const eventId = mapping?.googleEventId || payload.id;
         let response = mapping ? await googleRequest(token, `${base}/${encodeURIComponent(eventId)}?sendUpdates=none`, { method: "PATCH", body: JSON.stringify(payload) }) : await googleRequest(token, `${base}?sendUpdates=none`, { method: "POST", body: JSON.stringify(payload) });
         if (mapping && response.status === 404) response = await googleRequest(token, `${base}?sendUpdates=none`, { method: "POST", body: JSON.stringify(payload) });
         if (!mapping && response.status === 409) response = await googleRequest(token, `${base}/${encodeURIComponent(eventId)}?sendUpdates=none`, { method: "PATCH", body: JSON.stringify(payload) });
         if (!response.ok) throw new Error(`Google event synchronization failed (${response.status}).`);
         const result = await response.json() as { id?: string; etag?: string };
-        await prisma.$transaction([prisma.googleCalendarEvent.upsert({ where: { appointmentId: job.appointmentId }, create: { connectionId: job.connectionId, appointmentId: job.appointmentId, googleEventId: result.id || eventId, etag: result.etag }, update: { connectionId: job.connectionId, googleEventId: result.id || eventId, etag: result.etag, lastSyncedAt: new Date() } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } }), prisma.appointment.updateMany({ where: { id: job.appointmentId, }, data: { calendarSyncError: null } })]);
+        await prisma.$transaction([prisma.googleCalendarEvent.upsert({ where: { connectionId_appointmentId: { connectionId: job.connectionId, appointmentId: job.appointmentId } }, create: { connectionId: job.connectionId, appointmentId: job.appointmentId, googleEventId: result.id || eventId, etag: result.etag }, update: { googleEventId: result.id || eventId, etag: result.etag, lastSyncedAt: new Date() } }), prisma.googleCalendarSyncJob.deleteMany({ where: { id: job.id, revision: job.revision, status: "PROCESSING" } }), prisma.googleCalendarConnection.update({ where: { id: job.connectionId }, data: { lastSuccessfulSyncAt: new Date(), lastError: null } }), prisma.appointment.updateMany({ where: { id: job.appointmentId, }, data: { calendarSyncError: null } })]);
       }
       processed += 1;
     } catch (error) {

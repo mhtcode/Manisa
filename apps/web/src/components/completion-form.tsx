@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { AlertTriangle, BadgeCheck, Check, Plus, Trash2 } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
-import { WizardNavigation, WizardProgress } from "@/components/form-wizard";
+import { WizardApproval, WizardCompletion, WizardNavigation, WizardProgress } from "@/components/form-wizard";
 import { PhotoUploadField } from "@/components/photo-upload-field";
 
 type ServiceOption = {
@@ -18,7 +18,7 @@ type ServiceOption = {
 
 type ScheduledLine = { serviceId: string; duration: number; price: string; selectedColor: string | null };
 type LineValue = { duration: number; price: string; color: string };
-type ActionResult = { error: string } | null;
+type ActionResult = { error?: string; success?: string; redirectTo?: string } | null;
 
 const steps = [
   { label: "Services" },
@@ -29,7 +29,7 @@ const steps = [
 ];
 
 export function CompletionForm({ action, appointmentId, completionNotes, services, scheduledLines, paymentMethods }: {
-  action: (data: FormData) => void | Promise<void | { error: string }>;
+  action: (data: FormData) => void | Promise<void | { error?: string; success?: string; redirectTo?: string }>;
   appointmentId: string;
   completionNotes: string | null;
   services: ServiceOption[];
@@ -38,6 +38,7 @@ export function CompletionForm({ action, appointmentId, completionNotes, service
 }) {
   const scheduledIds = scheduledLines.map((line) => line.serviceId);
   const [step, setStep] = useState(0);
+  const [approved, setApproved] = useState(false);
   const [serviceIds, setServiceIds] = useState(scheduledIds);
   const [lines, setLines] = useState<Record<string, LineValue>>(() => Object.fromEntries(services.map((service) => {
     const scheduled = scheduledLines.find((line) => line.serviceId === service.id);
@@ -54,7 +55,7 @@ export function CompletionForm({ action, appointmentId, completionNotes, service
   const paidTotal = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
   const validLines = selectedServices.length > 0 && selectedServices.every((service) => lines[service.id]?.duration > 0 && Number(lines[service.id]?.price) >= 0);
   const validPayments = paidTotal <= totals.price && payments.every((payment) => payment.methodId && Number(payment.amount) > 0);
-  const canContinue = step === 0 ? selectedServices.length > 0 : step === 1 ? validLines : step === 2 ? validPayments : true;
+  const canContinue = step === 0 ? selectedServices.length > 0 : step === 1 ? validLines : step === 2 ? validPayments : step === 4 ? approved : true;
 
   function toggleService(service: ServiceOption) {
     setServiceIds((ids) => ids.includes(service.id) ? ids.filter((id) => id !== service.id) : [...ids, service.id]);
@@ -64,7 +65,16 @@ export function CompletionForm({ action, appointmentId, completionNotes, service
     setLines((current) => ({ ...current, [id]: { ...current[id], ...patch } }));
   }
 
-  return <form action={formAction} className="panel mx-auto max-w-4xl p-5 sm:p-7">
+  if (actionState?.success && actionState.redirectTo) return <WizardCompletion href={actionState.redirectTo} linkLabel="View finalized appointment" message="The final record is saved. This screen stays open until you choose to leave it." title={actionState.success}/>;
+
+  return <form action={formAction} className="panel mx-auto max-w-4xl p-5 sm:p-7" onSubmit={(event) => {
+    if (step < steps.length - 1) {
+      event.preventDefault();
+      if (canContinue) setStep((value) => Math.min(steps.length - 1, value + 1));
+      return;
+    }
+    if (!canContinue || isSubmitting) event.preventDefault();
+  }}>
     <div className="mb-6 flex items-center gap-3">
       <span className="flex size-10 items-center justify-center rounded-xl bg-emerald-300/10 text-emerald-300"><BadgeCheck size={19}/></span>
       <h2 className="font-semibold text-white">Finalize appointment</h2>
@@ -123,6 +133,7 @@ export function CompletionForm({ action, appointmentId, completionNotes, service
         <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4"><p className="text-xs text-slate-500">Services</p><div className="mt-2 space-y-1">{selectedServices.map((service) => <p className="text-sm text-slate-200" dir="auto" key={service.id}>{service.name}</p>)}</div></div>
         <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.055] p-4"><div className="grid grid-cols-2 gap-4"><div><p className="text-xs text-emerald-200/55">Total time</p><p className="mt-1 font-semibold text-emerald-100">{totals.duration} min</p></div><div><p className="text-xs text-emerald-200/55">Final total</p><p className="mt-1 font-semibold text-emerald-100">{new Intl.NumberFormat("en-CA", { style: "currency", currency: selectedServices[0]?.currency || "CAD" }).format(totals.price)}</p></div></div><p className="mt-4 border-t border-emerald-300/10 pt-3 text-sm text-emerald-100/75">{paidTotal === 0 ? "Unpaid" : paidTotal < totals.price ? `Paid ${paidTotal.toFixed(2)} · balance ${(totals.price - paidTotal).toFixed(2)}` : "Paid in full"}</p></div>
       </div>
+      <WizardApproval checked={approved} label="I reviewed the completed services, final prices, time, and payment information." onChange={setApproved}/>
     </section>
 
     {actionState?.error && <div className="mt-5 flex items-start gap-2 rounded-xl border border-rose-400/25 bg-rose-400/8 p-3 text-sm text-rose-200" role="alert"><AlertTriangle className="mt-0.5 shrink-0" size={16}/>{actionState.error}</div>}

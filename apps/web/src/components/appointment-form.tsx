@@ -4,17 +4,17 @@ import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CalendarDays, Check, CircleCheck, Clock3, DollarSign, LoaderCircle, Search, Sparkles, UserRound } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
-import { WizardNavigation, WizardProgress } from "@/components/form-wizard";
+import { WizardApproval, WizardCompletion, WizardNavigation, WizardProgress } from "@/components/form-wizard";
 import { checkAppointmentAvailability } from "@/server/actions/appointments";
 
 type Option = { id: string; name: string; phone?: string | null; email?: string | null };
 type ServiceCategoryOption = { id: string; name: string; description: string | null; icon: string; accentColor: string };
 type ServiceOption = Option & { duration: number; price: string; currency: string; category: ServiceCategoryOption; supportsColor: boolean };
 type AppointmentValue = { id: string; customerId: string; serviceIds: string[]; serviceColors: Record<string, string>; startAt: string; expectedDurationMinutes: number; expectedPrice: string; notes?: string | null };
-type ActionResult = { error: string } | null;
+type ActionResult = { error?: string; success?: string; redirectTo?: string } | null;
 
 type AppointmentFormProps = {
-  action: (data: FormData) => void | Promise<void | { error: string }>;
+  action: (data: FormData) => void | Promise<void | { error?: string; success?: string; redirectTo?: string }>;
   appointment?: AppointmentValue;
   customers: Option[];
   initialCustomerId?: string;
@@ -28,6 +28,7 @@ function money(value: string, currency = "CAD") {
 
 export function AppointmentForm({ action, customers, services, appointment, initialCustomerId, initialStartAt }: AppointmentFormProps) {
   const [step, setStep] = useState(0);
+  const [approved, setApproved] = useState(false);
   const initialCustomer = appointment?.customerId || initialCustomerId || "";
   const initialServices = appointment?.serviceIds.length ? appointment.serviceIds : [];
   const initialDateTime = appointment?.startAt || initialStartAt || "";
@@ -68,7 +69,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
         ? Boolean(date && time && currentAvailability.state !== "checking" && currentAvailability.state !== "conflict")
         : step === 3
           ? Boolean(duration >= 5 && price && Number(price) >= 0 && currentAvailability.state !== "checking" && currentAvailability.state !== "conflict")
-          : true;
+          : approved;
 
   useEffect(() => {
     if (!availabilityKey) return;
@@ -114,8 +115,17 @@ export function AppointmentForm({ action, customers, services, appointment, init
     if (!serviceIds.includes(id) && service?.supportsColor && !serviceColors[id]) setServiceColors((colors) => ({ ...colors, [id]: "#D36B85" }));
   }
 
+  if (actionState?.success && actionState.redirectTo) return <WizardCompletion href={actionState.redirectTo} linkLabel="View appointment" message="Your changes are saved. This screen stays open until you are ready to continue." title={actionState.success}/>;
+
   return (
-    <form action={formAction} className="panel mx-auto max-w-5xl p-5 sm:p-7">
+    <form action={formAction} className="panel mx-auto max-w-5xl p-5 sm:p-7" onSubmit={(event) => {
+      if (step < steps.length - 1) {
+        event.preventDefault();
+        if (canContinue) setStep((value) => Math.min(steps.length - 1, value + 1));
+        return;
+      }
+      if (!canContinue || isSubmitting) event.preventDefault();
+    }}>
       <WizardProgress current={step} steps={steps}/>
         <section className={step === 0 ? "block" : "hidden"}>
           <div className="mb-5 flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-teal-300/10 text-teal-300"><UserRound size={19} /></span><h2 className="font-semibold text-white">Choose the customer</h2></div>
@@ -187,7 +197,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
         <div className="grid grid-cols-2 gap-3 border-y border-white/8 py-4"><div><p className="text-[10px] uppercase tracking-wider text-slate-600">Est. duration</p><p className="mt-1 text-sm font-semibold text-white">{duration || 0} min</p></div><div><p className="text-[10px] uppercase tracking-wider text-slate-600">Est. total</p><p className="mt-1 text-sm font-semibold text-white">{money(price || "0", selectedServices[0]?.currency)}</p></div></div>
         <div><p className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-600">Schedule</p><p className="mt-2 text-sm text-slate-300">{date || "Choose a date"}{time ? ` · ${time}` : ""}</p></div>
         {actionState?.error && <div className="flex items-start gap-2 rounded-xl border border-rose-400/25 bg-rose-400/8 p-3 text-xs leading-5 text-rose-200" role="alert"><AlertTriangle className="mt-0.5 shrink-0" size={15}/><span>{actionState.error}</span></div>}
-      </div></div></section>
+      </div></div><WizardApproval checked={approved} onChange={setApproved}/></section>
       <WizardNavigation busy={isSubmitting} canContinue={canContinue} cancelHref={appointment ? `/appointments/${appointment.id}` : "/calendar"} count={steps.length} current={step} onBack={() => setStep((value) => Math.max(0, value - 1))} onNext={() => setStep((value) => Math.min(steps.length - 1, value + 1))} submitLabel={appointment ? "Update appointment" : "Schedule appointment"}/>
     </form>
   );

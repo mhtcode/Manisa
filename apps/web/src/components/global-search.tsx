@@ -10,7 +10,7 @@ import type { BusinessPermission } from "@/lib/permissions";
 type Result = { id: string; type: string; title: string; subtitle: string; href: string; avatarId?: string | null };
 const settings = [
   ["Settings", "Business preferences", "/settings", "business.manage"], ["Financial", "Payments and collections", "/settings/financial", "financial.view"], ["Customer reviews", "Approve public ratings and comments", "/settings/reviews", "business.manage"],
-  ["Members", "Roles and permissions", "/settings/members", "members.manage"], ["Categories", "Service organization", "/settings/categories", "services.manage"],
+  ["Members", "Roles and permissions", "/settings/members", "members.manage"], ["Services & categories", "Service organization", "/services?section=categories", "services.manage"],
   ["Data transfer", "Imports and secure exports", "/settings/data-transfer", "data.import"], ["Google Calendar", "One-way appointment synchronization", "/settings/google-calendar", "integrations.manage"], ["Trash", "Deleted items", "/settings/trash", "trash.manage"],
 ] as const;
 

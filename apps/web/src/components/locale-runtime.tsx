@@ -40,14 +40,26 @@ function translateNode(root: Node, locale: AppLocale) {
 export function LocaleRuntime({ locale, children }: { locale: AppLocale; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!ref.current) return;
-    translateNode(ref.current, locale);
-    const observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
-      if (mutation.type === "characterData") translateNode(mutation.target, locale);
-      mutation.addedNodes.forEach((node) => translateNode(node, locale));
-    }));
-    observer.observe(ref.current, { characterData: true, childList: true, subtree: true });
-    return () => observer.disconnect();
+    let observer: MutationObserver | undefined;
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      // Streaming client boundaries can still be hydrating when this parent effect
+      // first runs. Wait for the next paint before mutating their text nodes.
+      secondFrame = requestAnimationFrame(() => {
+        if (!ref.current) return;
+        translateNode(ref.current, locale);
+        observer = new MutationObserver((mutations) => mutations.forEach((mutation) => {
+          if (mutation.type === "characterData") translateNode(mutation.target, locale);
+          mutation.addedNodes.forEach((node) => translateNode(node, locale));
+        }));
+        observer.observe(ref.current, { characterData: true, childList: true, subtree: true });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      observer?.disconnect();
+    };
   }, [locale]);
   return <div className="contents" ref={ref}>{children}</div>;
 }

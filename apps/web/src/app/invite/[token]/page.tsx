@@ -7,8 +7,38 @@ import { prisma } from "@/lib/prisma";
 
 export default async function InvitationPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const invitation = await prisma.invitation.findUnique({ where: { tokenHash: createHash("sha256").update(token).digest("hex") }, include: { invitedBy: { select: { name: true } } } });
+  const invitation = await prisma.invitation.findUnique({
+    where: { tokenHash: createHash("sha256").update(token).digest("hex") },
+    include: { invitedBy: { select: { name: true } } },
+  });
   const valid = invitation && !invitation.acceptedAt && !invitation.revokedAt && invitation.expiresAt > new Date();
-  const existingPasswordAccount = valid ? Boolean((await prisma.user.findUnique({ where: { email: invitation.email }, select: { passwordHash: true } }))?.passwordHash) : false;
-  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4 sm:p-6"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,.18),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,.1),transparent_38%)]"/><section className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-300/15 bg-[#0a111d]/95 shadow-2xl"><header className="border-b border-white/8 bg-gradient-to-br from-[#102347] to-[#0b1628] p-6 sm:p-8"><Link aria-label="Manisa home" className="flex size-14 items-center justify-center rounded-2xl bg-[#071426] shadow-[inset_0_1px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.28)]" href="/"><BrandLogo priority size={51}/></Link>{valid ? <><p className="mt-5 text-xs font-semibold uppercase tracking-[.18em] text-blue-300">Studio invitation</p><h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Join Manisa</h1><div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300"><span className="badge"><ShieldCheck size={13}/>{invitation.role.toLowerCase()}</span><span className="badge"><CalendarClock size={13}/>Valid for 72 hours</span></div></> : <><h1 className="mt-5 text-2xl font-semibold">Invitation unavailable</h1><p className="mt-2 text-sm text-slate-400">This link expired, was revoked, or has already been used.</p></>}</header><div className="p-6 sm:p-8">{valid ? <><p className="text-sm text-slate-400">Invited by {invitation.invitedBy.name}. Existing users can enter their current password; new users will create one.</p><InvitationForm email={invitation.email} existingPasswordAccount={existingPasswordAccount} token={token}/></> : <Link className="button w-full" href="/login">Return to sign in</Link>}</div></section></main>;
+  const existingPasswordAccount = valid
+    ? Boolean((await prisma.user.findUnique({ where: { email: invitation.email }, select: { passwordHash: true } }))?.passwordHash)
+    : false;
+
+  return <main className="relative flex min-h-screen items-center justify-center overflow-hidden p-4 sm:p-6">
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,.18),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,.1),transparent_38%)]"/>
+    <section className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-blue-300/15 bg-[#0a111d]/95 shadow-2xl">
+      <header className="border-b border-white/8 bg-gradient-to-br from-[#102347] to-[#0b1628] p-6 sm:p-8">
+        <Link aria-label="Manisa home" className="inline-flex" href="/"><BrandLogo priority size={62}/></Link>
+        {valid ? <>
+          <p className="mt-5 text-xs font-semibold uppercase tracking-[.18em] text-blue-300">Studio invitation</p>
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Join Manisa</h1>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">
+            <span className="badge"><ShieldCheck size={13}/>{invitation.role.toLowerCase()}</span>
+            <span className="badge"><CalendarClock size={13}/>Valid for 72 hours</span>
+          </div>
+        </> : <>
+          <h1 className="mt-5 text-2xl font-semibold">Invitation unavailable</h1>
+          <p className="mt-2 text-sm text-slate-400">This link expired, was revoked, or has already been used.</p>
+        </>}
+      </header>
+      <div className="p-6 sm:p-8">
+        {valid ? <>
+          <p className="text-sm text-slate-400">Invited by {invitation.invitedBy.name}. Existing users can enter their current password; new users will create one.</p>
+          <InvitationForm email={invitation.email} existingPasswordAccount={existingPasswordAccount} token={token}/>
+        </> : <Link className="button w-full" href="/login">Return to sign in</Link>}
+      </div>
+    </section>
+  </main>;
 }

@@ -2,7 +2,6 @@
 
 import { addDays, subDays } from "date-fns";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { PhotoUploadError, prepareAppointmentPhotos, removePreparedPhotos } from "@/lib/photo-storage";
@@ -74,7 +73,7 @@ export async function createAppointment(formData: FormData) {
     return created;
   });
   revalidatePath("/appointments");
-  redirect(`/appointments/${appointment.id}`);
+  return { success: "Appointment scheduled.", redirectTo: `/appointments/${appointment.id}` };
 }
 
 export async function updateAppointment(id: string, formData: FormData) {
@@ -107,7 +106,7 @@ export async function updateAppointment(id: string, formData: FormData) {
     await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
   });
   revalidatePath(`/appointments/${id}`);
-  redirect(`/appointments/${id}`);
+  return { success: "Appointment updated.", redirectTo: `/appointments/${id}` };
 }
 
 export async function completeAppointment(id: string, formData: FormData) {
@@ -176,7 +175,7 @@ export async function completeAppointment(id: string, formData: FormData) {
     throw error;
   }
   revalidatePath("/report"); revalidatePath("/appointments"); revalidatePath("/gallery"); revalidatePath(`/appointments/${id}`);
-  redirect(`/appointments/${id}`);
+  return { success: "Appointment finalized.", redirectTo: `/appointments/${id}` };
 }
 
 export async function addAppointmentPhotos(id: string, _previous: { error?: string; success?: string } | null, formData: FormData) {

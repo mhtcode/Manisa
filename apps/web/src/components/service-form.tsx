@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Ban, Check, Palette } from "lucide-react";
-import { WizardNavigation, WizardProgress } from "@/components/form-wizard";
+import { WizardApproval, WizardCompletion, WizardNavigation, WizardProgress } from "@/components/form-wizard";
 
 type ServiceValue = {
   name: string;
@@ -17,14 +17,24 @@ type ServiceValue = {
 type CategoryOption = { id: string; name: string; active: boolean };
 const steps = [{ label: "Details" }, { label: "Price & time", shortLabel: "Pricing" }, { label: "Options" }];
 
-export function ServiceForm({ action, categories, service }: { action: (data: FormData) => void | Promise<void>; categories: CategoryOption[]; service?: ServiceValue }) {
+export function ServiceForm({ action, categories, service }: { action: (data: FormData) => void | Promise<void | { error?: string; success?: string; redirectTo?: string }>; categories: CategoryOption[]; service?: ServiceValue }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(service?.name || "");
   const [duration, setDuration] = useState(String(service?.defaultDurationMinutes || ""));
   const [price, setPrice] = useState(service?.defaultPrice.toString() || "");
   const [supportsColor, setSupportsColor] = useState(service?.supportsColor || false);
-  const canContinue = step === 0 ? name.trim().length > 0 : step === 1 ? Number(duration) >= 5 && Number(price) >= 0 : true;
-  return <form action={action} className="panel mx-auto max-w-3xl p-5 sm:p-7">
+  const [approved, setApproved] = useState(false);
+  const [result, formAction, pending] = useActionState(async (_previous: { error?: string; success?: string; redirectTo?: string } | null, data: FormData) => (await action(data)) || null, null);
+  const canContinue = step === 0 ? name.trim().length > 0 : step === 1 ? Number(duration) >= 5 && Number(price) >= 0 : approved;
+  if (result?.success && result.redirectTo) return <WizardCompletion href={result.redirectTo} linkLabel="Return to services" message="The service is saved. Continue when you are ready." title={result.success}/>;
+  return <form action={formAction} className="panel mx-auto max-w-3xl p-5 sm:p-7" onSubmit={(event) => {
+    if (step < steps.length - 1) {
+      event.preventDefault();
+      if (canContinue) setStep((value) => Math.min(steps.length - 1, value + 1));
+      return;
+    }
+    if (!canContinue || pending) event.preventDefault();
+  }}>
     <WizardProgress current={step} steps={steps}/>
     <section className={step === 0 ? "grid gap-5" : "hidden"}>
       <div><label className="label" htmlFor="name">Service name *</label><input className="field" dir="auto" id="name" name="name" onChange={(event) => setName(event.target.value)} required value={name}/></div>
@@ -41,7 +51,9 @@ export function ServiceForm({ action, categories, service }: { action: (data: Fo
         { value: false, title: "No color needed", copy: "Keep this service independent of color selection.", Icon: Ban },
       ].map(({ value, title, copy, Icon }) => <label className={`relative cursor-pointer rounded-2xl bg-white/[0.025] p-4 transition ${supportsColor === value ? "ring-2 ring-teal-300/55" : "ring-1 ring-white/10 hover:ring-white/20"}`} key={title}><input checked={supportsColor === value} className="sr-only" name="supportsColor" onChange={() => setSupportsColor(value)} type="radio" value={String(value)}/><span className="flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-teal-200"><Icon size={18}/></span><span className="min-w-0 flex-1"><span className="flex items-center justify-between gap-2 font-medium text-white">{title}{supportsColor === value && <Check className="text-teal-300" size={17}/>}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{copy}</span></span></span></label>)}</div></fieldset>
       <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.02] p-4"><p className="font-medium text-white" dir="auto">{name || "New service"}</p><p className="mt-2 text-sm text-slate-400">{duration || 0} min · {price || "0.00"}</p></div>
+      <WizardApproval checked={approved} label="I reviewed this service and its color option." onChange={setApproved}/>
     </section>
-    <WizardNavigation canContinue={canContinue} cancelHref="/services" count={steps.length} current={step} onBack={() => setStep((value) => Math.max(0, value - 1))} onNext={() => setStep((value) => Math.min(steps.length - 1, value + 1))} submitLabel="Save service"/>
+    {result?.error && <p className="mt-4 text-sm text-rose-300" role="alert">{result.error}</p>}
+    <WizardNavigation busy={pending} canContinue={canContinue} cancelHref="/services" count={steps.length} current={step} onBack={() => setStep((value) => Math.max(0, value - 1))} onNext={() => setStep((value) => Math.min(steps.length - 1, value + 1))} submitLabel="Save service"/>
   </form>;
 }

@@ -21,4 +21,4 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   </main>;
 }
 
-function BrandLink() { return <Link className="inline-flex items-center gap-3" href="/" aria-label="Manisa home"><span className="flex size-12 items-center justify-center rounded-xl bg-[#071426] shadow-[inset_0_1px_rgba(255,255,255,.14),0_10px_28px_rgba(0,0,0,.28)]"><BrandLogo priority size={44}/></span><span className="text-lg font-semibold">Manisa</span></Link>; }
+function BrandLink() { return <Link className="inline-flex items-center gap-3" href="/" aria-label="Manisa home"><BrandLogo priority size={50}/><span className="text-lg font-semibold">Manisa</span></Link>; }

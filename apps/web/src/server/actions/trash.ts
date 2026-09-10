@@ -43,7 +43,7 @@ function refreshTrashViews() {
 }
 
 function destination(type: TrashEntityType) {
-  return type === "customer" ? "/customers" : type === "appointment" ? "/appointments" : type === "photo" ? "/gallery" : type === "service" ? "/services" : type === "paymentMethod" ? "/settings/financial" : "/settings/categories";
+  return type === "customer" ? "/customers" : type === "appointment" ? "/appointments" : type === "photo" ? "/gallery" : type === "service" || type === "category" ? "/services" : type === "paymentMethod" ? "/settings/financial" : "/settings";
 }
 
 async function assertEntities(items: Array<{ type: TrashEntityType; id: string }>) {

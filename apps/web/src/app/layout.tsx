@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   description: "Manisa home hair-and-nail studio and its private appointment management application.",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-32.png?v=2", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico?v=2", sizes: "16x16 32x32 48x48" },
     ],
-    shortcut: "/favicon.ico",
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon-32.png?v=2",
+    apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
   },
 };
 

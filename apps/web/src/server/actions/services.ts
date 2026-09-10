@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { serviceSchema } from "@/lib/validation";
@@ -11,9 +10,9 @@ export async function createService(formData: FormData) {
   const data = serviceSchema.parse(Object.fromEntries(formData));
   const category = await prisma.studioCategory.findFirst({ where: { id: data.categoryId, active: true, deletedAt: null }, select: { id: true } });
   if (!category) throw new Error("Choose an active service category.");
-  await prisma.service.create({ data: { ...data, } });
+  const service = await prisma.service.create({ data: { ...data, } });
   revalidatePath("/services");
-  redirect("/services");
+  return { success: "Service created.", redirectTo: `/services?created=${service.id}` };
 }
 
 export async function updateService(id: string, formData: FormData) {
@@ -23,7 +22,7 @@ export async function updateService(id: string, formData: FormData) {
   if (!category) throw new Error("Choose a valid service category.");
   await prisma.service.update({ where: { id, deletedAt: null }, data });
   revalidatePath("/services");
-  redirect("/services");
+  return { success: "Service updated.", redirectTo: "/services" };
 }
 
 export async function toggleService(id: string, active: boolean) {

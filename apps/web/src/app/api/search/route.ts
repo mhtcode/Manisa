@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     ...customers.map((item) => ({ id: item.id, type: "Customer", title: customerName(item), subtitle: item.phone || item.email || "Customer profile", href: `/customers/${item.id}`, avatarId: item.profilePhotos[0]?.id || null })),
     ...appointments.map((item) => ({ id: item.id, type: "Appointment", title: customerName(item.customer), subtitle: item.serviceNameSnapshot, href: `/appointments/${item.id}`, avatarId: item.customer.profilePhotos[0]?.id || null })),
     ...services.map((item) => ({ id: item.id, type: "Service", title: item.name, subtitle: item.category.name, href: `/services/${item.id}/edit` })),
-    ...categories.map((item) => ({ id: item.id, type: "Category", title: item.name, subtitle: "Service category", href: "/settings/categories" })),
+    ...categories.map((item) => ({ id: item.id, type: "Category", title: item.name, subtitle: "Service category", href: "/services?section=categories" })),
     ...methods.map((item) => ({ id: item.id, type: "Payment method", title: item.name, subtitle: "Financial settings", href: "/settings/financial" })),
   ];
   return NextResponse.json({ results });

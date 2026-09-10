@@ -148,6 +148,7 @@ model User {
   auditEvents                  AuditLog[]                 @relation("AuditActor")
   connectedInstagram           InstagramConnection[]      @relation("InstagramConnector")
   connectedGoogleCalendars     GoogleCalendarConnection[] @relation("GoogleCalendarConnector")
+  configuredGoogleCalendar     GoogleCalendarCredential[] @relation("GoogleCalendarCredentialConfigurer")
   notificationReceipts         NotificationReceipt[]
   recordedPayments             AppointmentPayment[]       @relation("PaymentRecorder")
   createdFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionCreator")
@@ -167,7 +168,7 @@ model StudioSettings {
   storageReservedBytes   BigInt   @default(0)
   currency               String   @default("CAD") @db.VarChar(3)
   timezone               String   @default("America/Toronto")
-  address                String?
+  address                String?  @default("77 Finch Avenue East, Toronto, ON")
   instagramUrl           String?
   publicPhone            String?
   publicEmail            String?
@@ -254,11 +255,25 @@ model StudioReview {
   approvedById String?
   approvedBy   User?        @relation("ReviewApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   approvedAt   DateTime?
+  deletedAt    DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
   @@index([status, createdAt])
   @@index([approvedAt])
+  @@index([deletedAt, createdAt])
+}
+
+model GoogleCalendarCredential {
+  id                    String                     @id @default("google-calendar")
+  clientId              String
+  encryptedClientSecret String
+  redirectUri           String
+  configuredById        String
+  configuredBy          User                       @relation("GoogleCalendarCredentialConfigurer", fields: [configuredById], references: [id], onDelete: Restrict)
+  connections           GoogleCalendarConnection[]
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
 }
 
 model Customer {
@@ -375,21 +390,26 @@ model Appointment {
 
 model GoogleCalendarConnection {
   id                    String                         @id @default(cuid())
-  singletonKey          Int                            @unique @default(1)
+  credentialId          String                         @default("google-calendar")
+  credential            GoogleCalendarCredential       @relation(fields: [credentialId], references: [id], onDelete: Restrict)
   connectedById         String
   connectedBy           User                           @relation("GoogleCalendarConnector", fields: [connectedById], references: [id], onDelete: Restrict)
   googleAccountEmail    String
   calendarId            String                         @default("primary")
+  calendarName          String                         @default("Primary calendar")
+  primary               Boolean                        @default(false)
   encryptedRefreshToken String
   grantedScopes         String
   status                GoogleCalendarConnectionStatus @default(CONNECTED)
   lastSuccessfulSyncAt  DateTime?
+  lastCheckedAt         DateTime?
   lastError             String?
   createdAt             DateTime                       @default(now())
   updatedAt             DateTime                       @updatedAt
   events                GoogleCalendarEvent[]
   jobs                  GoogleCalendarSyncJob[]
 
+  @@unique([googleAccountEmail, calendarId])
   @@index([status, updatedAt])
 }
 
@@ -404,7 +424,7 @@ model GoogleCalendarEvent {
   createdAt     DateTime                 @default(now())
   updatedAt     DateTime                 @updatedAt
 
-  @@unique([appointmentId])
+  @@unique([connectionId, appointmentId])
   @@unique([connectionId, googleEventId])
   @@index([lastSyncedAt])
 }
@@ -425,7 +445,7 @@ model GoogleCalendarSyncJob {
   createdAt     DateTime                    @default(now())
   updatedAt     DateTime                    @updatedAt
 
-  @@unique([appointmentId])
+  @@unique([connectionId, appointmentId])
   @@index([status, availableAt])
   @@index([connectionId, status])
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeftRight, CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, Layers3, LogOut, MessageSquareQuote, Settings2, ShieldCheck, SlidersHorizontal, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, LogOut, MessageSquareQuote, Settings2, ShieldCheck, SlidersHorizontal, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
@@ -14,8 +14,7 @@ const groups = [
       ["/appointments", "Appointments", "Schedule, confirm, finalize, and review visits", CalendarClock],
       ["/customers", "Customers", "Profiles, visit history, preferences, and insights", UsersRound],
       ["/settings/referrals", "Customer referrals", "Filter and explore the complete referral graph", GitFork],
-      ["/services", "Services", "Pricing, duration, colors, and performance", SwatchBook],
-      ["/settings/categories", "Categories", "Create, reorder, archive, and organize studio areas", Layers3],
+      ["/services", "Services & categories", "Organize categories, pricing, duration, colors, and performance", SwatchBook],
       ["/gallery", "Gallery", "Organize visit photos and choose featured work", Images],
     ],
   },
@@ -39,7 +38,7 @@ const groups = [
 const contextualDestinations = new Set(["/appointments", "/customers", "/services", "/gallery"]);
 const requiredPermission: Record<string, BusinessPermission> = {
   "/appointments": "appointments.view", "/customers": "customers.view", "/settings/referrals": "customers.view", "/services": "services.view",
-  "/settings/categories": "services.manage", "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/reviews": "business.manage", "/settings/business": "business.manage",
+  "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/reviews": "business.manage", "/settings/business": "business.manage",
   "/settings/navigation": "business.manage", "/settings/data-transfer": "data.import", "/settings/instagram": "integrations.manage",
   "/settings/google-calendar": "integrations.manage",
   "/settings/members": "members.manage", "/settings/trash": "trash.manage",

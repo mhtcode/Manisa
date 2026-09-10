@@ -85,7 +85,7 @@ CREATE TABLE "StudioSettings" (
     "storageReservedBytes" BIGINT NOT NULL DEFAULT 0,
     "currency" VARCHAR(3) NOT NULL DEFAULT 'CAD',
     "timezone" TEXT NOT NULL DEFAULT 'America/Toronto',
-    "address" TEXT,
+    "address" TEXT DEFAULT '77 Finch Avenue East, Toronto, ON',
     "instagramUrl" TEXT,
     "publicPhone" TEXT,
     "publicEmail" TEXT,
@@ -171,6 +171,7 @@ CREATE TABLE "StudioReview" (
     "status" "ReviewStatus" NOT NULL DEFAULT 'PENDING',
     "approvedById" TEXT,
     "approvedAt" TIMESTAMP(3),
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -261,16 +262,32 @@ CREATE TABLE "Appointment" (
 );
 
 -- CreateTable
+CREATE TABLE "GoogleCalendarCredential" (
+    "id" TEXT NOT NULL DEFAULT 'google-calendar',
+    "clientId" TEXT NOT NULL,
+    "encryptedClientSecret" TEXT NOT NULL,
+    "redirectUri" TEXT NOT NULL,
+    "configuredById" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GoogleCalendarCredential_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "GoogleCalendarConnection" (
     "id" TEXT NOT NULL,
-    "singletonKey" INTEGER NOT NULL DEFAULT 1,
+    "credentialId" TEXT NOT NULL DEFAULT 'google-calendar',
     "connectedById" TEXT NOT NULL,
     "googleAccountEmail" TEXT NOT NULL,
     "calendarId" TEXT NOT NULL DEFAULT 'primary',
+    "calendarName" TEXT NOT NULL DEFAULT 'Primary calendar',
+    "primary" BOOLEAN NOT NULL DEFAULT false,
     "encryptedRefreshToken" TEXT NOT NULL,
     "grantedScopes" TEXT NOT NULL,
     "status" "GoogleCalendarConnectionStatus" NOT NULL DEFAULT 'CONNECTED',
     "lastSuccessfulSyncAt" TIMESTAMP(3),
+    "lastCheckedAt" TIMESTAMP(3),
     "lastError" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -705,6 +722,9 @@ CREATE INDEX "StudioReview_status_createdAt_idx" ON "StudioReview"("status", "cr
 CREATE INDEX "StudioReview_approvedAt_idx" ON "StudioReview"("approvedAt");
 
 -- CreateIndex
+CREATE INDEX "StudioReview_deletedAt_createdAt_idx" ON "StudioReview"("deletedAt", "createdAt");
+
+-- CreateIndex
 CREATE INDEX "Customer_firstName_lastName_idx" ON "Customer"("firstName", "lastName");
 
 -- CreateIndex
@@ -771,7 +791,7 @@ CREATE INDEX "Appointment_deletedAt_idx" ON "Appointment"("deletedAt");
 CREATE UNIQUE INDEX "Appointment_importSourceId_key" ON "Appointment"("importSourceId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GoogleCalendarConnection_singletonKey_key" ON "GoogleCalendarConnection"("singletonKey");
+CREATE UNIQUE INDEX "GoogleCalendarConnection_googleAccountEmail_calendarId_key" ON "GoogleCalendarConnection"("googleAccountEmail", "calendarId");
 
 -- CreateIndex
 CREATE INDEX "GoogleCalendarConnection_status_updatedAt_idx" ON "GoogleCalendarConnection"("status", "updatedAt");
@@ -780,7 +800,7 @@ CREATE INDEX "GoogleCalendarConnection_status_updatedAt_idx" ON "GoogleCalendarC
 CREATE INDEX "GoogleCalendarEvent_lastSyncedAt_idx" ON "GoogleCalendarEvent"("lastSyncedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GoogleCalendarEvent_appointmentId_key" ON "GoogleCalendarEvent"("appointmentId");
+CREATE UNIQUE INDEX "GoogleCalendarEvent_connectionId_appointmentId_key" ON "GoogleCalendarEvent"("connectionId", "appointmentId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GoogleCalendarEvent_connectionId_googleEventId_key" ON "GoogleCalendarEvent"("connectionId", "googleEventId");
@@ -792,7 +812,7 @@ CREATE INDEX "GoogleCalendarSyncJob_status_availableAt_idx" ON "GoogleCalendarSy
 CREATE INDEX "GoogleCalendarSyncJob_connectionId_status_idx" ON "GoogleCalendarSyncJob"("connectionId", "status");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "GoogleCalendarSyncJob_appointmentId_key" ON "GoogleCalendarSyncJob"("appointmentId");
+CREATE UNIQUE INDEX "GoogleCalendarSyncJob_connectionId_appointmentId_key" ON "GoogleCalendarSyncJob"("connectionId", "appointmentId");
 
 -- CreateIndex
 CREATE INDEX "PaymentMethod_active_position_idx" ON "PaymentMethod"("active", "position");
@@ -999,6 +1019,9 @@ ALTER TABLE "Settings" ADD CONSTRAINT "Settings_userId_fkey" FOREIGN KEY ("userI
 ALTER TABLE "StudioReview" ADD CONSTRAINT "StudioReview_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "GoogleCalendarCredential" ADD CONSTRAINT "GoogleCalendarCredential_configuredById_fkey" FOREIGN KEY ("configuredById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Customer" ADD CONSTRAINT "Customer_referrerId_fkey" FOREIGN KEY ("referrerId") REFERENCES "Customer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -1012,6 +1035,9 @@ ALTER TABLE "Appointment" ADD CONSTRAINT "Appointment_serviceId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "GoogleCalendarConnection" ADD CONSTRAINT "GoogleCalendarConnection_connectedById_fkey" FOREIGN KEY ("connectedById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GoogleCalendarConnection" ADD CONSTRAINT "GoogleCalendarConnection_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "GoogleCalendarCredential"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GoogleCalendarEvent" ADD CONSTRAINT "GoogleCalendarEvent_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "GoogleCalendarConnection"("id") ON DELETE CASCADE ON UPDATE CASCADE;

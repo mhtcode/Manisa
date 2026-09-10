@@ -1,8 +1,16 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createCipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
+
+function encryptSecret(value, secret) {
+  const key = createHash("sha256").update(secret, "utf8").digest();
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return ["v1", iv.toString("base64url"), cipher.getAuthTag().toString("base64url"), encrypted.toString("base64url")].join(".");
+}
 
 const BASELINE_NAME = "202609080001_initial_single_studio";
 const projectDirectory = fileURLToPath(new URL("../", import.meta.url));
@@ -92,6 +100,8 @@ async function ensureReviewSchema() {
   `);
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "StudioReview_status_createdAt_idx" ON "StudioReview"("status", "createdAt")');
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "StudioReview_approvedAt_idx" ON "StudioReview"("approvedAt")');
+  await prisma.$executeRawUnsafe('ALTER TABLE "StudioReview" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3)');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "StudioReview_deletedAt_createdAt_idx" ON "StudioReview"("deletedAt", "createdAt")');
   const constraints = await prisma.$queryRaw`
     SELECT conname FROM pg_catalog.pg_constraint
     WHERE conrelid = '"StudioReview"'::regclass
@@ -102,7 +112,58 @@ async function ensureReviewSchema() {
   if (!names.has("StudioReview_approvedById_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "StudioReview" ADD CONSTRAINT "StudioReview_approvedById_fkey" FOREIGN KEY ("approvedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE');
 }
 
+async function ensureMultiCalendarSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "GoogleCalendarCredential" (
+      "id" TEXT PRIMARY KEY NOT NULL DEFAULT 'google-calendar',
+      "clientId" TEXT NOT NULL,
+      "encryptedClientSecret" TEXT NOT NULL,
+      "redirectUri" TEXT NOT NULL,
+      "configuredById" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  const [connectionCount] = await prisma.$queryRaw`SELECT COUNT(*)::int AS "count" FROM "GoogleCalendarConnection"`;
+  const [credentialCount] = await prisma.$queryRaw`SELECT COUNT(*)::int AS "count" FROM "GoogleCalendarCredential"`;
+  if (connectionCount.count > 0 && credentialCount.count === 0) {
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_CALENDAR_REDIRECT_URI;
+    const encryptionKey = process.env.INTEGRATION_ENCRYPTION_KEY;
+    if (!clientId || !clientSecret || !redirectUri || !encryptionKey) throw new Error("Existing Google Calendar connections require their current OAuth environment values during this upgrade.");
+    const [connector] = await prisma.$queryRaw`SELECT "connectedById" FROM "GoogleCalendarConnection" ORDER BY "createdAt" LIMIT 1`;
+    await prisma.$executeRaw`
+      INSERT INTO "GoogleCalendarCredential" ("id", "clientId", "encryptedClientSecret", "redirectUri", "configuredById", "updatedAt")
+      VALUES ('google-calendar', ${clientId}, ${encryptSecret(clientSecret, encryptionKey)}, ${redirectUri}, ${connector.connectedById}, CURRENT_TIMESTAMP)
+    `;
+  }
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD COLUMN IF NOT EXISTS "credentialId" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD COLUMN IF NOT EXISTS "calendarName" TEXT NOT NULL DEFAULT \'Primary calendar\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD COLUMN IF NOT EXISTS "primary" BOOLEAN NOT NULL DEFAULT false');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD COLUMN IF NOT EXISTS "lastCheckedAt" TIMESTAMP(3)');
+  await prisma.$executeRawUnsafe('UPDATE "GoogleCalendarConnection" SET "credentialId" = \'google-calendar\', "primary" = true WHERE "credentialId" IS NULL');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ALTER COLUMN "credentialId" SET DEFAULT \'google-calendar\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ALTER COLUMN "credentialId" SET NOT NULL');
+  await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "GoogleCalendarConnection_singletonKey_key"');
+  await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" DROP COLUMN IF EXISTS "singletonKey"');
+  await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "GoogleCalendarConnection_googleAccountEmail_calendarId_key" ON "GoogleCalendarConnection"("googleAccountEmail", "calendarId")');
+  await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "GoogleCalendarEvent_appointmentId_key"');
+  await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "GoogleCalendarEvent_connectionId_appointmentId_key" ON "GoogleCalendarEvent"("connectionId", "appointmentId")');
+  await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "GoogleCalendarSyncJob_appointmentId_key"');
+  await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "GoogleCalendarSyncJob_connectionId_appointmentId_key" ON "GoogleCalendarSyncJob"("connectionId", "appointmentId")');
+  const constraints = await prisma.$queryRaw`
+    SELECT conname FROM pg_catalog.pg_constraint
+    WHERE conname IN ('GoogleCalendarCredential_configuredById_fkey', 'GoogleCalendarConnection_credentialId_fkey')
+  `;
+  const names = new Set(constraints.map((constraint) => constraint.conname));
+  if (!names.has("GoogleCalendarCredential_configuredById_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarCredential" ADD CONSTRAINT "GoogleCalendarCredential_configuredById_fkey" FOREIGN KEY ("configuredById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE');
+  if (!names.has("GoogleCalendarConnection_credentialId_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD CONSTRAINT "GoogleCalendarConnection_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "GoogleCalendarCredential"("id") ON DELETE RESTRICT ON UPDATE CASCADE');
+}
+
 async function ensureDatabaseOnlyIntegrityRules() {
+  await prisma.$executeRawUnsafe(`UPDATE "StudioSettings" SET "address" = '77 Finch Avenue East, Toronto, ON' WHERE "address" IS NULL`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ALTER COLUMN "address" SET DEFAULT '77 Finch Avenue East, Toronto, ON'`);
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS "User_single_active_owner_key"
     ON "User" ((1))
@@ -201,8 +262,9 @@ async function main() {
   }
 
   await ensureReviewSchema();
-  await assertExistingSchemaIsCurrent();
+  await ensureMultiCalendarSchema();
   await ensureDatabaseOnlyIntegrityRules();
+  await assertExistingSchemaIsCurrent();
   await normalizeMigrationLedger();
 
   const deployment = runPrisma(["migrate", "deploy"]);

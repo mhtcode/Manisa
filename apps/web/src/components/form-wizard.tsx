@@ -1,9 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 
 export type WizardStep = { label: string; shortLabel?: string };
+
+export function WizardCompletion({ title, message, href, linkLabel = "Done" }: { title: string; message: string; href: string; linkLabel?: string }) {
+  return <section className="panel mx-auto max-w-3xl p-6 text-center sm:p-10" role="status">
+    <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-300/10 text-emerald-300"><CheckCircle2 size={27}/></span>
+    <h2 className="mt-5 text-xl font-semibold text-white">{title}</h2>
+    <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-400">{message}</p>
+    <Link className="button mt-7" href={href}>{linkLabel}<ChevronRight className="rtl:rotate-180" size={17}/></Link>
+  </section>;
+}
+
+export function WizardApproval({ checked, onChange, label = "I reviewed the information and approve this action." }: { checked: boolean; onChange: (checked: boolean) => void; label?: string }) {
+  return <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-xl bg-emerald-300/[0.045] p-4 ring-1 ring-emerald-300/15">
+    <input checked={checked} className="mt-0.5 size-4 shrink-0 accent-emerald-300" onChange={(event) => onChange(event.target.checked)} type="checkbox"/>
+    <span className="text-sm leading-6 text-slate-300">{label}</span>
+  </label>;
+}
 
 export function WizardProgress({ steps, current }: { steps: WizardStep[]; current: number }) {
   return <nav aria-label="Form progress" className="mb-6 overflow-hidden">

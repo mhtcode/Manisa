@@ -17,7 +17,7 @@ async function transparentLogo(size) {
     .toBuffer();
 }
 
-async function framedIcon(size, logoScale = 0.78) {
+async function transparentIcon(size, logoScale = 0.9) {
   const logoSize = Math.round(size * logoScale);
   const logo = await sharp(sourcePath)
     .resize(logoSize, logoSize, { fit: "contain" })
@@ -29,7 +29,7 @@ async function framedIcon(size, logoScale = 0.78) {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 5, g: 13, b: 29, alpha: 1 },
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
     },
   })
     .composite([{ input: logo, gravity: "centre" }])
@@ -66,12 +66,12 @@ function buildIco(images) {
 const [webLogo, icon192, icon512, appleTouchIcon, favicon16, favicon32, favicon48] =
   await Promise.all([
     transparentLogo(512),
-    framedIcon(192),
-    framedIcon(512),
-    framedIcon(180),
-    framedIcon(16, 0.9),
-    framedIcon(32, 0.88),
-    framedIcon(48, 0.86),
+    transparentIcon(192),
+    transparentIcon(512),
+    transparentIcon(180),
+    transparentIcon(16, 0.95),
+    transparentIcon(32, 0.94),
+    transparentIcon(48, 0.93),
   ]);
 
 await Promise.all([

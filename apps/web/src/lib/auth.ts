@@ -46,6 +46,7 @@ export async function getCurrentUser() {
     businessName: studio.name,
     currency: studio.currency,
     timezone: studio.timezone,
+    address: studio.address,
     publicPhone: studio.publicPhone,
     publicEmail: studio.publicEmail,
     bookingUrl: studio.bookingUrl,

@@ -76,7 +76,7 @@ services:
       context: ./apps/web
       target: runner
       args:
-        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
+        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
     restart: unless-stopped
     init: true
@@ -98,7 +98,7 @@ services:
       INSTAGRAM_REDIRECT_URI: ${INSTAGRAM_REDIRECT_URI:-}
       INTEGRATION_ENCRYPTION_KEY: ${INTEGRATION_ENCRYPTION_KEY:-}
       TRASH_CLEANUP_SECRET: ${TRASH_CLEANUP_SECRET:-change-this-local-trash-cleanup-secret}
-      NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
+      NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
       NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
       UPLOADS_DIR: /app/uploads
       S3_ENDPOINT: http://minio:9000
@@ -204,7 +204,7 @@ services:
       context: ./apps/web
       target: runner
       args:
-        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
+        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
     restart: unless-stopped
     init: true
@@ -228,7 +228,7 @@ services:
       context: ./apps/web
       target: runner
       args:
-        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-Toronto, Ontario}
+        NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
     restart: unless-stopped
     init: true

@@ -11,6 +11,7 @@ type SettingsValue = {
   theme: "DARK" | "LIGHT" | "SYSTEM";
   currency: string;
   timezone: string;
+  address?: string | null;
   publicPhone?: string | null;
   publicEmail?: string | null;
   bookingUrl?: string | null;
@@ -54,6 +55,7 @@ export function StudioSettingsForm({ settings }: { settings: SettingsValue }) {
       <div id="appearance"><label className="label" htmlFor="theme">Appearance</label><select className="field" id="theme" name="theme" onChange={(event) => setTheme(event.target.value as SettingsValue["theme"])} value={theme}><option value="DARK">Dark</option><option value="LIGHT">Light</option><option value="SYSTEM">System</option></select></div>
       <div><label className="label" htmlFor="currency">Currency</label><select className="field" id="currency" name="currency" onChange={(event) => setCurrency(event.target.value)} value={currency}><option>CAD</option><option>USD</option></select></div>
       <div><label className="label">Business timezone</label><input className="field opacity-70" value={settings.timezone} readOnly/></div>
+      <div><label className="label" htmlFor="address">Studio address</label><input className="field" dir="auto" id="address" name="address" defaultValue={settings.address || "77 Finch Avenue East, Toronto, ON"}/></div>
       <div className="sm:col-span-2 border-t border-white/8 pt-5"><h2 className="font-semibold">Public studio page</h2></div>
       <div className="sm:col-span-2"><label className="label" htmlFor="studioTagline">Tagline</label><input className="field" dir="auto" id="studioTagline" maxLength={160} name="studioTagline" defaultValue={settings.studioTagline || ""}/></div>
       <div className="sm:col-span-2"><label className="label" htmlFor="studioBiography">Short biography</label><textarea className="field min-h-28 resize-y" dir="auto" id="studioBiography" maxLength={1200} name="studioBiography" defaultValue={settings.studioBiography || ""}/></div>

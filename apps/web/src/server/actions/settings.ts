@@ -40,9 +40,10 @@ export async function updateSettings(formData: FormData) {
   const bookingUrl = optional("bookingUrl", 500);
   const studioTagline = optional("studioTagline", 160);
   const studioBiography = optional("studioBiography", 1200);
+  const address = optional("address", 300);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
-    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { name: businessName, currency, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
+    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
   ]);
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
