@@ -32,7 +32,7 @@ export function DismissiblePopover({
   function scheduleClose(pointerType: string) {
     if (pointerType !== "mouse") return;
     cancelClose();
-    closeTimer.current = setTimeout(() => setOpen(false), 200);
+    closeTimer.current = setTimeout(() => setOpen(false), 80);
   }
 
   useEffect(() => () => cancelClose(), []);
@@ -62,6 +62,8 @@ export function DismissiblePopover({
     <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
       {trigger}
     </button>
-    {open && <div className={panelClassName} id={panelId} role="dialog">{children}</div>}
+    {open && <div className={panelClassName} id={panelId} onClickCapture={(event) => {
+      if ((event.target as Element).closest("a[href]")) setOpen(false);
+    }} role="dialog">{children}</div>}
   </div>;
 }

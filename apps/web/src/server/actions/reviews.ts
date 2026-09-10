@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { requireBusinessPermission } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { publicReviewSchema, reviewLanguage } from "@/lib/reviews";
+import { publicReviewSchema, REVIEW_MAX_WORDS, REVIEW_MIN_WORDS, reviewLanguage } from "@/lib/reviews";
 
 export type PublicReviewResult = { success?: string; error?: string };
 
 export async function submitStudioReview(formData: FormData): Promise<PublicReviewResult> {
   if (String(formData.get("website") || "")) return { success: "Thank you. Your review was sent for approval." };
   const parsed = publicReviewSchema.safeParse({ reviewerName: formData.get("reviewerName"), rating: formData.get("rating"), opinion: formData.get("opinion") });
-  if (!parsed.success) return { error: "Enter your name, choose 1–5 stars, and write at least 10 characters." };
+  if (!parsed.success) return { error: `Enter your name, choose at least one star, and write ${REVIEW_MIN_WORDS}–${REVIEW_MAX_WORDS} words.` };
   await prisma.studioReview.create({ data: { ...parsed.data, language: reviewLanguage(`${parsed.data.reviewerName} ${parsed.data.opinion}`) } });
   revalidatePath("/settings/reviews");
   return { success: "Thank you. Your review was sent for approval." };

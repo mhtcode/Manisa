@@ -8,6 +8,7 @@ type Preview = { name: string; url: string };
 
 export function PhotoUploadField({ disabled = false }: { disabled?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const urlsRef = useRef<string[]>([]);
   const [previews, setPreviews] = useState<Preview[]>([]);
 
@@ -21,7 +22,14 @@ export function PhotoUploadField({ disabled = false }: { disabled?: boolean }) {
 
   function clear() {
     if (inputRef.current) inputRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
     replacePreviews([]);
+  }
+
+  function chooseFiles(files: File[], source: "camera" | "gallery") {
+    if (source === "camera" && inputRef.current) inputRef.current.value = "";
+    if (source === "gallery" && cameraRef.current) cameraRef.current.value = "";
+    replacePreviews(files);
   }
 
   return <section className="rounded-2xl border border-white/9 bg-black/12 p-4 sm:p-5">
@@ -30,9 +38,11 @@ export function PhotoUploadField({ disabled = false }: { disabled?: boolean }) {
       <div className="min-w-0 flex-1"><h3 className="font-semibold text-white">Visit photos <span className="font-normal text-slate-500">· optional</span></h3><p className="mt-1 text-xs leading-5 text-slate-500">Choose up to 8 photos. They are resized automatically for fast gallery loading.</p></div>
     </div>
 
-    <input accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" className="sr-only" disabled={disabled} id="appointmentPhotos" multiple name="appointmentPhotos" onChange={(event) => replacePreviews(Array.from(event.target.files || []))} ref={inputRef} type="file"/>
+    <input accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif" className="sr-only" disabled={disabled} id="appointmentPhotos" multiple name="appointmentPhotos" onChange={(event) => chooseFiles(Array.from(event.target.files || []), "gallery")} ref={inputRef} type="file"/>
+    <input accept="image/*" capture="environment" className="sr-only" disabled={disabled} id="appointmentCameraPhotos" multiple name="appointmentPhotos" onChange={(event) => chooseFiles(Array.from(event.target.files || []), "camera")} ref={cameraRef} type="file"/>
     <div className="mt-4 flex flex-wrap items-center gap-2">
-      <label className={`button-secondary cursor-pointer ${disabled ? "pointer-events-none opacity-50" : ""}`} htmlFor="appointmentPhotos"><ImagePlus size={16}/>{previews.length ? "Change photos" : "Choose photos"}</label>
+      <label className={`button-secondary cursor-pointer ${disabled ? "pointer-events-none opacity-50" : ""}`} htmlFor="appointmentPhotos"><ImagePlus size={16}/>{previews.length ? "Change selection" : "Choose from gallery"}</label>
+      <label className={`button-secondary cursor-pointer ${disabled ? "pointer-events-none opacity-50" : ""}`} htmlFor="appointmentCameraPhotos"><Camera size={16}/>Take photo</label>
       {previews.length > 0 && <><span className="text-xs text-slate-400">{previews.length} selected</span><button aria-label="Clear selected photos" className="flex size-9 items-center justify-center rounded-xl border border-white/10 text-slate-400 transition hover:bg-white/[0.05] hover:text-white" onClick={clear} type="button"><X size={16}/></button></>}
     </div>
 
