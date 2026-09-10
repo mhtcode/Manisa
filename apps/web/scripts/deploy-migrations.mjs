@@ -161,8 +161,57 @@ async function ensureMultiCalendarSchema() {
   if (!names.has("GoogleCalendarConnection_credentialId_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "GoogleCalendarConnection" ADD CONSTRAINT "GoogleCalendarConnection_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "GoogleCalendarCredential"("id") ON DELETE RESTRICT ON UPDATE CASCADE');
 }
 
+async function ensureInstagramCredentialSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "InstagramCredential" (
+      "id" TEXT PRIMARY KEY NOT NULL DEFAULT 'instagram',
+      "appId" TEXT NOT NULL,
+      "encryptedAppSecret" TEXT NOT NULL,
+      "redirectUri" TEXT NOT NULL,
+      "configuredById" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  const [connectionCount] = await prisma.$queryRaw`SELECT COUNT(*)::int AS "count" FROM "InstagramConnection"`;
+  const [credentialCount] = await prisma.$queryRaw`SELECT COUNT(*)::int AS "count" FROM "InstagramCredential"`;
+  if (connectionCount.count > 0 && credentialCount.count === 0) {
+    const appId = process.env.INSTAGRAM_APP_ID;
+    const appSecret = process.env.INSTAGRAM_APP_SECRET;
+    const redirectUri = process.env.INSTAGRAM_REDIRECT_URI;
+    const encryptionKey = process.env.INTEGRATION_ENCRYPTION_KEY;
+    if (!appId || !appSecret || !redirectUri || !encryptionKey) throw new Error("Existing Instagram connections require their current OAuth environment values during this upgrade.");
+    const [configurer] = await prisma.$queryRaw`
+      SELECT COALESCE(
+        (SELECT "connectedById" FROM "InstagramConnection" WHERE "connectedById" IS NOT NULL ORDER BY "createdAt" LIMIT 1),
+        (SELECT "id" FROM "User" WHERE "deletedAt" IS NULL ORDER BY CASE WHEN "role" = 'OWNER' THEN 0 ELSE 1 END, "createdAt" LIMIT 1)
+      ) AS "configuredById"
+    `;
+    if (!configurer?.configuredById) throw new Error("An active user is required to migrate Instagram credentials.");
+    await prisma.$executeRaw`
+      INSERT INTO "InstagramCredential" ("id", "appId", "encryptedAppSecret", "redirectUri", "configuredById", "updatedAt")
+      VALUES ('instagram', ${appId}, ${encryptSecret(appSecret, encryptionKey)}, ${redirectUri}, ${configurer.configuredById}, CURRENT_TIMESTAMP)
+    `;
+  }
+  await prisma.$executeRawUnsafe('ALTER TABLE "InstagramConnection" ADD COLUMN IF NOT EXISTS "credentialId" TEXT');
+  await prisma.$executeRawUnsafe('UPDATE "InstagramConnection" SET "credentialId" = \'instagram\' WHERE "credentialId" IS NULL');
+  await prisma.$executeRawUnsafe('ALTER TABLE "InstagramConnection" ALTER COLUMN "credentialId" SET DEFAULT \'instagram\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "InstagramConnection" ALTER COLUMN "credentialId" SET NOT NULL');
+  const constraints = await prisma.$queryRaw`
+    SELECT conname FROM pg_catalog.pg_constraint
+    WHERE conname IN ('InstagramCredential_configuredById_fkey', 'InstagramConnection_credentialId_fkey')
+  `;
+  const names = new Set(constraints.map((constraint) => constraint.conname));
+  if (!names.has("InstagramCredential_configuredById_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "InstagramCredential" ADD CONSTRAINT "InstagramCredential_configuredById_fkey" FOREIGN KEY ("configuredById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE');
+  if (!names.has("InstagramConnection_credentialId_fkey")) await prisma.$executeRawUnsafe('ALTER TABLE "InstagramConnection" ADD CONSTRAINT "InstagramConnection_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "InstagramCredential"("id") ON DELETE RESTRICT ON UPDATE CASCADE');
+}
+
+async function ensureGalleryCompositionSchema() {
+  await prisma.$executeRawUnsafe('ALTER TABLE "AppointmentPhoto" ADD COLUMN IF NOT EXISTS "comparisonTag" TEXT NOT NULL DEFAULT \'UNTAGGED\'');
+}
+
 async function ensureDatabaseOnlyIntegrityRules() {
-  await prisma.$executeRawUnsafe(`UPDATE "StudioSettings" SET "address" = '77 Finch Avenue East, Toronto, ON' WHERE "address" IS NULL`);
+  await prisma.$executeRawUnsafe(`UPDATE "StudioSettings" SET "address" = '77 Finch Avenue East, Toronto, ON' WHERE "address" IS NULL OR "address" = '65 Finch Avenue East, Toronto, ON'`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ALTER COLUMN "address" SET DEFAULT '77 Finch Avenue East, Toronto, ON'`);
   await prisma.$executeRawUnsafe(`
     CREATE UNIQUE INDEX IF NOT EXISTS "User_single_active_owner_key"
@@ -263,6 +312,8 @@ async function main() {
 
   await ensureReviewSchema();
   await ensureMultiCalendarSchema();
+  await ensureInstagramCredentialSchema();
+  await ensureGalleryCompositionSchema();
   await ensureDatabaseOnlyIntegrityRules();
   await assertExistingSchemaIsCurrent();
   await normalizeMigrationLedger();

@@ -605,6 +605,7 @@ CREATE TABLE "AppointmentPhoto" (
     "status" "MediaStatus" NOT NULL DEFAULT 'READY',
     "errorMessage" TEXT,
     "featuredAt" TIMESTAMP(3),
+    "comparisonTag" TEXT NOT NULL DEFAULT 'UNTAGGED',
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -642,9 +643,23 @@ CREATE TABLE "MediaProcessingJob" (
 );
 
 -- CreateTable
+CREATE TABLE "InstagramCredential" (
+    "id" TEXT NOT NULL DEFAULT 'instagram',
+    "appId" TEXT NOT NULL,
+    "encryptedAppSecret" TEXT NOT NULL,
+    "redirectUri" TEXT NOT NULL,
+    "configuredById" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "InstagramCredential_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "InstagramConnection" (
     "id" TEXT NOT NULL,
     "singletonKey" INTEGER NOT NULL DEFAULT 1,
+    "credentialId" TEXT NOT NULL DEFAULT 'instagram',
     "connectedById" TEXT,
     "instagramUserId" TEXT NOT NULL,
     "username" TEXT,
@@ -1136,7 +1151,13 @@ ALTER TABLE "MediaVariant" ADD CONSTRAINT "MediaVariant_assetId_fkey" FOREIGN KE
 ALTER TABLE "MediaProcessingJob" ADD CONSTRAINT "MediaProcessingJob_assetId_fkey" FOREIGN KEY ("assetId") REFERENCES "AppointmentPhoto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "InstagramCredential" ADD CONSTRAINT "InstagramCredential_configuredById_fkey" FOREIGN KEY ("configuredById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "InstagramConnection" ADD CONSTRAINT "InstagramConnection_connectedById_fkey" FOREIGN KEY ("connectedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "InstagramConnection" ADD CONSTRAINT "InstagramConnection_credentialId_fkey" FOREIGN KEY ("credentialId") REFERENCES "InstagramCredential"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InstagramPost" ADD CONSTRAINT "InstagramPost_connectionId_fkey" FOREIGN KEY ("connectionId") REFERENCES "InstagramConnection"("id") ON DELETE CASCADE ON UPDATE CASCADE;

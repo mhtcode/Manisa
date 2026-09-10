@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { access, mkdir } from "node:fs/promises";
 import sharp from "sharp";
 import { getServerEnv } from "@/lib/env";
+import type { InstagramOAuthConfig } from "@/lib/instagram-config";
 import { instagramCoverUrl, type InstagramMedia } from "@/lib/instagram-media";
 import { absoluteUploadPath } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
@@ -115,14 +116,14 @@ export function syncInstagramConnection(connectionId: string) {
   return sync;
 }
 
-export async function exchangeInstagramCode(code: string) {
+export async function exchangeInstagramCode(code: string, config: InstagramOAuthConfig) {
   const env = getServerEnv();
-  if (!env.INSTAGRAM_APP_ID || !env.INSTAGRAM_APP_SECRET || !env.INSTAGRAM_REDIRECT_URI || !env.INTEGRATION_ENCRYPTION_KEY) throw new Error("Instagram is not configured.");
-  const body = new URLSearchParams({ client_id: env.INSTAGRAM_APP_ID, client_secret: env.INSTAGRAM_APP_SECRET, grant_type: "authorization_code", redirect_uri: env.INSTAGRAM_REDIRECT_URI, code });
+  if (!env.INTEGRATION_ENCRYPTION_KEY) throw new Error("Instagram is not configured.");
+  const body = new URLSearchParams({ client_id: config.appId, client_secret: config.appSecret, grant_type: "authorization_code", redirect_uri: config.redirectUri, code });
   const shortLived = await jsonResponse<{ access_token: string; user_id: number | string }>(await fetch("https://api.instagram.com/oauth/access_token", { method: "POST", body, cache: "no-store", signal: AbortSignal.timeout(15_000) }), "Instagram authorization");
   const longUrl = new URL("https://graph.instagram.com/access_token");
   longUrl.searchParams.set("grant_type", "ig_exchange_token");
-  longUrl.searchParams.set("client_secret", env.INSTAGRAM_APP_SECRET);
+  longUrl.searchParams.set("client_secret", config.appSecret);
   longUrl.searchParams.set("access_token", shortLived.access_token);
   const longLived = await jsonResponse<{ access_token: string; expires_in?: number }>(await fetch(longUrl, { cache: "no-store", signal: AbortSignal.timeout(15_000) }), "Instagram long-lived token exchange");
   const profileUrl = new URL("https://graph.instagram.com/me");

@@ -8,7 +8,6 @@ import { CategoryIcon } from "@/components/category-icon";
 import { PublicReviewForm } from "@/components/public-review-form";
 import { ReviewCarousel } from "@/components/review-carousel";
 import { getCurrentUser } from "@/lib/auth";
-import { instagramConfigured } from "@/lib/env";
 import { instagramCacheIsStale } from "@/lib/instagram-media";
 import { prisma } from "@/lib/prisma";
 import { syncInstagramConnection } from "@/server/instagram";
@@ -27,7 +26,7 @@ export async function StudioLanding() {
     getCurrentUser(),
     prisma.studioCategory.findMany({ where: { active: true, deletedAt: null, services: { some: { active: true, deletedAt: null } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 4, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true, deletedAt: null } } } } } }),
     prisma.mediaAsset.findMany({ where: { deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED" } }, orderBy: { featuredAt: "desc" }, take: 8, select: { id: true } }),
-    instagramConfigured() ? prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 6, select: { id: true, caption: true, permalink: true } } } }) : null,
+    prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 6, select: { id: true, caption: true, permalink: true } } } }),
     prisma.studioReview.findMany({ where: { status: "APPROVED", deletedAt: null }, orderBy: [{ approvedAt: "desc" }, { createdAt: "desc" }], take: 6, select: { id: true, reviewerName: true, rating: true, opinion: true, language: true } }),
   ]);
   if (connection && instagramCacheIsStale(connection.lastSyncedAt)) after(() => syncInstagramConnection(connection.id).catch(() => undefined));

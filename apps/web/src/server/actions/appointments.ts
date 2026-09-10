@@ -231,3 +231,14 @@ export async function setAppointmentPhotoFeatured(photoId: string, featured: boo
   revalidatePath("/gallery");
   revalidatePath("/");
 }
+
+export async function setAppointmentPhotoComparisonTag(photoId: string, comparisonTag: "UNTAGGED" | "BEFORE" | "AFTER") {
+  const user = await requireBusinessPermission("gallery.manage");
+  const photo = await prisma.mediaAsset.findFirst({ where: { id: photoId, deletedAt: null, appointment: { deletedAt: null, status: "COMPLETED" } }, select: { id: true, comparisonTag: true, appointmentId: true } });
+  if (!photo) throw new Error("Photo not found.");
+  await prisma.$transaction([
+    prisma.mediaAsset.update({ where: { id: photoId }, data: { comparisonTag } }),
+    prisma.auditLog.create({ data: { actorId: user.id, actorSnapshot: user.email, action: "gallery.photo_tagged", targetType: "MediaAsset", targetId: photoId, before: { comparisonTag: photo.comparisonTag }, after: { comparisonTag } } }),
+  ]);
+  revalidatePath(`/gallery/${photo.appointmentId}`);
+}

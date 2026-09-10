@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getServerEnv, instagramConfigured } from "@/lib/env";
+import { getServerEnv } from "@/lib/env";
+import { ensureInstagramCredential, getInstagramOAuthConfig } from "@/lib/instagram-config";
 import { verifyInstagramOAuthState } from "@/lib/instagram-oauth-state";
 import { prisma } from "@/lib/prisma";
 import { exchangeInstagramCode, syncInstagramConnection } from "@/server/instagram";
@@ -12,7 +13,8 @@ export async function GET(request: Request) {
   const target = (path: string) => NextResponse.redirect(new URL(path, request.url));
   const user = await getCurrentUser();
   if (!user) return target("/login");
-  if (!instagramConfigured()) return target("/settings/instagram?error=config");
+  const config = await getInstagramOAuthConfig();
+  if (!config) return target("/settings/instagram?error=config");
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -23,7 +25,8 @@ export async function GET(request: Request) {
   if (!code || !payload || payload.userId !== user.id) return target("/settings/instagram?error=state");
 
   try {
-    const token = await exchangeInstagramCode(code);
+    const token = await exchangeInstagramCode(code, config);
+    await ensureInstagramCredential(user.id, config);
     const connection = await prisma.instagramConnection.upsert({ where: { singletonKey: 1 }, create: { singletonKey: 1, connectedById: user.id, ...token }, update: { ...token, connectedById: user.id, lastError: null } });
     try { await syncInstagramConnection(connection.id); } catch { /* The cached feed can be retried from Settings. */ }
     return target("/settings/instagram?success=connected");

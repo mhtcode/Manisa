@@ -147,6 +147,7 @@ model User {
   acceptedInvitations          Invitation[]               @relation("InvitationRecipient")
   auditEvents                  AuditLog[]                 @relation("AuditActor")
   connectedInstagram           InstagramConnection[]      @relation("InstagramConnector")
+  configuredInstagram          InstagramCredential[]      @relation("InstagramCredentialConfigurer")
   connectedGoogleCalendars     GoogleCalendarConnection[] @relation("GoogleCalendarConnector")
   configuredGoogleCalendar     GoogleCalendarCredential[] @relation("GoogleCalendarCredentialConfigurer")
   notificationReceipts         NotificationReceipt[]
@@ -781,6 +782,7 @@ model MediaAsset {
   status        MediaStatus          @default(READY)
   errorMessage  String?
   featuredAt    DateTime?
+  comparisonTag String               @default("UNTAGGED")
   deletedAt     DateTime?
   variants      MediaVariant[]
   jobs          MediaProcessingJob[]
@@ -826,10 +828,12 @@ model MediaProcessingJob {
 }
 
 model InstagramConnection {
-  id                   String          @id @default(cuid())
-  singletonKey         Int             @unique @default(1)
+  id                   String              @id @default(cuid())
+  singletonKey         Int                 @unique @default(1)
+  credentialId         String              @default("instagram")
+  credential           InstagramCredential @relation(fields: [credentialId], references: [id], onDelete: Restrict)
   connectedById        String?
-  connectedBy          User?           @relation("InstagramConnector", fields: [connectedById], references: [id], onDelete: SetNull)
+  connectedBy          User?               @relation("InstagramConnector", fields: [connectedById], references: [id], onDelete: SetNull)
   instagramUserId      String
   username             String?
   encryptedAccessToken String
@@ -837,8 +841,20 @@ model InstagramConnection {
   lastSyncedAt         DateTime?
   lastError            String?
   posts                InstagramPost[]
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model InstagramCredential {
+  id                 String                @id @default("instagram")
+  appId              String
+  encryptedAppSecret String
+  redirectUri        String
+  configuredById     String
+  configuredBy       User                  @relation("InstagramCredentialConfigurer", fields: [configuredById], references: [id], onDelete: Restrict)
+  connections        InstagramConnection[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
 }
 
 model InstagramPost {
