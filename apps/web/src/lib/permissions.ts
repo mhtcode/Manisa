@@ -12,8 +12,8 @@ const allBusinessPermissions = new Set<BusinessPermission>(businessPermissionKey
 const rolePermissions: Record<Role, Set<BusinessPermission>> = {
   OWNER: allBusinessPermissions,
   ADMIN: allBusinessPermissions,
-  MANAGER: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage", "reports.view", "financial.view", "payments.manage", "data.import"]),
-  STAFF: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage"]),
+  MANAGER: new Set(["customers.view", "customers.manage", "appointments.view", "appointments.manage", "services.view", "services.manage", "gallery.view", "gallery.manage", "reports.view", "financial.view", "payments.manage"]),
+  STAFF: new Set(["customers.view", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage"]),
 };
 
 function overrideValue(overrides: Prisma.JsonValue, key: string) {
