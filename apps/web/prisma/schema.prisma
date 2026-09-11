@@ -124,6 +124,19 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum AppointmentSource {
+  ADMIN
+  PUBLIC_BOOKING
+  IMPORT
+}
+
+enum NotificationPreference {
+  NONE
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
 enum PaymentStatus {
   UNPAID
   PAID
@@ -174,6 +187,14 @@ model StudioSettings {
   publicPhone            String?
   publicEmail            String?
   bookingUrl             String?
+  publicBookingEnabled   Boolean  @default(false)
+  publicBookingMessage   String?  @default("Call or message us on WhatsApp to book your appointment.")
+  publicBookingDays      String   @default("1,2,3,4,5,6")
+  publicBookingOpenTime  String   @default("09:00")
+  publicBookingCloseTime String   @default("18:00")
+  publicBookingSlotMins  Int      @default(30)
+  publicBookingLeadHours Int      @default(12)
+  whatsappNumber         String?
   studioTagline          String?
   studioBiography        String?
   financialRetentionDays Int      @default(2190)
@@ -363,6 +384,11 @@ model Appointment {
   expectedDurationMinutes       Int
   actualDurationMinutes         Int?
   status                        AppointmentStatus          @default(SCHEDULED)
+  source                        AppointmentSource          @default(ADMIN)
+  notificationPreference        NotificationPreference     @default(NONE)
+  notificationConsentAt         DateTime?                  @db.Timestamptz(3)
+  notificationEmailSnapshot     String?
+  notificationPhoneSnapshot     String?
   expectedPrice                 Decimal                    @db.Decimal(12, 2)
   finalPrice                    Decimal?                   @db.Decimal(12, 2)
   currency                      String                     @default("CAD") @db.VarChar(3)
@@ -384,6 +410,7 @@ model Appointment {
   @@index([customerId, startAt])
   @@index([serviceId, startAt])
   @@index([status, startAt])
+  @@index([source, startAt])
   @@index([status, completedAt])
   @@index([paymentStatus])
   @@index([deletedAt])

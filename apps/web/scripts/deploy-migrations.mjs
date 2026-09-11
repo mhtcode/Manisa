@@ -210,6 +210,38 @@ async function ensureGalleryCompositionSchema() {
   await prisma.$executeRawUnsafe('ALTER TABLE "AppointmentPhoto" ADD COLUMN IF NOT EXISTS "comparisonTag" TEXT NOT NULL DEFAULT \'UNTAGGED\'');
 }
 
+async function ensurePublicBookingSchema() {
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      CREATE TYPE "AppointmentSource" AS ENUM ('ADMIN', 'PUBLIC_BOOKING', 'IMPORT');
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$
+  `);
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      CREATE TYPE "NotificationPreference" AS ENUM ('NONE', 'EMAIL', 'SMS', 'WHATSAPP');
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$
+  `);
+  await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingEnabled" BOOLEAN NOT NULL DEFAULT false');
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingMessage" TEXT DEFAULT 'Call or message us on WhatsApp to book your appointment.'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingDays" TEXT NOT NULL DEFAULT '1,2,3,4,5,6'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingOpenTime" TEXT NOT NULL DEFAULT '09:00'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingCloseTime" TEXT NOT NULL DEFAULT '18:00'`);
+  await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingSlotMins" INTEGER NOT NULL DEFAULT 30');
+  await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingLeadHours" INTEGER NOT NULL DEFAULT 12');
+  await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "source" "AppointmentSource" NOT NULL DEFAULT \'ADMIN\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "notificationPreference" "NotificationPreference" NOT NULL DEFAULT \'NONE\'');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "notificationConsentAt" TIMESTAMPTZ(3)');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "notificationEmailSnapshot" TEXT');
+  await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "notificationPhoneSnapshot" TEXT');
+  await prisma.$executeRawUnsafe('UPDATE "Appointment" SET "source" = \'IMPORT\' WHERE "importSourceId" IS NOT NULL AND "source" = \'ADMIN\'');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Appointment_source_startAt_idx" ON "Appointment"("source", "startAt")');
+}
+
 async function ensureDatabaseOnlyIntegrityRules() {
   await prisma.$executeRawUnsafe(`UPDATE "StudioSettings" SET "address" = '77 Finch Avenue East, Toronto, ON' WHERE "address" IS NULL OR "address" = '65 Finch Avenue East, Toronto, ON'`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ALTER COLUMN "address" SET DEFAULT '77 Finch Avenue East, Toronto, ON'`);
@@ -314,6 +346,7 @@ async function main() {
   await ensureMultiCalendarSchema();
   await ensureInstagramCredentialSchema();
   await ensureGalleryCompositionSchema();
+  await ensurePublicBookingSchema();
   await ensureDatabaseOnlyIntegrityRules();
   await assertExistingSchemaIsCurrent();
   await normalizeMigrationLedger();

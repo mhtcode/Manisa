@@ -38,16 +38,28 @@ export async function updateSettings(formData: FormData) {
   const publicPhone = optional("publicPhone", 50);
   const publicEmail = optional("publicEmail", 160);
   const bookingUrl = optional("bookingUrl", 500);
+  const whatsappNumber = optional("whatsappNumber", 50);
+  const publicBookingEnabled = formData.get("publicBookingEnabled") === "on";
+  const publicBookingMessage = optional("publicBookingMessage", 300);
+  const publicBookingDays = formData.getAll("bookingDay").map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6).sort().join(",");
+  const publicBookingOpenTime = String(formData.get("publicBookingOpenTime") || "09:00");
+  const publicBookingCloseTime = String(formData.get("publicBookingCloseTime") || "18:00");
+  const publicBookingSlotMins = Number(formData.get("publicBookingSlotMins") || 30);
+  const publicBookingLeadHours = Number(formData.get("publicBookingLeadHours") || 12);
+  if (publicBookingEnabled && !publicBookingDays) throw new Error("Choose at least one online booking day.");
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(publicBookingOpenTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(publicBookingCloseTime) || publicBookingOpenTime >= publicBookingCloseTime) throw new Error("Choose a valid opening and closing time.");
+  if (![15, 30, 45, 60].includes(publicBookingSlotMins) || ![0, 2, 12, 24, 48].includes(publicBookingLeadHours)) throw new Error("Choose valid online booking timing options.");
   const studioTagline = optional("studioTagline", 160);
   const studioBiography = optional("studioBiography", 1200);
   const address = optional("address", 300);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
-    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography } }),
+    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber, publicBookingEnabled, publicBookingMessage, publicBookingDays: publicBookingDays || "1,2,3,4,5,6", publicBookingOpenTime, publicBookingCloseTime, publicBookingSlotMins, publicBookingLeadHours }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber, publicBookingEnabled, publicBookingMessage, publicBookingDays: publicBookingDays || "1,2,3,4,5,6", publicBookingOpenTime, publicBookingCloseTime, publicBookingSlotMins, publicBookingLeadHours } }),
   ]);
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
   (await cookies()).set("manisa_theme", theme.toLowerCase(), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
+  revalidatePath("/");
 }
 
 export async function updateMobileNavigation(formData: FormData) {
@@ -154,6 +166,7 @@ export async function importGoogleCalendar(_previous: CalendarImportState, formD
         currency,
         status: "HISTORICAL",
         importSourceId: event.sourceId,
+        source: "IMPORT",
         notes: [event.description, "Imported from Google Calendar. Manually added/unreported; excluded from income and working-hour totals."].filter(Boolean).join("\n\n"),
         serviceLines: { create: { serviceId, serviceNameSnapshot: event.serviceName, durationMinutes: event.durationMinutes, price: 0 } },
       } });
@@ -268,6 +281,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
           currency,
           status: "HISTORICAL",
           importSourceId: appointment.sourceId,
+          source: "IMPORT",
           notes: [appointment.notes, "Manually added from JSON; excluded from income and working-hour totals."].filter(Boolean).join("\n\n"),
           serviceLines: { create: lineData },
         } });

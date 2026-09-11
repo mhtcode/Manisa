@@ -57,6 +57,12 @@ CREATE TYPE "ReviewStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 CREATE TYPE "AppointmentStatus" AS ENUM ('SCHEDULED', 'CONFIRMED', 'COMPLETED', 'HISTORICAL', 'CANCELLED', 'NO_SHOW');
 
 -- CreateEnum
+CREATE TYPE "AppointmentSource" AS ENUM ('ADMIN', 'PUBLIC_BOOKING', 'IMPORT');
+
+-- CreateEnum
+CREATE TYPE "NotificationPreference" AS ENUM ('NONE', 'EMAIL', 'SMS', 'WHATSAPP');
+
+-- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('UNPAID', 'PAID', 'PARTIALLY_PAID');
 
 -- CreateTable
@@ -90,6 +96,14 @@ CREATE TABLE "StudioSettings" (
     "publicPhone" TEXT,
     "publicEmail" TEXT,
     "bookingUrl" TEXT,
+    "publicBookingEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "publicBookingMessage" TEXT DEFAULT 'Call or message us on WhatsApp to book your appointment.',
+    "publicBookingDays" TEXT NOT NULL DEFAULT '1,2,3,4,5,6',
+    "publicBookingOpenTime" TEXT NOT NULL DEFAULT '09:00',
+    "publicBookingCloseTime" TEXT NOT NULL DEFAULT '18:00',
+    "publicBookingSlotMins" INTEGER NOT NULL DEFAULT 30,
+    "publicBookingLeadHours" INTEGER NOT NULL DEFAULT 12,
+    "whatsappNumber" TEXT,
     "studioTagline" TEXT,
     "studioBiography" TEXT,
     "financialRetentionDays" INTEGER NOT NULL DEFAULT 2190,
@@ -244,6 +258,11 @@ CREATE TABLE "Appointment" (
     "expectedDurationMinutes" INTEGER NOT NULL,
     "actualDurationMinutes" INTEGER,
     "status" "AppointmentStatus" NOT NULL DEFAULT 'SCHEDULED',
+    "source" "AppointmentSource" NOT NULL DEFAULT 'ADMIN',
+    "notificationPreference" "NotificationPreference" NOT NULL DEFAULT 'NONE',
+    "notificationConsentAt" TIMESTAMPTZ(3),
+    "notificationEmailSnapshot" TEXT,
+    "notificationPhoneSnapshot" TEXT,
     "expectedPrice" DECIMAL(12,2) NOT NULL,
     "finalPrice" DECIMAL(12,2),
     "currency" VARCHAR(3) NOT NULL DEFAULT 'CAD',
@@ -792,6 +811,9 @@ CREATE INDEX "Appointment_serviceId_startAt_idx" ON "Appointment"("serviceId", "
 
 -- CreateIndex
 CREATE INDEX "Appointment_status_startAt_idx" ON "Appointment"("status", "startAt");
+
+-- CreateIndex
+CREATE INDEX "Appointment_source_startAt_idx" ON "Appointment"("source", "startAt");
 
 -- CreateIndex
 CREATE INDEX "Appointment_status_completedAt_idx" ON "Appointment"("status", "completedAt");

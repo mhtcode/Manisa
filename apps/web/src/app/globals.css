@@ -42,6 +42,10 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   .field, .input { @apply w-full rounded-2xl border bg-[#0c121b] px-3.5 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none; border-color: rgba(255,255,255,.11); box-shadow: inset 0 1px 0 rgba(255,255,255,.025), 0 8px 24px rgba(0,0,0,.08); transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease; }
   .field:hover, .input:hover { border-color: rgba(255,255,255,.18); background: #0d141e; }
   .field:focus, .field:focus-within, .input:focus, .input:focus-visible { border-color: rgba(96,165,250,.48); background: #0e1621; box-shadow: 0 0 0 3px rgba(59,130,246,.1), inset 0 1px 0 rgba(255,255,255,.04); }
+  .public-field { @apply h-12 w-full rounded-xl bg-[#f7f1ec] px-4 text-sm text-[#30251f] placeholder:text-[#ad9a90] focus:outline-none; box-shadow: inset 0 0 0 1px rgba(86,60,48,.08); transition: background 160ms ease, box-shadow 160ms ease; }
+  textarea.public-field { @apply h-auto py-3; }
+  .public-field:hover { background: #f2e9e2; }
+  .public-field:focus { background: white; box-shadow: 0 0 0 4px rgba(201,130,104,.16), inset 0 0 0 1px rgba(154,93,72,.35); }
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
   .empty { @apply flex min-h-48 flex-col items-center justify-center px-6 text-center text-slate-500; }
