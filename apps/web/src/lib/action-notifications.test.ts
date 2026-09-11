@@ -4,6 +4,15 @@ import { notificationAction } from "./action-notifications";
 const now = new Date("2026-09-03T16:00:00.000Z");
 
 describe("notificationAction", () => {
+  it("sends public booking requests to the admin for review immediately", () => {
+    expect(notificationAction({ id: "request_12345678", status: "REQUESTED", paymentStatus: "UNPAID", startAt: new Date("2026-09-10T14:00:00.000Z"), expectedDurationMinutes: 60 }, now)).toEqual({
+      key: "request:request_12345678",
+      kind: "request",
+      actionHref: "/appointments/request_12345678",
+      actionLabel: "Review request",
+    });
+  });
+
   it("offers direct finalization only after a confirmed visit has ended", () => {
     expect(notificationAction({ id: "visit_12345678", status: "CONFIRMED", paymentStatus: "UNPAID", startAt: new Date("2026-09-03T14:00:00.000Z"), expectedDurationMinutes: 60 }, now)?.actionLabel).toBe("Finalize");
     expect(notificationAction({ id: "visit_12345678", status: "CONFIRMED", paymentStatus: "UNPAID", startAt: new Date("2026-09-03T15:30:00.000Z"), expectedDurationMinutes: 60 }, now)).toBeNull();

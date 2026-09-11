@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { BadgeCheck, CalendarCheck2, CalendarClock, CalendarPlus, History, Layers3, TriangleAlert } from "lucide-react";
+import { BadgeCheck, CalendarCheck2, CalendarClock, CalendarPlus, History, Inbox, Layers3, TriangleAlert } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { BulkSelection, SelectableLink } from "@/components/bulk-selection";
 import { StatusBadge } from "@/components/status-badge";
@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { formatBusinessDate } from "@/lib/time";
 import { bulkMoveToTrash } from "@/server/actions/trash";
 
-const stages = ["scheduled", "confirmed", "finalized", "historical", "exceptions", "all"] as const;
+const stages = ["requested", "scheduled", "confirmed", "finalized", "historical", "exceptions", "all"] as const;
 type Stage = typeof stages[number];
 
 export default async function AppointmentsPage({ searchParams }: { searchParams: Promise<{ stage?: string; status?: string; from?: string }> }) {
@@ -21,11 +21,12 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   const legacyStage = params.status === "COMPLETED" ? "finalized" : params.status === "CONFIRMED" ? "confirmed" : params.status === "CANCELLED" || params.status === "NO_SHOW" ? "exceptions" : params.status ? "scheduled" : undefined;
   const requested = params.stage || legacyStage || "scheduled";
   const stage: Stage = stages.includes(requested as Stage) ? requested as Stage : "scheduled";
-  const stageWhere: Prisma.AppointmentWhereInput = stage === "scheduled" ? { status: "SCHEDULED" } : stage === "confirmed" ? { status: "CONFIRMED" } : stage === "finalized" ? { status: "COMPLETED" } : stage === "historical" ? { status: "HISTORICAL" } : stage === "exceptions" ? { status: { in: ["CANCELLED", "NO_SHOW"] } } : {};
+  const stageWhere: Prisma.AppointmentWhereInput = stage === "requested" ? { status: "REQUESTED" } : stage === "scheduled" ? { status: "SCHEDULED" } : stage === "confirmed" ? { status: "CONFIRMED" } : stage === "finalized" ? { status: "COMPLETED" } : stage === "historical" ? { status: "HISTORICAL" } : stage === "exceptions" ? { status: { in: ["CANCELLED", "NO_SHOW"] } } : {};
   const where: Prisma.AppointmentWhereInput = { deletedAt: null, ...stageWhere };
-  const [appointments, allMatchingIds, scheduledCount, confirmedCount, finalizedCount, historicalCount, exceptionCount, allCount] = await Promise.all([
-    prisma.appointment.findMany({ where, include: { customer: true }, orderBy: { startAt: stage === "scheduled" || stage === "confirmed" ? "asc" : "desc" }, take: 150 }),
+  const [appointments, allMatchingIds, requestCount, scheduledCount, confirmedCount, finalizedCount, historicalCount, exceptionCount, allCount] = await Promise.all([
+    prisma.appointment.findMany({ where, include: { customer: true }, orderBy: { startAt: ["requested", "scheduled", "confirmed"].includes(stage) ? "asc" : "desc" }, take: 150 }),
     prisma.appointment.findMany({ where, select: { id: true } }),
+    prisma.appointment.count({ where: { deletedAt: null, status: "REQUESTED" } }),
     prisma.appointment.count({ where: { deletedAt: null, status: "SCHEDULED" } }),
     prisma.appointment.count({ where: { deletedAt: null, status: "CONFIRMED" } }),
     prisma.appointment.count({ where: { deletedAt: null, status: "COMPLETED" } }),
@@ -33,7 +34,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     prisma.appointment.count({ where: { deletedAt: null, status: { in: ["CANCELLED", "NO_SHOW"] } } }),
     prisma.appointment.count({ where: { deletedAt: null } }),
   ]);
-  const stageTitle = stage === "scheduled" ? "Scheduled estimates" : stage === "confirmed" ? "Confirmed appointments" : stage === "finalized" ? "Finalized visit records" : stage === "historical" ? "Manually added · Unreported" : stage === "exceptions" ? "Cancelled and no-show" : "All appointments";
+  const stageTitle = stage === "requested" ? "Online booking requests" : stage === "scheduled" ? "Scheduled estimates" : stage === "confirmed" ? "Confirmed appointments" : stage === "finalized" ? "Finalized visit records" : stage === "historical" ? "Manually added · Unreported" : stage === "exceptions" ? "Cancelled and no-show" : "All appointments";
   const stageHref = (nextStage: Stage) => `/appointments?stage=${nextStage}${params.from === "settings" ? "&from=settings" : ""}`;
 
   return <>
@@ -43,7 +44,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
       <Link className={`min-w-0 rounded-2xl border p-3 transition active:scale-[.98] sm:p-4 ${stage === "confirmed" ? "border-blue-300/30 bg-blue-400/[0.075]" : "border-white/8 bg-[#0e131b] hover:border-white/15"}`} href={stageHref("confirmed")}><div className="flex items-center justify-between gap-1"><span className="flex size-8 items-center justify-center rounded-xl bg-blue-400/12 text-blue-300 sm:size-9"><CalendarCheck2 size={17}/></span><span className="text-xl font-semibold text-white sm:text-2xl">{confirmedCount}</span></div><p className="mt-2 truncate text-[10px] font-semibold uppercase tracking-wide text-blue-300 sm:mt-3 sm:text-xs">Confirm</p></Link>
       <Link className={`min-w-0 rounded-2xl border p-3 transition active:scale-[.98] sm:p-4 ${stage === "finalized" ? "border-emerald-300/30 bg-emerald-300/[0.075]" : "border-white/8 bg-[#0e131b] hover:border-white/15"}`} href={stageHref("finalized")}><div className="flex items-center justify-between gap-1"><span className="flex size-8 items-center justify-center rounded-xl bg-emerald-300/12 text-emerald-300 sm:size-9"><BadgeCheck size={17}/></span><span className="text-xl font-semibold text-white sm:text-2xl">{finalizedCount}</span></div><p className="mt-2 truncate text-[10px] font-semibold uppercase tracking-wide text-emerald-300 sm:mt-3 sm:text-xs">Finalize</p></Link>
     </div>
-    <div className="mb-4 flex flex-wrap items-center gap-2"><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "historical" ? "border-violet-300/30 bg-violet-300/8 text-violet-200" : ""}`} href={stageHref("historical")}><History size={15}/>Manually added · {historicalCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "exceptions" ? "border-rose-300/30 bg-rose-300/8 text-rose-200" : ""}`} href={stageHref("exceptions")}><TriangleAlert size={15}/>Exceptions · {exceptionCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "all" ? "border-blue-300/30 bg-blue-300/8 text-blue-200" : ""}`} href={stageHref("all")}><Layers3 size={15}/>All · {allCount}</Link></div>
+    <div className="mb-4 flex flex-wrap items-center gap-2"><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "requested" ? "border-fuchsia-300/30 bg-fuchsia-300/8 text-fuchsia-200" : ""}`} href={stageHref("requested")}><Inbox size={15}/>Online requests · {requestCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "historical" ? "border-violet-300/30 bg-violet-300/8 text-violet-200" : ""}`} href={stageHref("historical")}><History size={15}/>Manually added · {historicalCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "exceptions" ? "border-rose-300/30 bg-rose-300/8 text-rose-200" : ""}`} href={stageHref("exceptions")}><TriangleAlert size={15}/>Exceptions · {exceptionCount}</Link><Link className={`button-secondary h-9 min-h-9 shrink-0 px-3 ${stage === "all" ? "border-blue-300/30 bg-blue-300/8 text-blue-200" : ""}`} href={stageHref("all")}><Layers3 size={15}/>All · {allCount}</Link></div>
     <BulkSelection action={bulkMoveToTrash.bind(null, "appointment")} allIds={allMatchingIds.map((item) => item.id)} locale={user.settings?.locale || "en"}><section className="panel overflow-hidden">
       <div className="panel-header"><h2 className="font-medium text-white">{stageTitle}</h2><span className="text-xs text-slate-600">{appointments.length} shown</span></div>
       {appointments.length ? <div className={view === "grid" ? "grid gap-3 p-3 sm:grid-cols-2 xl:grid-cols-3" : "divide-y divide-white/8"}>{appointments.map((item) => {

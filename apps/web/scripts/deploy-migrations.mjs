@@ -211,6 +211,7 @@ async function ensureGalleryCompositionSchema() {
 }
 
 async function ensurePublicBookingSchema() {
+  await prisma.$executeRawUnsafe(`ALTER TYPE "AppointmentStatus" ADD VALUE IF NOT EXISTS 'REQUESTED'`);
   await prisma.$executeRawUnsafe(`
     DO $$ BEGIN
       CREATE TYPE "AppointmentSource" AS ENUM ('ADMIN', 'PUBLIC_BOOKING', 'IMPORT');

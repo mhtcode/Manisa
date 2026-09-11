@@ -116,6 +116,7 @@ enum ReviewStatus {
 }
 
 enum AppointmentStatus {
+  REQUESTED
   SCHEDULED
   CONFIRMED
   COMPLETED

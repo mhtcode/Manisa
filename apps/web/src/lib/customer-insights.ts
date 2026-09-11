@@ -11,7 +11,7 @@ export function buildCustomerInsights(records: CustomerVisitRecord[], now = new 
   const completed = records.filter((record) => record.status === "COMPLETED" && record.startAt <= now);
   const historical = records.filter((record) => record.status === "HISTORICAL" && record.startAt <= now);
   const delivered = [...completed, ...historical].sort((a, b) => b.startAt.valueOf() - a.startAt.valueOf());
-  const upcoming = records.filter((record) => record.startAt > now && ["SCHEDULED", "CONFIRMED"].includes(record.status)).sort((a, b) => a.startAt.valueOf() - b.startAt.valueOf());
+  const upcoming = records.filter((record) => record.startAt > now && ["REQUESTED", "SCHEDULED", "CONFIRMED"].includes(record.status)).sort((a, b) => a.startAt.valueOf() - b.startAt.valueOf());
   const noShows = records.filter((record) => record.status === "NO_SHOW").length;
   const cancelled = records.filter((record) => record.status === "CANCELLED").length;
   const serviceCounts = new Map<string, number>();

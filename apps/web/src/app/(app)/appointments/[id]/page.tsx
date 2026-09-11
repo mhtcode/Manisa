@@ -33,10 +33,11 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const plannedLines = item.serviceLines.length ? item.serviceLines : [{ id: item.serviceId, serviceNameSnapshot: item.serviceNameSnapshot, durationMinutes: item.expectedDurationMinutes, price: item.expectedPrice, selectedColor: null }];
   const estimatedEnd = appointmentExpectedEnd(item.startAt, item.expectedDurationMinutes);
   const now = new Date();
-  const editable = ["SCHEDULED", "CONFIRMED"].includes(item.status);
-  const canConfirm = item.status === "SCHEDULED";
+  const requested = item.status === "REQUESTED";
+  const editable = ["REQUESTED", "SCHEDULED", "CONFIRMED"].includes(item.status);
+  const canConfirm = requested || item.status === "SCHEDULED";
   const canFinalize = canFinalizeAppointment(item.status, item.startAt, item.expectedDurationMinutes, now);
-  const canNoShow = editable && item.startAt <= now;
+  const canNoShow = !requested && editable && item.startAt <= now;
   const finalized = item.status === "COMPLETED";
   const historical = item.status === "HISTORICAL";
   const paymentMethods = finalized ? await prisma.paymentMethod.findMany({ where: { active: true, deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }) : [];
@@ -50,7 +51,8 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   return <>
     <PageHeading title={item.serviceNameSnapshot} description={`${customerName(item.customer)} · ${formatBusinessDate(item.startAt, "en")}`} actions={editable && <Link className="button-secondary" href={`/appointments/${id}/edit`}><Pencil size={16}/>Edit appointment</Link>}/>
 
-    {!historical && <ol aria-label="Appointment progress" className="mb-5 grid min-w-0 grid-cols-3 gap-2">
+    {requested && <section className="mb-5 rounded-2xl border border-fuchsia-300/20 bg-fuchsia-300/[0.07] p-4"><p className="font-semibold text-fuchsia-100">Online booking request</p><p className="mt-1 text-sm leading-6 text-fuchsia-100/65">This time is reserved while you review the customer’s request. Approving confirms the appointment and sends it to connected calendars.</p></section>}
+    {!historical && !requested && <ol aria-label="Appointment progress" className="mb-5 grid min-w-0 grid-cols-3 gap-2">
       {stages.map((stage, index) => { const current = progressIndex === index; const complete = progressIndex > index; const Icon = complete ? Check : stage.icon; return <li aria-current={current ? "step" : undefined} className={`flex min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl border px-1.5 py-2.5 text-center sm:flex-row sm:px-3 ${current ? "border-blue-300/40 bg-gradient-to-br from-blue-500/[0.16] to-blue-900/[0.1]" : complete ? "border-emerald-300/20 bg-emerald-300/[0.055]" : "border-white/8 bg-white/[0.02]"}`} key={stage.title}><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${current ? "bg-blue-400/15 text-blue-200" : complete ? "bg-emerald-300/10 text-emerald-300" : "bg-white/[0.04] text-slate-500"}`}><Icon size={13} strokeWidth={complete ? 3 : 2}/></span><span className={`min-w-0 truncate text-[10px] font-semibold sm:text-xs ${current ? "text-blue-100" : complete ? "text-emerald-200" : "text-slate-400"}`}>{stage.title}</span></li>; })}
     </ol>}
 
@@ -78,11 +80,11 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
 
       <aside className="space-y-5">
         {!historical && <section className="panel p-5"><h2 className="font-medium">Next action</h2><div className="mt-4 grid gap-2">
-          {canConfirm && <form action={setAppointmentStatus.bind(null, id, "CONFIRMED")}><button className="button w-full"><CalendarCheck2 size={17}/>Confirm appointment</button></form>}
+          {canConfirm && <form action={setAppointmentStatus.bind(null, id, "CONFIRMED")}><button className="button w-full"><CalendarCheck2 size={17}/>{requested ? "Approve request" : "Confirm appointment"}</button></form>}
           {item.status === "CONFIRMED" && (canFinalize ? <Link className="button w-full" href={`/appointments/${id}/complete`}><BadgeCheck size={17}/>Finalize visit</Link> : <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3.5"><div className="flex items-center gap-2 text-sm font-medium text-slate-300"><LockKeyhole size={16}/>Finalization locked</div><p className="mt-1.5 text-xs leading-5 text-slate-500">Available after {formatBusinessDate(estimatedEnd, "en")}.</p></div>)}
           {editable && <Link className="button-secondary w-full" href={`/appointments/${id}/edit`}><Pencil size={16}/>Edit estimate</Link>}
           {canNoShow && <form action={setAppointmentStatus.bind(null, id, "NO_SHOW")}><button className="button-secondary w-full">Mark no-show</button></form>}
-          {editable && <form action={setAppointmentStatus.bind(null, id, "CANCELLED")}><button className="button-danger w-full"><XCircle size={16}/>Cancel appointment</button></form>}
+          {editable && <form action={setAppointmentStatus.bind(null, id, "CANCELLED")}><button className="button-danger w-full"><XCircle size={16}/>{requested ? "Reject request" : "Cancel appointment"}</button></form>}
         </div></section>}
         {finalized && <AppointmentPayments appointmentId={id} currency={item.currency} finalPrice={Number(item.finalPrice || 0)} methods={paymentMethods} payments={item.payments} reconciliationRequired={item.paymentReconciliationRequired}/>}
         {finalized && <section className="panel p-5"><div className="mb-4"><h2 className="font-medium text-white">Add visit photos</h2></div><AppointmentPhotoUploadForm action={addAppointmentPhotos.bind(null, id)}/></section>}

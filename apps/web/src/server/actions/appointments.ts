@@ -15,7 +15,7 @@ import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
 
 async function findConflict(startAt: Date, duration: number, excludeId?: string) {
   const candidates = await prisma.appointment.findMany({
-    where: {id: excludeId ? { not: excludeId } : undefined, deletedAt: null, status: { in: ["SCHEDULED", "CONFIRMED"] }, startAt: { gte: subDays(startAt, 1), lt: addDays(startAt, 1) } },
+    where: {id: excludeId ? { not: excludeId } : undefined, deletedAt: null, status: { in: ["REQUESTED", "SCHEDULED", "CONFIRMED"] }, startAt: { gte: subDays(startAt, 1), lt: addDays(startAt, 1) } },
     include: { customer: true },
     orderBy: { startAt: "asc" },
   });
@@ -79,7 +79,7 @@ export async function createAppointment(formData: FormData) {
 export async function updateAppointment(id: string, formData: FormData) {
   const user = await requireBusinessPermission("appointments.manage");
   const current = await prisma.appointment.findFirst({ where: { id, deletedAt: null }, select: { status: true } });
-  if (!current || !["SCHEDULED", "CONFIRMED"].includes(current.status)) return { error: "Only scheduled or confirmed appointments can be edited." };
+  if (!current || !["REQUESTED", "SCHEDULED", "CONFIRMED"].includes(current.status)) return { error: "Only requested, scheduled, or confirmed appointments can be edited." };
   const data = appointmentSchema.parse({ ...Object.fromEntries(formData), serviceIds: formData.getAll("serviceIds") });
   const timezone = user.settings?.timezone || "America/Toronto";
   const startAt = parseBusinessDateTime(data.startAt, timezone);
@@ -103,7 +103,7 @@ export async function updateAppointment(id: string, formData: FormData) {
       currency: primaryService.currency,
       serviceLines: { deleteMany: {}, create: orderedServices.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, selectedColor: selectedColor(formData, service.id, service.supportsColor), position })) },
     } });
-    await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
+    if (current.status !== "REQUESTED") await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
   });
   revalidatePath(`/appointments/${id}`);
   return { success: "Appointment updated.", redirectTo: `/appointments/${id}` };
@@ -203,12 +203,12 @@ export async function setAppointmentStatus(id: string, status: "CANCELLED" | "NO
   const user = await requireBusinessPermission("appointments.manage");
   const appointment = await prisma.appointment.findFirst({ where: { id, deletedAt: null }, select: { status: true, startAt: true } });
   if (!appointment) throw new Error("Appointment not found.");
-  if (status === "CONFIRMED" && appointment.status !== "SCHEDULED") throw new Error("Only scheduled appointments can be confirmed.");
-  if (status === "CANCELLED" && !["SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw new Error("Only upcoming appointments can be cancelled.");
+  if (status === "CONFIRMED" && !["REQUESTED", "SCHEDULED"].includes(appointment.status)) throw new Error("Only requested or scheduled appointments can be confirmed.");
+  if (status === "CANCELLED" && !["REQUESTED", "SCHEDULED", "CONFIRMED"].includes(appointment.status)) throw new Error("Only upcoming appointments can be cancelled.");
   if (status === "NO_SHOW" && (!["SCHEDULED", "CONFIRMED"].includes(appointment.status) || appointment.startAt > new Date())) throw new Error("A future appointment cannot be marked as no-show.");
   await prisma.$transaction(async (tx) => {
     await tx.appointment.update({ where: { id }, data: { status } });
-    await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
+    if (!(appointment.status === "REQUESTED" && status === "CANCELLED")) await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
   });
   revalidatePath(`/appointments/${id}`); revalidatePath("/appointments"); revalidatePath("/calendar"); revalidatePath("/report");
 }

@@ -21,7 +21,7 @@ export async function getPublicBookingAvailability(date: string, requestedServic
   const dayStart = fromZonedTime(`${date}T00:00:00`, settings.timezone);
   const nextKey = new Date(`${date}T12:00:00Z`); nextKey.setUTCDate(nextKey.getUTCDate() + 1);
   const dayEnd = fromZonedTime(`${nextKey.toISOString().slice(0, 10)}T00:00:00`, settings.timezone);
-  const appointments = await prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["SCHEDULED", "CONFIRMED"] }, startAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { startAt: true, expectedDurationMinutes: true } });
+  const appointments = await prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["REQUESTED", "SCHEDULED", "CONFIRMED"] }, startAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { startAt: true, expectedDurationMinutes: true } });
   const windows = normalizeBookingWindows(settings.publicBookingWindows);
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
   const explicitStartTimes = windows[String(weekday)] || [];

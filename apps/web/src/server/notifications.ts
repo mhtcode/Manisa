@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export type ActionNotification = {
   key: string;
-  kind: "overdue" | "payment" | "confirm";
+  kind: "request" | "overdue" | "payment" | "confirm";
   appointmentId: string;
   customerName: string;
   serviceName: string;
@@ -26,6 +26,7 @@ export async function getActionNotifications(userId: string, now = new Date()): 
     where: {
       deletedAt: null,
       OR: [
+        { status: "REQUESTED" },
         { status: { in: ["SCHEDULED", "CONFIRMED"] }, startAt: { gte: recent, lte: soon } },
         { status: "COMPLETED", paymentStatus: { not: "PAID" }, startAt: { gte: recent, lte: now } },
       ],

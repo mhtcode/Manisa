@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { Bell, CalendarCheck2, Check, CheckCheck, ClockAlert, WalletCards } from "lucide-react";
+import { Bell, CalendarCheck2, Check, CheckCheck, ClockAlert, Inbox, WalletCards } from "lucide-react";
 import { DismissiblePopover } from "@/components/dismissible-popover";
 import type { AppLocale } from "@/lib/i18n";
 import { formatBusinessDate } from "@/lib/time";
 import { markAllNotificationsRead, markNotificationRead } from "@/server/actions/notifications";
 import type { ActionNotification } from "@/server/notifications";
 
-const notificationIcons = { overdue: ClockAlert, payment: WalletCards, confirm: CalendarCheck2 } as const;
+const notificationIcons = { request: Inbox, overdue: ClockAlert, payment: WalletCards, confirm: CalendarCheck2 } as const;
 const notificationCopy = {
-  en: { overdue: "Visit is ready to finalize", payment: "Payment needs attention", confirm: "Upcoming visit needs confirmation", title: "Notifications", unread: "unread", actions: "actions", allRead: "Mark all read", markRead: "Mark read", empty: "You’re all caught up", Finalize: "Finalize", Review: "Review", Confirm: "Confirm", "Record payment": "Record payment" },
-  fa: { overdue: "زمان نهایی‌سازی مراجعه رسیده", payment: "پرداخت نیاز به بررسی دارد", confirm: "مراجعه آینده نیاز به تأیید دارد", title: "اعلان‌ها", unread: "خوانده‌نشده", actions: "اقدام", allRead: "خواندن همه", markRead: "خوانده شد", empty: "همه‌چیز بررسی شده", Finalize: "نهایی‌سازی", Review: "بررسی", Confirm: "تأیید", "Record payment": "ثبت پرداخت" },
+  en: { request: "New online booking request", overdue: "Visit is ready to finalize", payment: "Payment needs attention", confirm: "Upcoming visit needs confirmation", title: "Notifications", unread: "unread", actions: "actions", allRead: "Mark all read", markRead: "Mark read", empty: "You’re all caught up", Finalize: "Finalize", Review: "Review", Confirm: "Confirm", "Review request": "Review request", "Record payment": "Record payment" },
+  fa: { request: "درخواست رزرو آنلاین جدید", overdue: "زمان نهایی‌سازی مراجعه رسیده", payment: "پرداخت نیاز به بررسی دارد", confirm: "مراجعه آینده نیاز به تأیید دارد", title: "اعلان‌ها", unread: "خوانده‌نشده", actions: "اقدام", allRead: "خواندن همه", markRead: "خوانده شد", empty: "همه‌چیز بررسی شده", Finalize: "نهایی‌سازی", Review: "بررسی", Confirm: "تأیید", "Review request": "بررسی درخواست", "Record payment": "ثبت پرداخت" },
 } as const;
 
 export function NotificationCenter({ items, locale, timezone }: { items: ActionNotification[]; locale: AppLocale; timezone: string }) {
