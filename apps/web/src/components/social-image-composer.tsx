@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, CalendarDays, Download, ImageIcon, LoaderCircle, Move, SlidersHorizontal, Type, WandSparkles } from "lucide-react";
+import { dividerShareFromPointer } from "@/lib/social-composer";
 
 type ComposerPhoto = { id: string; comparisonTag: string; url: string };
 
@@ -32,6 +33,8 @@ export function SocialImageComposer({ photos }: { photos: ComposerPhoto[] }) {
   const [showTime, setShowTime] = useState(false);
   const [caption, setCaption] = useState("");
   const [previewLoading, setPreviewLoading] = useState(true);
+  const [draggingDivider, setDraggingDivider] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const params = useMemo(() => new URLSearchParams({
     beforeId, afterId, format, layout, beforeShare: String(beforeShare), beforePosition, afterPosition,
@@ -44,6 +47,12 @@ export function SocialImageComposer({ photos }: { photos: ComposerPhoto[] }) {
 
   function refreshPreview() { setPreviewLoading(true); }
   function swapPhotos() { setBeforeId(afterId); setAfterId(beforeId); refreshPreview(); }
+  function moveDivider(event: React.PointerEvent<HTMLDivElement>) {
+    if (!draggingDivider || !previewRef.current) return;
+    const rect = previewRef.current.getBoundingClientRect();
+    setBeforeShare(dividerShareFromPointer(layout === "side" ? event.clientX : event.clientY, layout === "side" ? rect.left : rect.top, layout === "side" ? rect.width : rect.height));
+    refreshPreview();
+  }
 
   return <details className="panel mb-5 overflow-hidden" open>
     <summary className="panel-header cursor-pointer list-none [&::-webkit-details-marker]:hidden">
@@ -71,8 +80,8 @@ export function SocialImageComposer({ photos }: { photos: ComposerPhoto[] }) {
       </div>
 
       <aside className="order-first min-w-0 lg:order-last lg:sticky lg:top-20 lg:self-start">
-        <div className="rounded-2xl bg-black/30 p-2 sm:p-3"><div className={`relative mx-auto overflow-hidden rounded-xl bg-[#070b12] shadow-2xl ${format === "story" ? "aspect-[9/16] max-h-[70vh]" : format === "portrait" ? "aspect-[4/5]" : "aspect-square"}`}>{canCompose ? <><img alt="Live before and after preview" className={`size-full object-contain transition-opacity duration-200 ${previewLoading ? "opacity-35" : "opacity-100"}`} onLoad={() => setPreviewLoading(false)} src={previewUrl}/>{previewLoading && <LoaderCircle aria-hidden className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-blue-200" size={26}/>}</> : <div className="flex size-full items-center justify-center p-8 text-center text-sm text-slate-500">Choose two different photos.</div>}</div></div>
-        <p className="mt-2 text-center text-xs text-slate-500">Live preview · generated only when requested</p>
+        <div className="rounded-2xl bg-black/30 p-2 sm:p-3"><div className={`relative mx-auto touch-none overflow-hidden rounded-xl bg-[#070b12] shadow-2xl ${format === "story" ? "aspect-[9/16] max-h-[70vh]" : format === "portrait" ? "aspect-[4/5]" : "aspect-square"}`} onPointerMove={moveDivider} onPointerUp={() => setDraggingDivider(false)} onPointerCancel={() => setDraggingDivider(false)} ref={previewRef}>{canCompose ? <><img alt="Live before and after preview" className={`pointer-events-none size-full object-contain transition-opacity duration-200 ${previewLoading ? "opacity-35" : "opacity-100"}`} onLoad={() => setPreviewLoading(false)} src={previewUrl}/><button aria-label="Drag divider" className={`absolute z-20 flex items-center justify-center bg-transparent ${layout === "side" ? "inset-y-0 w-8 -translate-x-1/2 cursor-ew-resize" : "inset-x-0 h-8 -translate-y-1/2 cursor-ns-resize"}`} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingDivider(true); }} style={layout === "side" ? { left: `${beforeShare}%` } : { top: `${beforeShare}%` }} type="button"><span className={`rounded-full border-2 border-white bg-fuchsia-500 shadow-xl ${layout === "side" ? "h-12 w-2" : "h-2 w-12"}`}/></button>{previewLoading && <LoaderCircle aria-hidden className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin text-blue-200" size={26}/>}</> : <div className="flex size-full items-center justify-center p-8 text-center text-sm text-slate-500">Choose two different photos.</div>}</div></div>
+        <p className="mt-2 text-center text-xs text-slate-500">Drag the divider directly on the preview · generated only when downloaded</p>
         <a aria-disabled={!canCompose} className={`button mt-3 w-full justify-center ${!canCompose ? "pointer-events-none opacity-45" : ""}`} download href={canCompose ? `/api/media/comparison?${params}` : undefined}><Download size={16}/>Download image</a>
       </aside>
     </div>

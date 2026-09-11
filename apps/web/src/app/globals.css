@@ -46,6 +46,11 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   textarea.public-field { @apply h-auto py-3; }
   .public-field:hover { background: #f2e9e2; }
   .public-field:focus { background: white; box-shadow: 0 0 0 4px rgba(201,130,104,.16), inset 0 0 0 1px rgba(154,93,72,.35); }
+  @keyframes landing-zoom { from { transform: scale(1.02); } to { transform: scale(1.09); } }
+  @keyframes landing-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .landing-hero-image { animation: landing-zoom 16s ease-out both; }
+  .landing-rise { animation: landing-rise .8s cubic-bezier(.22,1,.36,1) both; }
+  @media (prefers-reduced-motion: reduce) { .landing-hero-image, .landing-rise { animation: none; } }
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
   .empty { @apply flex min-h-48 flex-col items-center justify-center px-6 text-center text-slate-500; }
