@@ -60,7 +60,7 @@ services:
   web-init:
     build:
       context: ./apps/web
-      target: database
+      target: migrations
     restart: "no"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
@@ -131,7 +131,7 @@ services:
   media-worker:
     build:
       context: ./apps/web
-      target: media-worker
+      target: worker
     restart: unless-stopped
     init: true
     environment:
@@ -155,7 +155,7 @@ services:
   export-worker:
     build:
       context: ./apps/web
-      target: media-worker
+      target: worker
     restart: unless-stopped
     init: true
     command: ["node", "scripts/export-worker.mjs"]
@@ -180,7 +180,7 @@ services:
     profiles: ["migration"]
     build:
       context: ./apps/web
-      target: media-worker
+      target: worker
     restart: "no"
     command: ["node", "scripts/migrate-legacy-media.mjs"]
     environment:

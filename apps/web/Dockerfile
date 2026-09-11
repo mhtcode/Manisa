@@ -13,7 +13,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
 
-FROM node:24-alpine AS database
+FROM node:24-alpine AS migrations
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=dependencies /app/node_modules ./node_modules
@@ -23,7 +23,7 @@ COPY scripts/deploy-migrations.mjs ./scripts/deploy-migrations.mjs
 RUN npx prisma generate
 CMD ["node", "scripts/deploy-migrations.mjs"]
 
-FROM node:24-alpine AS media-worker
+FROM node:24-alpine AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 worker
