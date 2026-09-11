@@ -48,10 +48,10 @@ jobs:
           target: database
           push: true
           tags: |
-            ${{ vars.DOCKERHUB_USERNAME }}/manisa-database:${{ github.sha }}
-            ${{ vars.DOCKERHUB_USERNAME }}/manisa-database:latest
-          cache-from: type=gha,scope=manisa-database
-          cache-to: type=gha,mode=max,scope=manisa-database
+            ${{ vars.DOCKERHUB_USERNAME }}/manisa-migrations:${{ github.sha }}
+            ${{ vars.DOCKERHUB_USERNAME }}/manisa-migrations:latest
+          cache-from: type=gha,scope=manisa-migrations
+          cache-to: type=gha,mode=max,scope=manisa-migrations
           provenance: true
           sbom: true
 
@@ -59,7 +59,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./apps/web
-          target: media-worker
+          target: worker
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-worker:${{ github.sha }}
