@@ -5,62 +5,115 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
-# Never allow two production release workflows to modify
-# the server at the same time.
 concurrency:
   group: manisa-production-release
   cancel-in-progress: false
 
+env:
+  RELEASE_SHA: ${{ github.sha }}
+  DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+
 jobs:
-  publish:
-    name: Build and Push Production Images
 
-    # workflow_run fires even when CI fails.
-    # Only continue after a successful push-based CI run.
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+  # ============================================================
+  # PRE-FLIGHT
+  # ============================================================
 
+  preflight:
+    name: Validate Production Release
     runs-on: ubuntu-latest
 
-    env:
-      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
-
     steps:
-      - name: Validate release configuration
-        env:
-          BUSINESS_ADDRESS: ${{ vars.NEXT_PUBLIC_BUSINESS_ADDRESS }}
-          INSTAGRAM_URL: ${{ vars.NEXT_PUBLIC_INSTAGRAM_URL }}
+      - name: Verify selected branch
         run: |
           set -euo pipefail
 
-          test -n "$RELEASE_SHA" || {
-            echo "RELEASE_SHA is empty"
+          echo "Selected ref: $GITHUB_REF"
+          echo "Release SHA: $RELEASE_SHA"
+
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "ERROR: Production releases are only allowed from main."
             exit 1
-          }
+          fi
+
+      - name: Validate repository configuration
+        env:
+          BUSINESS_ADDRESS: ${{ vars.NEXT_PUBLIC_BUSINESS_ADDRESS }}
+          INSTAGRAM_URL: ${{ vars.NEXT_PUBLIC_INSTAGRAM_URL }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
 
           test -n "$DOCKERHUB_USERNAME" || {
-            echo "DOCKERHUB_USERNAME repository variable is missing"
+            echo "ERROR: DOCKERHUB_USERNAME variable is missing."
             exit 1
           }
 
           test -n "$BUSINESS_ADDRESS" || {
-            echo "NEXT_PUBLIC_BUSINESS_ADDRESS repository variable is missing"
+            echo "ERROR: NEXT_PUBLIC_BUSINESS_ADDRESS variable is missing."
             exit 1
           }
 
           test -n "$INSTAGRAM_URL" || {
-            echo "NEXT_PUBLIC_INSTAGRAM_URL repository variable is missing"
+            echo "ERROR: NEXT_PUBLIC_INSTAGRAM_URL variable is missing."
             exit 1
           }
 
-          echo "Preparing release:"
-          echo "  SHA: $RELEASE_SHA"
-          echo "  Docker Hub user: $DOCKERHUB_USERNAME"
+          test -n "$DOCKERHUB_TOKEN" || {
+            echo "ERROR: DOCKERHUB_TOKEN secret is missing."
+            exit 1
+          }
 
-      - name: Checkout tested commit
+          echo "Repository configuration looks valid."
+
+      - name: Verify CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          echo "Checking CI for:"
+          echo "  $RELEASE_SHA"
+
+          CI_CONCLUSION="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${RELEASE_SHA}&branch=main&status=completed&per_page=20" \
+              --jq '.workflow_runs[0].conclusion // ""'
+          )"
+
+          if [ -z "$CI_CONCLUSION" ]; then
+            echo "ERROR: No completed CI run was found for:"
+            echo "  $RELEASE_SHA"
+            echo
+            echo "Wait for CI to finish successfully before deploying."
+            exit 1
+          fi
+
+          echo "CI conclusion: $CI_CONCLUSION"
+
+          if [ "$CI_CONCLUSION" != "success" ]; then
+            echo "ERROR: CI did not pass for this commit."
+            exit 1
+          fi
+
+          echo "CI passed."
+
+
+  # ============================================================
+  # BUILD + PUBLISH
+  # ============================================================
+
+  publish:
+    name: Build and Push Production Images
+    needs:
+      - preflight
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout exact release commit
         uses: actions/checkout@v6
         with:
           ref: ${{ env.RELEASE_SHA }}
@@ -74,15 +127,17 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # -------------------------------------------------------
-      # Web
-      # -------------------------------------------------------
+
+      # --------------------------------------------------------
+      # WEB IMAGE
+      # --------------------------------------------------------
 
       - name: Build and push web image
         uses: docker/build-push-action@v7
         with:
           context: ./apps/web
           target: runner
+          platforms: linux/amd64
           push: true
 
           build-args: |
@@ -93,26 +148,36 @@ jobs:
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-web:${{ env.RELEASE_SHA }}
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-web:latest
 
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
+
           cache-from: type=gha,scope=manisa-web
           cache-to: type=gha,mode=max,scope=manisa-web
 
           provenance: true
           sbom: true
 
-      # -------------------------------------------------------
-      # Migrations
-      # -------------------------------------------------------
+
+      # --------------------------------------------------------
+      # MIGRATION IMAGE
+      # --------------------------------------------------------
 
       - name: Build and push migrations image
         uses: docker/build-push-action@v7
         with:
           context: ./apps/web
           target: migrations
+          platforms: linux/amd64
           push: true
 
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-migrations:${{ env.RELEASE_SHA }}
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-migrations:latest
+
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
 
           cache-from: type=gha,scope=manisa-migrations
           cache-to: type=gha,mode=max,scope=manisa-migrations
@@ -120,20 +185,26 @@ jobs:
           provenance: true
           sbom: true
 
-      # -------------------------------------------------------
-      # Worker
-      # -------------------------------------------------------
+
+      # --------------------------------------------------------
+      # WORKER IMAGE
+      # --------------------------------------------------------
 
       - name: Build and push worker image
         uses: docker/build-push-action@v7
         with:
           context: ./apps/web
           target: worker
+          platforms: linux/amd64
           push: true
 
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-worker:${{ env.RELEASE_SHA }}
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-worker:latest
+
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.RELEASE_SHA }}
 
           cache-from: type=gha,scope=manisa-worker
           cache-to: type=gha,mode=max,scope=manisa-worker
@@ -141,20 +212,30 @@ jobs:
           provenance: true
           sbom: true
 
-      - name: Release summary
-        run: |
-          echo "### Docker images published" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`${DOCKERHUB_USERNAME}/manisa-web:${RELEASE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`${DOCKERHUB_USERNAME}/manisa-worker:${RELEASE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`${DOCKERHUB_USERNAME}/manisa-migrations:${RELEASE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
 
+      # --------------------------------------------------------
+      # BUILD SUMMARY
+      # --------------------------------------------------------
+
+      - name: Docker image summary
+        run: |
+          {
+            echo "## Docker images published"
+            echo
+            echo "\`${DOCKERHUB_USERNAME}/manisa-web:${RELEASE_SHA}\`"
+            echo
+            echo "\`${DOCKERHUB_USERNAME}/manisa-worker:${RELEASE_SHA}\`"
+            echo
+            echo "\`${DOCKERHUB_USERNAME}/manisa-migrations:${RELEASE_SHA}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+
+  # ============================================================
+  # PRODUCTION DEPLOYMENT
+  # ============================================================
 
   deploy:
     name: Deploy to Hetzner
-
     needs:
       - publish
 
@@ -164,90 +245,193 @@ jobs:
       name: production
       url: https://manisa.masihtan.com
 
-    env:
-      RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-
     steps:
+
+      # --------------------------------------------------------
+      # SSH CONFIGURATION
+      # --------------------------------------------------------
+
       - name: Configure SSH
         run: |
           set -euo pipefail
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
 
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" \
-            > ~/.ssh/deploy_key
+            > "$HOME/.ssh/deploy_key"
 
-          chmod 600 ~/.ssh/deploy_key
+          chmod 600 "$HOME/.ssh/deploy_key"
 
           printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" \
-            > ~/.ssh/known_hosts
+            > "$HOME/.ssh/known_hosts"
 
-          chmod 600 ~/.ssh/known_hosts
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+
+      # --------------------------------------------------------
+      # SERVER PRE-FLIGHT
+      # --------------------------------------------------------
 
       - name: Verify production server
         run: |
           set -euo pipefail
 
           ssh \
-            -i ~/.ssh/deploy_key \
+            -i "$HOME/.ssh/deploy_key" \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=15 \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             '
-              set -e
+              set -euo pipefail
 
-              echo "Connected to production:"
+              echo "========================================"
+              echo "Production server"
+              echo "========================================"
+
+              echo "Hostname:"
               hostname
+
+              echo
+              echo "User:"
               whoami
 
+              echo
+              echo "Docker:"
               docker --version
+
+              echo
+              echo "Docker Compose:"
               docker compose version
 
-              test -x /opt/manisa/deploy.sh
-              test -r /opt/manisa/.env
-              test -r /opt/manisa/compose.production.yaml
+              echo
+              echo "Checking deployment directory..."
 
-              echo "Production deployment files are ready."
+              test -d /opt/manisa || {
+                echo "ERROR: /opt/manisa does not exist."
+                exit 1
+              }
+
+              test -x /opt/manisa/deploy.sh || {
+                echo "ERROR: deploy.sh is missing or not executable."
+                exit 1
+              }
+
+              test -r /opt/manisa/.env || {
+                echo "ERROR: .env is missing or not readable."
+                exit 1
+              }
+
+              test -r /opt/manisa/compose.production.yaml || {
+                echo "ERROR: compose.production.yaml is missing or not readable."
+                exit 1
+              }
+
+              docker network inspect proxy >/dev/null 2>&1 || {
+                echo "ERROR: Docker network proxy does not exist."
+                exit 1
+              }
+
+              echo
+              echo "Production server pre-flight passed."
             '
+
+
+      # --------------------------------------------------------
+      # DEPLOY EXACT SHA
+      # --------------------------------------------------------
 
       - name: Deploy release
         run: |
           set -euo pipefail
 
-          echo "Deploying release: $RELEASE_SHA"
+          echo "========================================"
+          echo "Deploying Manisa"
+          echo "========================================"
+          echo
+          echo "Release:"
+          echo "  $RELEASE_SHA"
+          echo
 
           ssh \
-            -i ~/.ssh/deploy_key \
+            -i "$HOME/.ssh/deploy_key" \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=15 \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "/opt/manisa/deploy.sh '$RELEASE_SHA'"
 
-      - name: Verify deployed release
+
+      # --------------------------------------------------------
+      # SERVER-SIDE STATUS
+      # --------------------------------------------------------
+
+      - name: Show production status
         run: |
           set -euo pipefail
 
           ssh \
-            -i ~/.ssh/deploy_key \
+            -i "$HOME/.ssh/deploy_key" \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o ConnectTimeout=15 \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "/opt/manisa/deploy.sh status"
 
-      - name: Deployment summary
+
+      # --------------------------------------------------------
+      # INDEPENDENT EXTERNAL CHECK
+      # --------------------------------------------------------
+
+      - name: Verify production endpoint
         run: |
-          echo "### Production deployment succeeded" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Release:" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`$RELEASE_SHA\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "URL: https://manisa.masihtan.com" >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+
+          echo "Checking:"
+          echo "  https://manisa.masihtan.com/api/health"
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --location \
+            --retry 5 \
+            --retry-delay 3 \
+            --max-time 15 \
+            https://manisa.masihtan.com/api/health
+
+          echo
+          echo "Production endpoint is healthy."
+
+
+      # --------------------------------------------------------
+      # SUCCESS SUMMARY
+      # --------------------------------------------------------
+
+      - name: Production deployment summary
+        run: |
+          {
+            echo "## Production deployment succeeded"
+            echo
+            echo "**Release:**"
+            echo
+            echo "\`$RELEASE_SHA\`"
+            echo
+            echo "**Production URL:**"
+            echo
+            echo "https://manisa.masihtan.com"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+
+      # --------------------------------------------------------
+      # CLEAN LOCAL SSH KEY
+      # --------------------------------------------------------
 
       - name: Remove SSH private key
         if: always()
         run: |
-          rm -f ~/.ssh/deploy_key
+          rm -f "$HOME/.ssh/deploy_key"
