@@ -2,7 +2,7 @@ import "server-only";
 
 import { addDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { bookingWeekdays, buildPublicBookingSlots, validDateKey } from "@/lib/public-booking";
+import { buildPublicBookingSlots, normalizeBookingWindows, validDateKey } from "@/lib/public-booking";
 import { prisma } from "@/lib/prisma";
 
 export async function getPublicBookingAvailability(date: string, requestedServiceIds: string[], now = new Date()) {
@@ -22,6 +22,9 @@ export async function getPublicBookingAvailability(date: string, requestedServic
   const nextKey = new Date(`${date}T12:00:00Z`); nextKey.setUTCDate(nextKey.getUTCDate() + 1);
   const dayEnd = fromZonedTime(`${nextKey.toISOString().slice(0, 10)}T00:00:00`, settings.timezone);
   const appointments = await prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["SCHEDULED", "CONFIRMED"] }, startAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { startAt: true, expectedDurationMinutes: true } });
-  const slots = buildPublicBookingSlots({ date, timezone: settings.timezone, openTime: settings.publicBookingOpenTime, closeTime: settings.publicBookingCloseTime, slotMinutes: settings.publicBookingSlotMins, durationMinutes, leadHours: settings.publicBookingLeadHours, enabledWeekdays: bookingWeekdays(settings.publicBookingDays) }, appointments.map((appointment) => ({ startAt: appointment.startAt, durationMinutes: appointment.expectedDurationMinutes })), now);
+  const windows = normalizeBookingWindows(settings.publicBookingWindows);
+  const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+  const explicitStartTimes = windows[String(weekday)] || [];
+  const slots = buildPublicBookingSlots({ date, timezone: settings.timezone, openTime: "00:00", closeTime: "23:59", slotMinutes: 30, durationMinutes, leadHours: settings.publicBookingLeadHours, enabledWeekdays: explicitStartTimes.length ? [weekday] : [], explicitStartTimes }, appointments.map((appointment) => ({ startAt: appointment.startAt, durationMinutes: appointment.expectedDurationMinutes })), now);
   return { available: true as const, slots, durationMinutes, currency: orderedServices[0].currency, totalPrice: orderedServices.reduce((sum, service) => sum + Number(service.defaultPrice), 0).toFixed(2), services: orderedServices };
 }

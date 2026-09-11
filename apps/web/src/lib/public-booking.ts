@@ -1,5 +1,5 @@
 import { fromZonedTime } from "date-fns-tz";
-import { appointmentsOverlap } from "@/lib/scheduling";
+import { appointmentsOverlap } from "./scheduling";
 
 export type PublicBookingWindow = {
   date: string;
@@ -10,6 +10,7 @@ export type PublicBookingWindow = {
   durationMinutes: number;
   leadHours: number;
   enabledWeekdays: number[];
+  explicitStartTimes?: string[];
 };
 
 export type OccupiedAppointment = { startAt: Date; durationMinutes: number };
@@ -28,6 +29,17 @@ export function bookingWeekdays(value: string) {
   return [...new Set(value.split(",").map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))].sort();
 }
 
+export function normalizeBookingWindows(value: unknown): Record<string, string[]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: Record<string, string[]> = {};
+  for (const [day, times] of Object.entries(value)) {
+    if (!/^[0-6]$/.test(day) || !Array.isArray(times)) continue;
+    const valid = [...new Set(times.filter((time): time is string => typeof time === "string" && parseClock(time) !== null))].sort();
+    if (valid.length) result[day] = valid;
+  }
+  return result;
+}
+
 export function buildPublicBookingSlots(window: PublicBookingWindow, occupied: OccupiedAppointment[], now = new Date()) {
   if (!validDateKey(window.date) || !window.enabledWeekdays.includes(new Date(`${window.date}T12:00:00Z`).getUTCDay())) return [];
   const opening = parseClock(window.openTime);
@@ -36,7 +48,11 @@ export function buildPublicBookingSlots(window: PublicBookingWindow, occupied: O
   const interval = Math.min(240, Math.max(5, Math.round(window.slotMinutes)));
   const firstAllowed = new Date(now.getTime() + Math.max(0, window.leadHours) * 60 * 60 * 1000);
   const slots: string[] = [];
-  for (let minute = opening; minute + window.durationMinutes <= closing; minute += interval) {
+  const candidates = window.explicitStartTimes?.length
+    ? window.explicitStartTimes.map(parseClock).filter((minute): minute is number => minute !== null)
+    : Array.from({ length: Math.ceil((closing - opening) / interval) }, (_, index) => opening + index * interval);
+  for (const minute of candidates) {
+    if (minute < opening || minute + window.durationMinutes > closing) continue;
     const time = `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
     const startAt = fromZonedTime(`${window.date}T${time}:00`, window.timezone);
     if (startAt < firstAllowed) continue;

@@ -103,6 +103,7 @@ CREATE TABLE "StudioSettings" (
     "publicBookingCloseTime" TEXT NOT NULL DEFAULT '18:00',
     "publicBookingSlotMins" INTEGER NOT NULL DEFAULT 30,
     "publicBookingLeadHours" INTEGER NOT NULL DEFAULT 12,
+    "publicBookingWindows" JSONB NOT NULL DEFAULT '{}',
     "whatsappNumber" TEXT,
     "studioTagline" TEXT,
     "studioBiography" TEXT,

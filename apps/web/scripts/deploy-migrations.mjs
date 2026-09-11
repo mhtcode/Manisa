@@ -232,6 +232,7 @@ async function ensurePublicBookingSchema() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingCloseTime" TEXT NOT NULL DEFAULT '18:00'`);
   await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingSlotMins" INTEGER NOT NULL DEFAULT 30');
   await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingLeadHours" INTEGER NOT NULL DEFAULT 12');
+  await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "publicBookingWindows" JSONB NOT NULL DEFAULT '{}'::jsonb`);
   await prisma.$executeRawUnsafe('ALTER TABLE "StudioSettings" ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT');
   await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "source" "AppointmentSource" NOT NULL DEFAULT \'ADMIN\'');
   await prisma.$executeRawUnsafe('ALTER TABLE "Appointment" ADD COLUMN IF NOT EXISTS "notificationPreference" "NotificationPreference" NOT NULL DEFAULT \'NONE\'');

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireBusinessPermission, requireUser } from "@/lib/auth";
+import { normalizeBookingWindows } from "@/lib/public-booking";
 import { parseGoogleCalendarIcs } from "@/lib/google-calendar-import";
 import { importCategory, normalizedImportValue, parseManualCalendarJson } from "@/lib/manual-calendar-import";
 import { secureCookiesEnabled } from "@/lib/env";
@@ -39,27 +40,36 @@ export async function updateSettings(formData: FormData) {
   const publicEmail = optional("publicEmail", 160);
   const bookingUrl = optional("bookingUrl", 500);
   const whatsappNumber = optional("whatsappNumber", 50);
-  const publicBookingEnabled = formData.get("publicBookingEnabled") === "on";
-  const publicBookingMessage = optional("publicBookingMessage", 300);
-  const publicBookingDays = formData.getAll("bookingDay").map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6).sort().join(",");
-  const publicBookingOpenTime = String(formData.get("publicBookingOpenTime") || "09:00");
-  const publicBookingCloseTime = String(formData.get("publicBookingCloseTime") || "18:00");
-  const publicBookingSlotMins = Number(formData.get("publicBookingSlotMins") || 30);
-  const publicBookingLeadHours = Number(formData.get("publicBookingLeadHours") || 12);
-  if (publicBookingEnabled && !publicBookingDays) throw new Error("Choose at least one online booking day.");
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(publicBookingOpenTime) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(publicBookingCloseTime) || publicBookingOpenTime >= publicBookingCloseTime) throw new Error("Choose a valid opening and closing time.");
-  if (![15, 30, 45, 60].includes(publicBookingSlotMins) || ![0, 2, 12, 24, 48].includes(publicBookingLeadHours)) throw new Error("Choose valid online booking timing options.");
   const studioTagline = optional("studioTagline", 160);
   const studioBiography = optional("studioBiography", 1200);
   const address = optional("address", 300);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
-    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber, publicBookingEnabled, publicBookingMessage, publicBookingDays: publicBookingDays || "1,2,3,4,5,6", publicBookingOpenTime, publicBookingCloseTime, publicBookingSlotMins, publicBookingLeadHours }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber, publicBookingEnabled, publicBookingMessage, publicBookingDays: publicBookingDays || "1,2,3,4,5,6", publicBookingOpenTime, publicBookingCloseTime, publicBookingSlotMins, publicBookingLeadHours } }),
+    prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber } }),
   ]);
   const secure = secureCookiesEnabled();
   (await cookies()).set("manisa_locale", locale, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
   (await cookies()).set("manisa_theme", theme.toLowerCase(), { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 31536000 });
   revalidatePath("/");
+}
+
+export async function updateOnlineBookingSettings(formData: FormData) {
+  await requireBusinessPermission("business.manage");
+  const enabled = formData.get("publicBookingEnabled") === "on";
+  const leadHours = Number(formData.get("publicBookingLeadHours") || 12);
+  if (![0, 2, 12, 24, 48].includes(leadHours)) throw new Error("Choose a valid minimum notice.");
+  const windows: Record<string, string[]> = {};
+  for (const value of formData.getAll("bookingSlot").map(String)) {
+    const match = value.match(/^([0-6]):(([01]\d|2[0-3]):[0-5]\d)$/);
+    if (!match) continue;
+    (windows[match[1]] ||= []).push(match[2]);
+  }
+  const normalized = normalizeBookingWindows(windows);
+  if (enabled && !Object.keys(normalized).length) throw new Error("Publish at least one available start time before enabling online booking.");
+  const message = String(formData.get("publicBookingMessage") || "").trim().slice(0, 300) || null;
+  await prisma.studioSettings.update({ where: { id: "studio" }, data: { publicBookingEnabled: enabled, publicBookingLeadHours: leadHours, publicBookingMessage: message, publicBookingWindows: normalized } });
+  revalidatePath("/");
+  revalidatePath("/settings/online-booking");
 }
 
 export async function updateMobileNavigation(formData: FormData) {

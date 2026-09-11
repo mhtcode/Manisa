@@ -194,6 +194,7 @@ model StudioSettings {
   publicBookingCloseTime String   @default("18:00")
   publicBookingSlotMins  Int      @default(30)
   publicBookingLeadHours Int      @default(12)
+  publicBookingWindows   Json     @default("{}")
   whatsappNumber         String?
   studioTagline          String?
   studioBiography        String?
