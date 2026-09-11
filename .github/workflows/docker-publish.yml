@@ -45,7 +45,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: ./apps/web
-          target: database
+          target: migrations
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/manisa-migrations:${{ github.sha }}
