@@ -72,6 +72,13 @@ enum MediaVariantKind {
   MEDIUM
   LARGE
   PUBLIC
+  VIDEO_MP4
+  VIDEO_POSTER
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
 }
 
 enum MediaJobStatus {
@@ -138,6 +145,27 @@ enum NotificationPreference {
   WHATSAPP
 }
 
+enum PublicBookingRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+enum UserNotificationKind {
+  BOOKING_REQUEST
+  REVIEW_SUBMITTED
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_FINALIZATION
+  PAYMENT_ATTENTION
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
 enum PaymentStatus {
   UNPAID
   PAID
@@ -170,6 +198,9 @@ model User {
   updatedFinancialTransactions FinancialTransaction[]     @relation("FinancialTransactionUpdater")
   requestedExports             ExportJob[]                @relation("ExportRequester")
   approvedReviews              StudioReview[]             @relation("ReviewApprover")
+  reviewedBookingRequests      PublicBookingRequest[]     @relation("BookingRequestReviewer")
+  notifications                UserNotification[]
+  pushSubscriptions            PushSubscription[]
 
   @@index([role, active])
   @@index([deletedAt])
@@ -349,22 +380,23 @@ model StudioCategory {
 }
 
 model Service {
-  id                        String                     @id @default(cuid())
+  id                        String                        @id @default(cuid())
   name                      String
   description               String?
   defaultDurationMinutes    Int
-  defaultPrice              Decimal                    @db.Decimal(12, 2)
-  currency                  String                     @default("CAD") @db.VarChar(3)
+  defaultPrice              Decimal                       @db.Decimal(12, 2)
+  currency                  String                        @default("CAD") @db.VarChar(3)
   categoryId                String
-  category                  StudioCategory             @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  supportsColor             Boolean                    @default(false)
-  active                    Boolean                    @default(true)
+  category                  StudioCategory                @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  supportsColor             Boolean                       @default(false)
+  active                    Boolean                       @default(true)
   deletedAt                 DateTime?
   appointments              Appointment[]
   appointmentServices       AppointmentService[]
   actualAppointmentServices AppointmentActualService[]
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @updatedAt
+  bookingRequestServices    PublicBookingRequestService[]
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
 
   @@index([name])
   @@index([active])
@@ -406,6 +438,7 @@ model Appointment {
   deletedAt                     DateTime?
   createdAt                     DateTime                   @default(now())
   updatedAt                     DateTime                   @updatedAt
+  bookingRequest                PublicBookingRequest?
 
   @@unique([importSourceId])
   @@index([startAt])
@@ -416,6 +449,102 @@ model Appointment {
   @@index([status, completedAt])
   @@index([paymentStatus])
   @@index([deletedAt])
+}
+
+model PublicBookingRequest {
+  id                     String                        @id @default(cuid())
+  status                 PublicBookingRequestStatus    @default(PENDING)
+  customerName           String
+  phone                  String
+  email                  String?
+  locale                 Locale                        @default(en)
+  notificationPreference NotificationPreference        @default(NONE)
+  notificationConsentAt  DateTime?                     @db.Timestamptz(3)
+  requestedStartAt       DateTime                      @db.Timestamptz(3)
+  durationMinutes        Int
+  totalPrice             Decimal                       @db.Decimal(12, 2)
+  currency               String                        @db.VarChar(3)
+  notes                  String?
+  reviewedById           String?
+  reviewedBy             User?                         @relation("BookingRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt             DateTime?                     @db.Timestamptz(3)
+  appointmentId          String?                       @unique
+  appointment            Appointment?                  @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  services               PublicBookingRequestService[]
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+
+  @@index([status, requestedStartAt])
+  @@index([phone, createdAt])
+  @@index([email, createdAt])
+}
+
+model PublicBookingRequestService {
+  id                  String               @id @default(cuid())
+  requestId           String
+  request             PublicBookingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  serviceId           String?
+  service             Service?             @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceNameSnapshot String
+  durationMinutes     Int
+  price               Decimal              @db.Decimal(12, 2)
+  position            Int                  @default(0)
+  createdAt           DateTime             @default(now())
+
+  @@unique([requestId, serviceId])
+  @@index([requestId, position])
+  @@index([serviceId])
+}
+
+model UserNotification {
+  id         String                 @id @default(cuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       UserNotificationKind
+  title      String
+  body       String
+  actionHref String
+  readAt     DateTime?
+  deliveries NotificationDelivery[]
+  createdAt  DateTime               @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([kind, createdAt])
+}
+
+model PushSubscription {
+  id         String                 @id @default(cuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String                 @unique
+  p256dh     String
+  auth       String
+  active     Boolean                @default(true)
+  lastError  String?
+  deliveries NotificationDelivery[]
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  @@index([userId, active])
+}
+
+model NotificationDelivery {
+  id             String                     @id @default(cuid())
+  notificationId String
+  notification   UserNotification           @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   PushSubscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  status         NotificationDeliveryStatus @default(PENDING)
+  attempts       Int                        @default(0)
+  availableAt    DateTime                   @default(now())
+  lockedAt       DateTime?
+  lastError      String?
+  sentAt         DateTime?
+  createdAt      DateTime                   @default(now())
+  updatedAt      DateTime                   @updatedAt
+
+  @@unique([notificationId, subscriptionId])
+  @@index([status, availableAt])
 }
 
 model GoogleCalendarConnection {
@@ -802,6 +931,9 @@ model MediaAsset {
   appointmentId String?
   appointment   Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   originalName  String
+  mediaType     MediaType            @default(IMAGE)
+  mimeType      String               @default("image/webp")
+  durationMs    Int?
   objectKey     String?              @unique
   imagePath     String?              @unique
   thumbnailPath String?              @unique

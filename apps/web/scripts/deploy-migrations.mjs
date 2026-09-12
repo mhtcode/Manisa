@@ -244,6 +244,125 @@ async function ensurePublicBookingSchema() {
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Appointment_source_startAt_idx" ON "Appointment"("source", "startAt")');
 }
 
+async function ensureBookingNotificationAndMediaSchema() {
+  for (const [name, values] of [
+    ["PublicBookingRequestStatus", "'PENDING', 'APPROVED', 'DECLINED'"],
+    ["UserNotificationKind", "'BOOKING_REQUEST', 'REVIEW_SUBMITTED', 'APPOINTMENT_CONFIRMATION', 'APPOINTMENT_FINALIZATION', 'PAYMENT_ATTENTION'"],
+    ["NotificationDeliveryStatus", "'PENDING', 'PROCESSING', 'SENT', 'FAILED'"],
+    ["MediaType", "'IMAGE', 'VIDEO'"],
+  ]) {
+    await prisma.$executeRawUnsafe(`DO $$ BEGIN CREATE TYPE "${name}" AS ENUM (${values}); EXCEPTION WHEN duplicate_object THEN NULL; END $$`);
+  }
+  await prisma.$executeRawUnsafe(`ALTER TYPE "MediaVariantKind" ADD VALUE IF NOT EXISTS 'VIDEO_MP4'`);
+  await prisma.$executeRawUnsafe(`ALTER TYPE "MediaVariantKind" ADD VALUE IF NOT EXISTS 'VIDEO_POSTER'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "AppointmentPhoto" ADD COLUMN IF NOT EXISTS "mediaType" "MediaType" NOT NULL DEFAULT 'IMAGE'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "AppointmentPhoto" ADD COLUMN IF NOT EXISTS "mimeType" TEXT NOT NULL DEFAULT 'image/webp'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "AppointmentPhoto" ADD COLUMN IF NOT EXISTS "durationMs" INTEGER`);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PublicBookingRequest" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "status" "PublicBookingRequestStatus" NOT NULL DEFAULT 'PENDING',
+      "customerName" TEXT NOT NULL,
+      "phone" TEXT NOT NULL,
+      "email" TEXT,
+      "locale" "Locale" NOT NULL DEFAULT 'en',
+      "notificationPreference" "NotificationPreference" NOT NULL DEFAULT 'NONE',
+      "notificationConsentAt" TIMESTAMPTZ(3),
+      "requestedStartAt" TIMESTAMPTZ(3) NOT NULL,
+      "durationMinutes" INTEGER NOT NULL,
+      "totalPrice" DECIMAL(12,2) NOT NULL,
+      "currency" VARCHAR(3) NOT NULL,
+      "notes" TEXT,
+      "reviewedById" TEXT,
+      "reviewedAt" TIMESTAMPTZ(3),
+      "appointmentId" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PublicBookingRequestService" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "requestId" TEXT NOT NULL,
+      "serviceId" TEXT,
+      "serviceNameSnapshot" TEXT NOT NULL,
+      "durationMinutes" INTEGER NOT NULL,
+      "price" DECIMAL(12,2) NOT NULL,
+      "position" INTEGER NOT NULL DEFAULT 0,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "UserNotification" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "userId" TEXT NOT NULL,
+      "kind" "UserNotificationKind" NOT NULL,
+      "title" TEXT NOT NULL,
+      "body" TEXT NOT NULL,
+      "actionHref" TEXT NOT NULL,
+      "readAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "PushSubscription" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "userId" TEXT NOT NULL,
+      "endpoint" TEXT NOT NULL,
+      "p256dh" TEXT NOT NULL,
+      "auth" TEXT NOT NULL,
+      "active" BOOLEAN NOT NULL DEFAULT true,
+      "lastError" TEXT,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "NotificationDelivery" (
+      "id" TEXT PRIMARY KEY NOT NULL,
+      "notificationId" TEXT NOT NULL,
+      "subscriptionId" TEXT NOT NULL,
+      "status" "NotificationDeliveryStatus" NOT NULL DEFAULT 'PENDING',
+      "attempts" INTEGER NOT NULL DEFAULT 0,
+      "availableAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "lockedAt" TIMESTAMP(3),
+      "lastError" TEXT,
+      "sentAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP(3) NOT NULL
+    )
+  `);
+  const statements = [
+    `CREATE UNIQUE INDEX IF NOT EXISTS "PublicBookingRequest_appointmentId_key" ON "PublicBookingRequest"("appointmentId")`,
+    `CREATE INDEX IF NOT EXISTS "PublicBookingRequest_status_requestedStartAt_idx" ON "PublicBookingRequest"("status", "requestedStartAt")`,
+    `CREATE INDEX IF NOT EXISTS "PublicBookingRequest_phone_createdAt_idx" ON "PublicBookingRequest"("phone", "createdAt")`,
+    `CREATE INDEX IF NOT EXISTS "PublicBookingRequest_email_createdAt_idx" ON "PublicBookingRequest"("email", "createdAt")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "PublicBookingRequestService_requestId_serviceId_key" ON "PublicBookingRequestService"("requestId", "serviceId")`,
+    `CREATE INDEX IF NOT EXISTS "PublicBookingRequestService_requestId_position_idx" ON "PublicBookingRequestService"("requestId", "position")`,
+    `CREATE INDEX IF NOT EXISTS "PublicBookingRequestService_serviceId_idx" ON "PublicBookingRequestService"("serviceId")`,
+    `CREATE INDEX IF NOT EXISTS "UserNotification_userId_readAt_createdAt_idx" ON "UserNotification"("userId", "readAt", "createdAt")`,
+    `CREATE INDEX IF NOT EXISTS "UserNotification_kind_createdAt_idx" ON "UserNotification"("kind", "createdAt")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "PushSubscription_endpoint_key" ON "PushSubscription"("endpoint")`,
+    `CREATE INDEX IF NOT EXISTS "PushSubscription_userId_active_idx" ON "PushSubscription"("userId", "active")`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "NotificationDelivery_notificationId_subscriptionId_key" ON "NotificationDelivery"("notificationId", "subscriptionId")`,
+    `CREATE INDEX IF NOT EXISTS "NotificationDelivery_status_availableAt_idx" ON "NotificationDelivery"("status", "availableAt")`,
+  ];
+  for (const statement of statements) await prisma.$executeRawUnsafe(statement);
+  const constraints = [
+    ["PublicBookingRequest_reviewedById_fkey", `ALTER TABLE "PublicBookingRequest" ADD CONSTRAINT "PublicBookingRequest_reviewedById_fkey" FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE`],
+    ["PublicBookingRequest_appointmentId_fkey", `ALTER TABLE "PublicBookingRequest" ADD CONSTRAINT "PublicBookingRequest_appointmentId_fkey" FOREIGN KEY ("appointmentId") REFERENCES "Appointment"("id") ON DELETE SET NULL ON UPDATE CASCADE`],
+    ["PublicBookingRequestService_requestId_fkey", `ALTER TABLE "PublicBookingRequestService" ADD CONSTRAINT "PublicBookingRequestService_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "PublicBookingRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
+    ["PublicBookingRequestService_serviceId_fkey", `ALTER TABLE "PublicBookingRequestService" ADD CONSTRAINT "PublicBookingRequestService_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE SET NULL ON UPDATE CASCADE`],
+    ["UserNotification_userId_fkey", `ALTER TABLE "UserNotification" ADD CONSTRAINT "UserNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
+    ["PushSubscription_userId_fkey", `ALTER TABLE "PushSubscription" ADD CONSTRAINT "PushSubscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
+    ["NotificationDelivery_notificationId_fkey", `ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_notificationId_fkey" FOREIGN KEY ("notificationId") REFERENCES "UserNotification"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
+    ["NotificationDelivery_subscriptionId_fkey", `ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "PushSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE`],
+  ];
+  const existing = await prisma.$queryRawUnsafe(`SELECT conname FROM pg_catalog.pg_constraint WHERE conname = ANY($1::text[])`, constraints.map(([name]) => name));
+  const existingNames = new Set(existing.map((item) => item.conname));
+  for (const [name, statement] of constraints) if (!existingNames.has(name)) await prisma.$executeRawUnsafe(statement);
+}
+
 async function ensureDatabaseOnlyIntegrityRules() {
   await prisma.$executeRawUnsafe(`UPDATE "StudioSettings" SET "address" = '77 Finch Avenue East, Toronto, ON' WHERE "address" IS NULL OR "address" = '65 Finch Avenue East, Toronto, ON'`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "StudioSettings" ALTER COLUMN "address" SET DEFAULT '77 Finch Avenue East, Toronto, ON'`);
@@ -349,6 +468,7 @@ async function main() {
   await ensureInstagramCredentialSchema();
   await ensureGalleryCompositionSchema();
   await ensurePublicBookingSchema();
+  await ensureBookingNotificationAndMediaSchema();
   await ensureDatabaseOnlyIntegrityRules();
   await assertExistingSchemaIsCurrent();
   await normalizeMigrationLedger();

@@ -12,6 +12,7 @@ describe("studio permissions", () => {
     expect(hasBusinessPermission("STAFF", {}, "customers.manage")).toBe(false);
     expect(hasBusinessPermission("STAFF", {}, "financial.view")).toBe(false);
     expect(hasBusinessPermission("STAFF", {}, "trash.manage")).toBe(false);
+    expect(hasBusinessPermission("STAFF", {}, "reviews.manage")).toBe(false);
   });
 
   it("gives managers operational control without studio administration", () => {
@@ -19,6 +20,7 @@ describe("studio permissions", () => {
     expect(hasBusinessPermission("MANAGER", {}, "financial.view")).toBe(true);
     expect(hasBusinessPermission("MANAGER", {}, "business.manage")).toBe(false);
     expect(hasBusinessPermission("MANAGER", {}, "data.import")).toBe(false);
+    expect(hasBusinessPermission("MANAGER", {}, "reviews.manage")).toBe(true);
   });
 
   it("applies explicit grants and denials after the role preset", () => {

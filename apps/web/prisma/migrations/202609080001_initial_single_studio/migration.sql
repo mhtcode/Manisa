@@ -30,7 +30,10 @@ CREATE TYPE "ExportJobStatus" AS ENUM ('QUEUED', 'PROCESSING', 'READY', 'FAILED'
 CREATE TYPE "MediaStatus" AS ENUM ('STAGING', 'PROCESSING', 'READY', 'FAILED');
 
 -- CreateEnum
-CREATE TYPE "MediaVariantKind" AS ENUM ('AVATAR_SMALL', 'AVATAR_LARGE', 'THUMBNAIL', 'MEDIUM', 'LARGE', 'PUBLIC');
+CREATE TYPE "MediaVariantKind" AS ENUM ('AVATAR_SMALL', 'AVATAR_LARGE', 'THUMBNAIL', 'MEDIUM', 'LARGE', 'PUBLIC', 'VIDEO_MP4', 'VIDEO_POSTER');
+
+-- CreateEnum
+CREATE TYPE "MediaType" AS ENUM ('IMAGE', 'VIDEO');
 
 -- CreateEnum
 CREATE TYPE "MediaJobStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED');
@@ -61,6 +64,15 @@ CREATE TYPE "AppointmentSource" AS ENUM ('ADMIN', 'PUBLIC_BOOKING', 'IMPORT');
 
 -- CreateEnum
 CREATE TYPE "NotificationPreference" AS ENUM ('NONE', 'EMAIL', 'SMS', 'WHATSAPP');
+
+-- CreateEnum
+CREATE TYPE "PublicBookingRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'DECLINED');
+
+-- CreateEnum
+CREATE TYPE "UserNotificationKind" AS ENUM ('BOOKING_REQUEST', 'REVIEW_SUBMITTED', 'APPOINTMENT_CONFIRMATION', 'APPOINTMENT_FINALIZATION', 'PAYMENT_ATTENTION');
+
+-- CreateEnum
+CREATE TYPE "NotificationDeliveryStatus" AS ENUM ('PENDING', 'PROCESSING', 'SENT', 'FAILED');
 
 -- CreateEnum
 CREATE TYPE "PaymentStatus" AS ENUM ('UNPAID', 'PAID', 'PARTIALLY_PAID');
@@ -616,6 +628,9 @@ CREATE TABLE "AppointmentPhoto" (
     "customerId" TEXT,
     "appointmentId" TEXT,
     "originalName" TEXT NOT NULL,
+    "mediaType" "MediaType" NOT NULL DEFAULT 'IMAGE',
+    "mimeType" TEXT NOT NULL DEFAULT 'image/webp',
+    "durationMs" INTEGER,
     "objectKey" TEXT,
     "imagePath" TEXT,
     "thumbnailPath" TEXT,
@@ -660,6 +675,90 @@ CREATE TABLE "MediaProcessingJob" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "MediaProcessingJob_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PublicBookingRequest" (
+    "id" TEXT NOT NULL,
+    "status" "PublicBookingRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "customerName" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "email" TEXT,
+    "locale" "Locale" NOT NULL DEFAULT 'en',
+    "notificationPreference" "NotificationPreference" NOT NULL DEFAULT 'NONE',
+    "notificationConsentAt" TIMESTAMPTZ(3),
+    "requestedStartAt" TIMESTAMPTZ(3) NOT NULL,
+    "durationMinutes" INTEGER NOT NULL,
+    "totalPrice" DECIMAL(12,2) NOT NULL,
+    "currency" VARCHAR(3) NOT NULL,
+    "notes" TEXT,
+    "reviewedById" TEXT,
+    "reviewedAt" TIMESTAMPTZ(3),
+    "appointmentId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PublicBookingRequest_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PublicBookingRequestService" (
+    "id" TEXT NOT NULL,
+    "requestId" TEXT NOT NULL,
+    "serviceId" TEXT,
+    "serviceNameSnapshot" TEXT NOT NULL,
+    "durationMinutes" INTEGER NOT NULL,
+    "price" DECIMAL(12,2) NOT NULL,
+    "position" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PublicBookingRequestService_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserNotification" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "kind" "UserNotificationKind" NOT NULL,
+    "title" TEXT NOT NULL,
+    "body" TEXT NOT NULL,
+    "actionHref" TEXT NOT NULL,
+    "readAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UserNotification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PushSubscription" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "endpoint" TEXT NOT NULL,
+    "p256dh" TEXT NOT NULL,
+    "auth" TEXT NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "lastError" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "PushSubscription_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "NotificationDelivery" (
+    "id" TEXT NOT NULL,
+    "notificationId" TEXT NOT NULL,
+    "subscriptionId" TEXT NOT NULL,
+    "status" "NotificationDeliveryStatus" NOT NULL DEFAULT 'PENDING',
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "availableAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lockedAt" TIMESTAMP(3),
+    "lastError" TEXT,
+    "sentAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "NotificationDelivery_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -1024,6 +1123,45 @@ CREATE UNIQUE INDEX "MediaVariant_assetId_kind_key" ON "MediaVariant"("assetId",
 CREATE INDEX "MediaProcessingJob_status_availableAt_idx" ON "MediaProcessingJob"("status", "availableAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PublicBookingRequest_appointmentId_key" ON "PublicBookingRequest"("appointmentId");
+
+-- CreateIndex
+CREATE INDEX "PublicBookingRequest_status_requestedStartAt_idx" ON "PublicBookingRequest"("status", "requestedStartAt");
+
+-- CreateIndex
+CREATE INDEX "PublicBookingRequest_phone_createdAt_idx" ON "PublicBookingRequest"("phone", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "PublicBookingRequest_email_createdAt_idx" ON "PublicBookingRequest"("email", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PublicBookingRequestService_requestId_serviceId_key" ON "PublicBookingRequestService"("requestId", "serviceId");
+
+-- CreateIndex
+CREATE INDEX "PublicBookingRequestService_requestId_position_idx" ON "PublicBookingRequestService"("requestId", "position");
+
+-- CreateIndex
+CREATE INDEX "PublicBookingRequestService_serviceId_idx" ON "PublicBookingRequestService"("serviceId");
+
+-- CreateIndex
+CREATE INDEX "UserNotification_userId_readAt_createdAt_idx" ON "UserNotification"("userId", "readAt", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "UserNotification_kind_createdAt_idx" ON "UserNotification"("kind", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PushSubscription_endpoint_key" ON "PushSubscription"("endpoint");
+
+-- CreateIndex
+CREATE INDEX "PushSubscription_userId_active_idx" ON "PushSubscription"("userId", "active");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "NotificationDelivery_notificationId_subscriptionId_key" ON "NotificationDelivery"("notificationId", "subscriptionId");
+
+-- CreateIndex
+CREATE INDEX "NotificationDelivery_status_availableAt_idx" ON "NotificationDelivery"("status", "availableAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "InstagramConnection_singletonKey_key" ON "InstagramConnection"("singletonKey");
 
 -- CreateIndex
@@ -1172,6 +1310,30 @@ ALTER TABLE "MediaVariant" ADD CONSTRAINT "MediaVariant_assetId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "MediaProcessingJob" ADD CONSTRAINT "MediaProcessingJob_assetId_fkey" FOREIGN KEY ("assetId") REFERENCES "AppointmentPhoto"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PublicBookingRequest" ADD CONSTRAINT "PublicBookingRequest_reviewedById_fkey" FOREIGN KEY ("reviewedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PublicBookingRequest" ADD CONSTRAINT "PublicBookingRequest_appointmentId_fkey" FOREIGN KEY ("appointmentId") REFERENCES "Appointment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PublicBookingRequestService" ADD CONSTRAINT "PublicBookingRequestService_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "PublicBookingRequest"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PublicBookingRequestService" ADD CONSTRAINT "PublicBookingRequestService_serviceId_fkey" FOREIGN KEY ("serviceId") REFERENCES "Service"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "UserNotification" ADD CONSTRAINT "UserNotification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PushSubscription" ADD CONSTRAINT "PushSubscription_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_notificationId_fkey" FOREIGN KEY ("notificationId") REFERENCES "UserNotification"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "NotificationDelivery" ADD CONSTRAINT "NotificationDelivery_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "PushSubscription"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "InstagramCredential" ADD CONSTRAINT "InstagramCredential_configuredById_fkey" FOREIGN KEY ("configuredById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
