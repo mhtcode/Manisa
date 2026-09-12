@@ -13,6 +13,17 @@ export function publicReviewSummary(ratings: number[]) {
   return { count: ratings.length, average: Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10 };
 }
 
+export function resolvePublicServiceCategory(ids: string[], active?: string) {
+  return active && ids.includes(active) ? active : ids[0] || "";
+}
+
+export function resolvePublicSectionAtLine(sections: { id: string; top: number; bottom: number }[], line: number) {
+  return sections.find((section) => section.top <= line && section.bottom > line)?.id
+    || [...sections].reverse().find((section) => section.top <= line)?.id
+    || sections[0]?.id
+    || "";
+}
+
 export const publicCopy = {
   en: {
     navServices: "Services", navWork: "Our work", navAbout: "About us", navReviews: "Reviews", navLocation: "Location", login: "Login",
