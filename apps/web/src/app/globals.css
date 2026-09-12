@@ -49,10 +49,10 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   .public-field:focus { background: var(--public-card); box-shadow: 0 0 0 4px var(--public-accent-soft), inset 0 0 0 1px var(--public-accent); }
   .public-control { @apply inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-bold transition; color: var(--public-ink); background: var(--public-soft); }
   .public-control:hover { transform: translateY(-1px); background: var(--public-card); box-shadow: 0 8px 24px rgba(37,24,19,.09); }
-  .public-login { @apply inline-flex min-h-10 items-center justify-center rounded-full px-4 text-xs font-bold transition sm:px-5 sm:text-sm; color: var(--public-bg); background: var(--public-ink); }
+  .public-login { @apply inline-flex min-h-10 items-center justify-center rounded-full px-4 text-xs font-bold transition sm:px-5 sm:text-sm; color: var(--public-bg) !important; background: var(--public-ink); }
   .public-login:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(37,24,19,.16); }
-  .public-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40; background: var(--public-accent); box-shadow: 0 12px 30px color-mix(in srgb, var(--public-accent) 28%, transparent); }
-  .public-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 36px color-mix(in srgb, var(--public-accent) 38%, transparent); }
+  .public-primary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40; color: #fff !important; background: var(--public-button); box-shadow: 0 12px 30px color-mix(in srgb, var(--public-button) 28%, transparent); }
+  .public-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 16px 36px color-mix(in srgb, var(--public-button) 38%, transparent); }
   .public-secondary { @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 font-semibold transition; color: var(--public-ink); background: var(--public-soft); box-shadow: inset 0 0 0 1px var(--public-line); }
   .public-secondary:hover { transform: translateY(-1px); background: var(--public-card); }
   .public-section { @apply px-5 py-20 sm:px-8 lg:px-10 lg:py-28; }
@@ -63,18 +63,23 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   @keyframes landing-zoom { from { transform: scale(1.02); } to { transform: scale(1.09); } }
   @keyframes landing-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes public-float { 0%, 100% { transform: translate3d(0,0,0) scale(1); } 50% { transform: translate3d(0,18px,0) scale(1.05); } }
+  @keyframes public-orbit { 0%, 100% { transform: translate3d(0,0,0) rotate(0deg); } 50% { transform: translate3d(-1.5rem,1rem,0) rotate(12deg); } }
   .landing-hero-image { animation: landing-zoom 16s ease-out both; }
   .landing-rise { animation: landing-rise .8s cubic-bezier(.22,1,.36,1) both; }
-  @media (prefers-reduced-motion: reduce) { .landing-hero-image, .landing-rise { animation: none; } }
+  .public-cta-orbit { animation: public-orbit 9s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .landing-hero-image, .landing-rise, .public-cta-orbit { animation: none; } }
   .label { @apply mb-2 block text-sm font-medium text-slate-300; }
   .badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium; }
   .empty { @apply flex min-h-48 flex-col items-center justify-center px-6 text-center text-slate-500; }
   .stat { @apply min-w-0 rounded-2xl border bg-gradient-to-b from-[#101721] to-[#0d131b] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.15)] sm:p-6; border-color: rgba(255,255,255,.06); }
 }
 
-.public-site[data-public-theme="light"] { color-scheme: light; --public-bg: #f7f3ee; --public-card: rgba(255,255,255,.82); --public-nav: rgba(247,243,238,.78); --public-soft: #eee7df; --public-ink: #2d2522; --public-muted: #75655e; --public-line: rgba(68,45,36,.13); --public-accent: #a84f70; --public-accent-soft: rgba(168,79,112,.13); --public-accent-2: #e2a38f; }
-.public-site[data-public-theme="dark"] { color-scheme: dark; --public-bg: #111315; --public-card: rgba(28,29,31,.88); --public-nav: rgba(17,19,21,.78); --public-soft: #202326; --public-ink: #f5eee9; --public-muted: #b7aaa3; --public-line: rgba(255,255,255,.11); --public-accent: #d77c9d; --public-accent-soft: rgba(215,124,157,.14); --public-accent-2: #efad96; }
+.public-site[data-public-theme="light"] { color-scheme: light; --public-bg: #f7f3ee; --public-card: rgba(255,255,255,.88); --public-nav: rgba(247,243,238,.86); --public-soft: #ede5dc; --public-ink: #2b211e; --public-muted: #66554e; --public-line: rgba(68,45,36,.17); --public-accent: #8d3657; --public-button: #83304f; --public-accent-soft: rgba(141,54,87,.13); --public-accent-2: #f0af96; }
+.public-site[data-public-theme="dark"] { color-scheme: dark; --public-bg: #101214; --public-card: rgba(29,30,33,.94); --public-nav: rgba(16,18,20,.88); --public-soft: #202326; --public-ink: #fff8f2; --public-muted: #c9bbb4; --public-line: rgba(255,255,255,.15); --public-accent: #efa3be; --public-button: #933755; --public-accent-soft: rgba(239,163,190,.16); --public-accent-2: #ffc1a9; }
 .public-orb { position: absolute; z-index: -1; border-radius: 9999px; filter: blur(16px); animation: public-float 10s ease-in-out infinite; }
+.public-motion-ready [data-public-reveal] { opacity: 0; transform: translateY(34px) scale(.985); transition: opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1); }
+.public-motion-ready [data-public-reveal].public-reveal-visible { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .public-motion-ready [data-public-reveal] { opacity: 1; transform: none; } }
 html[data-theme="light"] .public-site { filter: invert(1) hue-rotate(180deg); }
 html[data-theme="light"] .public-site img { filter: none; }
 
