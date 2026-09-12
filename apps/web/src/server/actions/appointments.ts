@@ -4,6 +4,7 @@ import { addDays, subDays } from "date-fns";
 import { revalidatePath } from "next/cache";
 import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
+import { bookingRequestConflicts } from "@/lib/booking-requests";
 import { PhotoUploadError, prepareAppointmentPhotos, removePreparedPhotos } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { appointmentExpectedEnd, appointmentsOverlap, canFinalizeAppointment } from "@/lib/scheduling";
@@ -12,6 +13,7 @@ import { appointmentSchema, completionSchema } from "@/lib/validation";
 import { parsePaymentInputs, paymentStatusFor } from "@/lib/payments";
 import { publishObject, removeObject } from "@/lib/object-storage";
 import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
+import { enqueueNotification } from "@/server/notification-events";
 
 async function findConflict(startAt: Date, duration: number, excludeId?: string) {
   const candidates = await prisma.appointment.findMany({
@@ -20,6 +22,11 @@ async function findConflict(startAt: Date, duration: number, excludeId?: string)
     orderBy: { startAt: "asc" },
   });
   return candidates.find((item) => appointmentsOverlap(startAt, duration, item.startAt, item.expectedDurationMinutes));
+}
+
+async function findBookingRequestConflict(startAt: Date, duration: number) {
+  const requests = await prisma.publicBookingRequest.findMany({ where: { status: "PENDING", requestedStartAt: { gte: subDays(startAt, 1), lt: addDays(startAt, 1) } }, select: { id: true, requestedStartAt: true, durationMinutes: true } });
+  return requests.find((request) => bookingRequestConflicts(startAt, duration, [{ startAt: request.requestedStartAt, durationMinutes: request.durationMinutes }]));
 }
 
 function conflictMessage(conflict: NonNullable<Awaited<ReturnType<typeof findConflict>>>, timezone: string) {
@@ -40,8 +47,10 @@ export async function checkAppointmentAvailability(startAtInput: string, duratio
   const timezone = user.settings?.timezone || "America/Toronto";
   const startAt = parseBusinessDateTime(startAtInput, timezone);
   const conflict = await findConflict(startAt, duration, excludeId);
+  const requestConflict = conflict ? null : await findBookingRequestConflict(startAt, duration);
   return conflict
     ? { available: false, message: conflictMessage(conflict, timezone), conflictId: conflict.id }
+    : requestConflict ? { available: false, message: "An online booking request is holding this time. Review that request or choose another time.", conflictId: requestConflict.id }
     : { available: true, message: "This time is available." };
 }
 
@@ -52,6 +61,7 @@ export async function createAppointment(formData: FormData) {
   const startAt = parseBusinessDateTime(data.startAt, timezone);
   const conflict = await findConflict(startAt, data.expectedDurationMinutes);
   if (conflict) return { error: conflictMessage(conflict, timezone) };
+  if (await findBookingRequestConflict(startAt, data.expectedDurationMinutes)) return { error: "An online booking request is holding this time. Review that request or choose another time." };
   const customerExists = await prisma.customer.count({ where: { id: data.customerId, deletedAt: null } });
   if (!customerExists) return { error: "The selected customer is not available in this studio." };
   const services = await prisma.service.findMany({ where: { id: { in: data.serviceIds }, active: true, deletedAt: null, category: { deletedAt: null } } });
@@ -85,6 +95,7 @@ export async function updateAppointment(id: string, formData: FormData) {
   const startAt = parseBusinessDateTime(data.startAt, timezone);
   const conflict = await findConflict(startAt, data.expectedDurationMinutes, id);
   if (conflict) return { error: conflictMessage(conflict, timezone) };
+  if (await findBookingRequestConflict(startAt, data.expectedDurationMinutes)) return { error: "An online booking request is holding this time. Review that request or choose another time." };
   const customerExists = await prisma.customer.count({ where: { id: data.customerId, deletedAt: null } });
   if (!customerExists) return { error: "The selected customer is not available in this studio." };
   const services = await prisma.service.findMany({ where: { id: { in: data.serviceIds }, deletedAt: null } });
@@ -169,6 +180,7 @@ export async function completeAppointment(id: string, formData: FormData) {
         await tx.appointmentPayment.create({ data: { appointmentId: id, paymentMethodId: method.id, methodNameSnapshot: method.name, amount: payment.amount, recordedById: user.id, transactionId: transaction.id } });
       }
       await enqueueGoogleCalendarSync(tx, [id], "UPSERT");
+      if (paidAmount + 0.001 < Number(finalPrice)) await enqueueNotification(tx, { kind: "PAYMENT_ATTENTION", title: "Payment needs attention", body: "A finalized appointment still has an unpaid balance.", actionHref: `/appointments/${id}` });
     });
   } catch (error) {
     await removePreparedPhotos(photos);

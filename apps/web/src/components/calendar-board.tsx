@@ -41,6 +41,8 @@ export type CalendarItem = {
   service: string;
   status: string;
   colorIndex: number;
+  href: string;
+  kind: "appointment" | "request";
 };
 
 type CalendarBoardProps = {
@@ -304,7 +306,7 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
                 const top = Math.max(0, ((item.startMinutes / 60) - startHour) * slotHeight);
                 const height = Math.max(42, (item.durationMinutes / 60) * slotHeight - 3);
                 return (
-                  <Link className={`absolute inset-x-1.5 z-10 overflow-hidden rounded-lg border px-2.5 py-2 shadow-sm transition hover:brightness-110 ${eventColors[item.colorIndex % eventColors.length]}`} href={`/appointments/${item.id}`} key={item.id} style={{ top, height }}>
+                  <Link className={`absolute inset-x-1.5 z-10 overflow-hidden rounded-lg border px-2.5 py-2 shadow-sm transition hover:brightness-110 ${eventColors[item.colorIndex % eventColors.length]} ${item.kind === "request" ? "border-dashed" : ""}`} href={item.href} key={item.id} style={{ top, height }}>
                     <p className="truncate text-[11px] font-semibold">{item.time} · {item.customer}</p>
                     {height > 48 && <p className="mt-1 truncate text-[10px] opacity-65">{item.service}</p>}
                   </Link>
@@ -346,7 +348,7 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
         </div>
         <div className="border-t border-white/8 bg-[#0b1017] px-3 py-4">
           <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold text-white">{selectedDay ? `${selectedDay.weekday}, ${selectedDay.monthLabel} ${selectedDay.dayNumber}` : "Selected day"}</p><p className="mt-0.5 text-xs text-slate-500">{selectedItems.length ? `${selectedItems.length} scheduled` : "Available for appointments"}</p></div><Link className="button-secondary h-9 min-h-9 shrink-0 px-3" href={`/appointments/new?date=${selectedKey}`}><Plus size={14}/>Add</Link></div>
-          <div className="space-y-2">{selectedItems.map((item) => <Link className={`flex items-center gap-3 rounded-xl border p-3 ${eventColors[item.colorIndex % eventColors.length]}`} href={`/appointments/${item.id}`} key={item.id}><span className="text-xs font-semibold">{item.time}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.customer}</span><span className="block truncate text-[11px] opacity-65">{item.service} · {item.durationMinutes} min</span></span></Link>)}{!selectedItems.length && <Link className="flex min-h-20 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm text-slate-500" href={`/appointments/new?date=${selectedKey}`}>No appointments · tap to add</Link>}</div>
+          <div className="space-y-2">{selectedItems.map((item) => <Link className={`flex items-center gap-3 rounded-xl border p-3 ${eventColors[item.colorIndex % eventColors.length]} ${item.kind === "request" ? "border-dashed" : ""}`} href={item.href} key={item.id}><span className="text-xs font-semibold">{item.time}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.customer}</span><span className="block truncate text-[11px] opacity-65">{item.service} · {item.durationMinutes} min</span></span></Link>)}{!selectedItems.length && <Link className="flex min-h-20 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm text-slate-500" href={`/appointments/new?date=${selectedKey}`}>No appointments · tap to add</Link>}</div>
         </div>
       </div>
       <div className="hidden overflow-x-auto md:block">
@@ -414,7 +416,7 @@ function Agenda({ days, items }: { days: CalendarDay[]; items: CalendarItem[] })
         return (
           <div className="grid gap-3 px-4 py-4 sm:grid-cols-[9rem_1fr] sm:px-6" key={item.id}>
             <div>{showDate && <><p className="text-sm font-semibold text-white">{day?.weekday}, {day?.monthLabel} {day?.dayNumber}</p>{day?.isToday && <span className="mt-1 inline-block text-[10px] font-semibold uppercase tracking-wider text-teal-300">Today</span>}</>}</div>
-            <Link className="group flex items-center gap-4 rounded-xl border border-white/8 bg-white/[0.025] p-3.5 transition hover:border-teal-300/25 hover:bg-white/[0.04]" href={`/appointments/${item.id}`}>
+            <Link className={`group flex items-center gap-4 rounded-xl border bg-white/[0.025] p-3.5 transition hover:border-teal-300/25 hover:bg-white/[0.04] ${item.kind === "request" ? "border-dashed border-fuchsia-300/25" : "border-white/8"}`} href={item.href}>
               <span className={`flex size-10 shrink-0 items-center justify-center rounded-xl border ${eventColors[item.colorIndex % eventColors.length]}`}><Sparkles size={17} /></span>
               <span className="min-w-0 flex-1"><span className="block text-xs font-medium text-teal-300">{item.time} · {item.durationMinutes} min</span><span className="mt-1 block truncate text-sm font-semibold text-white">{item.customer}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{item.service}</span></span>
               <StatusBadge status={item.status} />

@@ -21,10 +21,17 @@ export async function getPublicBookingAvailability(date: string, requestedServic
   const dayStart = fromZonedTime(`${date}T00:00:00`, settings.timezone);
   const nextKey = new Date(`${date}T12:00:00Z`); nextKey.setUTCDate(nextKey.getUTCDate() + 1);
   const dayEnd = fromZonedTime(`${nextKey.toISOString().slice(0, 10)}T00:00:00`, settings.timezone);
-  const appointments = await prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["REQUESTED", "SCHEDULED", "CONFIRMED"] }, startAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { startAt: true, expectedDurationMinutes: true } });
+  const [appointments, requests] = await Promise.all([
+    prisma.appointment.findMany({ where: { deletedAt: null, status: { in: ["REQUESTED", "SCHEDULED", "CONFIRMED"] }, startAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { startAt: true, expectedDurationMinutes: true } }),
+    prisma.publicBookingRequest.findMany({ where: { status: "PENDING", requestedStartAt: { gte: addDays(dayStart, -1), lt: addDays(dayEnd, 1) } }, select: { requestedStartAt: true, durationMinutes: true } }),
+  ]);
   const windows = normalizeBookingWindows(settings.publicBookingWindows);
   const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
   const explicitStartTimes = windows[String(weekday)] || [];
-  const slots = buildPublicBookingSlots({ date, timezone: settings.timezone, openTime: "00:00", closeTime: "23:59", slotMinutes: 30, durationMinutes, leadHours: settings.publicBookingLeadHours, enabledWeekdays: explicitStartTimes.length ? [weekday] : [], explicitStartTimes }, appointments.map((appointment) => ({ startAt: appointment.startAt, durationMinutes: appointment.expectedDurationMinutes })), now);
+  const occupied = [
+    ...appointments.map((appointment) => ({ startAt: appointment.startAt, durationMinutes: appointment.expectedDurationMinutes })),
+    ...requests.map((request) => ({ startAt: request.requestedStartAt, durationMinutes: request.durationMinutes })),
+  ];
+  const slots = buildPublicBookingSlots({ date, timezone: settings.timezone, openTime: "00:00", closeTime: "23:59", slotMinutes: 30, durationMinutes, leadHours: settings.publicBookingLeadHours, enabledWeekdays: explicitStartTimes.length ? [weekday] : [], explicitStartTimes }, occupied, now);
   return { available: true as const, slots, durationMinutes, currency: orderedServices[0].currency, totalPrice: orderedServices.reduce((sum, service) => sum + Number(service.defaultPrice), 0).toFixed(2), services: orderedServices };
 }

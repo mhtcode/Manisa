@@ -16,6 +16,7 @@ const labels: Record<BusinessPermission, string> = {
   "integrations.manage": "Manage integrations", "members.manage": "Manage administrators",
   "data.import": "Import business data", "data.export": "Export business data",
   "trash.manage": "Delete, restore, and purge items",
+  "reviews.manage": "Manage customer reviews",
 };
 
 export function MemberAccessEditor({ id, name, role, permissions, canTransfer }: { id: string; name: string; role: string; permissions: Record<BusinessPermission, boolean>; canTransfer: boolean }) {

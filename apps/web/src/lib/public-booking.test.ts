@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingWeekdays, buildPublicBookingSlots, normalizeBookingWindows, parseClock } from "./public-booking";
+import { bookingSubmissionFields, bookingWeekdays, buildPublicBookingSlots, normalizeBookingWindows, parseClock } from "./public-booking";
 
 describe("public booking availability", () => {
   it("builds future slots and excludes overlaps", () => {
@@ -22,5 +22,23 @@ describe("public booking availability", () => {
   it("normalizes persisted weekly availability", () => {
     expect(normalizeBookingWindows({ "2": ["15:00", "09:00", "15:00", "bad"], "9": ["10:00"] })).toEqual({ "2": ["09:00", "15:00"] });
     expect(normalizeBookingWindows(null)).toEqual({});
+  });
+
+  it("keeps contact values in the submitted form after the details step unmounts", () => {
+    expect(bookingSubmissionFields({
+      name: "Maryam Rahimi",
+      phone: "+1 416 555 0101",
+      email: "maryam@example.com",
+      notes: "Persian speaker",
+      notificationPreference: "WHATSAPP",
+      consent: true,
+    })).toEqual({
+      name: "Maryam Rahimi",
+      phone: "+1 416 555 0101",
+      email: "maryam@example.com",
+      notes: "Persian speaker",
+      notificationPreference: "WHATSAPP",
+      consent: "on",
+    });
   });
 });

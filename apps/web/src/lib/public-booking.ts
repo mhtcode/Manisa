@@ -15,6 +15,26 @@ export type PublicBookingWindow = {
 
 export type OccupiedAppointment = { startAt: Date; durationMinutes: number };
 
+export type PublicBookingContactDraft = {
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+  notificationPreference: string;
+  consent: boolean;
+};
+
+export function bookingSubmissionFields(draft: PublicBookingContactDraft) {
+  return {
+    name: draft.name,
+    phone: draft.phone,
+    email: draft.email,
+    notes: draft.notes,
+    notificationPreference: draft.notificationPreference,
+    consent: draft.consent ? "on" : "",
+  };
+}
+
 export function validDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00Z`).valueOf());
 }

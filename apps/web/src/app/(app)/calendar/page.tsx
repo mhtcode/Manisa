@@ -1,6 +1,6 @@
 import { addDays, addYears, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { CalendarBoard, type CalendarView } from "@/components/calendar-board";
+import { CalendarBoard, type CalendarItem, type CalendarView } from "@/components/calendar-board";
 import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { intlLocale } from "@/lib/i18n";
@@ -29,11 +29,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const rangeEnd = fromZonedTime(`${format(rangeGridEnd, "yyyy-MM-dd")}T00:00:00`, timeZone);
   const initialView: CalendarView = allowedViews.has(view as CalendarView) ? view as CalendarView : "month";
 
-  const appointments = await prisma.appointment.findMany({
-    where: { deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } },
-    include: { customer: true },
-    orderBy: { startAt: "asc" },
-  });
+  const [appointments, requests] = await Promise.all([
+    prisma.appointment.findMany({ where: { deletedAt: null, startAt: { gte: rangeStart, lt: rangeEnd }, status: { not: "CANCELLED" } }, include: { customer: true }, orderBy: { startAt: "asc" } }),
+    prisma.publicBookingRequest.findMany({ where: { status: "PENDING", requestedStartAt: { gte: rangeStart, lt: rangeEnd } }, include: { services: { orderBy: { position: "asc" } } }, orderBy: { requestedStartAt: "asc" } }),
+  ]);
 
   const days = Array.from({ length: 42 }, (_, index) => {
     const day = addDays(gridStart, index);
@@ -49,7 +48,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
     };
   });
   const serviceColors = new Map<string, number>();
-  const items = appointments.map((item) => {
+  const items: CalendarItem[] = [...appointments.map((item) => {
     if (!serviceColors.has(item.serviceNameSnapshot)) serviceColors.set(item.serviceNameSnapshot, serviceColors.size);
     const hour = Number(formatInTimeZone(item.startAt, timeZone, "H"));
     const minute = Number(formatInTimeZone(item.startAt, timeZone, "m"));
@@ -63,8 +62,15 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       service: item.serviceNameSnapshot,
       status: item.status,
       colorIndex: serviceColors.get(item.serviceNameSnapshot) ?? 0,
+      href: `/appointments/${item.id}`,
+      kind: "appointment" as const,
     };
-  });
+  }), ...requests.map((item) => {
+    const serviceName = item.services.map((service) => service.serviceNameSnapshot).join(" · ");
+    const hour = Number(formatInTimeZone(item.requestedStartAt, timeZone, "H"));
+    const minute = Number(formatInTimeZone(item.requestedStartAt, timeZone, "m"));
+    return { id: item.id, dateKey: formatInTimeZone(item.requestedStartAt, timeZone, "yyyy-MM-dd"), time: formatInTimeZone(item.requestedStartAt, timeZone, "h:mm a"), startMinutes: hour * 60 + minute, durationMinutes: item.durationMinutes, customer: item.customerName, service: serviceName, status: "REQUESTED", colorIndex: 3, href: "/appointments?stage=requests", kind: "request" as const };
+  })].sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.startMinutes - b.startMinutes);
 
   return <CalendarBoard anchorKey={anchorKey} days={days} initialView={initialView} items={items} key={`${anchorKey}:${initialView}`} locale={locale} monthTitle={new Intl.DateTimeFormat(intlLocale(locale), { month: "long", year: "numeric", timeZone: "UTC" }).format(anchor)} todayKey={todayKey}/>;
 }

@@ -9,7 +9,7 @@ import { approveStudioReview, deleteStudioReview, rejectStudioReview, restoreStu
 const filters = ["PENDING", "APPROVED", "REJECTED", "DELETED"] as const;
 
 export default async function ReviewsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
-  await requireBusinessPermission("business.manage");
+  await requireBusinessPermission("reviews.manage");
   const query = await searchParams;
   const status = filters.find((item) => item === query.status) || "PENDING";
   const allReviews = await prisma.studioReview.findMany({ orderBy: { createdAt: "desc" } });
