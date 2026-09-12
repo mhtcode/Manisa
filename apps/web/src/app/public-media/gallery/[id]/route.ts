@@ -3,10 +3,11 @@ import { absoluteUploadPath } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
 import { createReadUrl } from "@/lib/object-storage";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const photo = await prisma.mediaAsset.findFirst({ where: { id, deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, select: { thumbnailPath: true, variants: { where: { kind: { in: ["MEDIUM", "LARGE"] } }, take: 1 } } });
+  const photo = await prisma.mediaAsset.findFirst({ where: { id, deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED", customer: { deletedAt: null } } }, select: { thumbnailPath: true, variants: { where: { kind: { in: ["MEDIUM", "LARGE"] } }, orderBy: { width: "desc" }, select: { objectKey: true }, take: 1 } } });
   if (!photo) return new Response("Not found", { status: 404 });
+  if (new URL(request.url).searchParams.get("view") === "full" && photo.variants[0]) return Response.redirect(await createReadUrl(photo.variants[0].objectKey), 307);
   if (photo.variants.length) return Response.redirect(await createReadUrl(`studio/featured/${id}.webp`, true), 307);
   if (!photo.thumbnailPath) return new Response("Not found", { status: 404 });
   try {

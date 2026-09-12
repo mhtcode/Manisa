@@ -7,8 +7,8 @@ import { REVIEW_MAX_WORDS, reviewWordCount } from "@/lib/reviews";
 import { submitStudioReview, type PublicReviewResult } from "@/server/actions/reviews";
 
 const copy = {
-  en: { title: "Share your experience", intro: "Your review will appear after the studio approves it.", rating: "Rating", choose: "Choose at least one star.", name: "Your name", opinion: "Your opinion", words: "words", send: "Send review", sending: "Sending…", success: "Thank you. Your review was sent for approval.", visit: "Visit the studio", location: "Toronto, Ontario · Visits are by appointment.", directions: "Open directions" },
-  fa: { title: "تجربه خود را به اشتراک بگذارید", intro: "نظر شما پس از تأیید استودیو نمایش داده می‌شود.", rating: "امتیاز", choose: "حداقل یک ستاره انتخاب کنید.", name: "نام شما", opinion: "نظر شما", words: "واژه", send: "ارسال نظر", sending: "در حال ارسال…", success: "سپاسگزاریم. نظر شما برای تأیید ارسال شد.", visit: "آدرس استودیو", location: "تورنتو، انتاریو · مراجعه فقط با تعیین وقت", directions: "مسیریابی" },
+  en: { title: "Share your experience", rating: "Rating", choose: "Choose at least one star.", name: "Your name", opinion: "Your opinion", words: "words", send: "Send review", sending: "Sending…", success: "Thank you. Your review was sent for approval.", visit: "Visit the studio", location: "Toronto, Ontario · Visits are by appointment.", directions: "Open directions" },
+  fa: { title: "تجربه خود را به اشتراک بگذارید", rating: "امتیاز", choose: "حداقل یک ستاره انتخاب کنید.", name: "نام شما", opinion: "نظر شما", words: "واژه", send: "ارسال نظر", sending: "در حال ارسال…", success: "سپاسگزاریم. نظر شما برای تأیید ارسال شد.", visit: "آدرس استودیو", location: "تورنتو، انتاریو · مراجعه فقط با تعیین وقت", directions: "مسیریابی" },
 } as const;
 
 export function PublicReviewForm({ locale }: { locale: PublicLocale }) {
@@ -29,7 +29,7 @@ export function PublicReviewForm({ locale }: { locale: PublicLocale }) {
   }
 
   return <form action={submit} className="public-booking-card public-review-form p-5 sm:p-7" ref={formRef}>
-    <h3 className="font-serif text-3xl">{t.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--public-muted)]">{t.intro}</p>
+    <h3 className="font-serif text-3xl">{t.title}</h3>
     <div className="mt-5"><div aria-label={t.rating} className="flex gap-1" role="radiogroup">{[1,2,3,4,5].map((value) => <label className="cursor-pointer p-1 transition hover:scale-110" key={value}><input checked={rating === value} className="sr-only" name="rating" onChange={() => setRating(value)} required type="radio" value={value}/><Star aria-hidden="true" className={value <= rating ? "fill-[var(--public-accent)] text-[var(--public-accent)]" : "fill-transparent text-[var(--public-muted)] opacity-55"} size={25}/><span className="sr-only">{value}</span></label>)}</div><p className="mt-1 text-xs text-[var(--public-muted)]">{t.choose}</p></div>
     <label className="mt-5 block"><span className="mb-2 block text-sm font-semibold">{t.name}</span><input className="public-field" dir="auto" maxLength={80} name="reviewerName" required/></label>
     <label className="mt-4 block"><span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold"><span>{t.opinion}</span><span className={reviewWordCount(opinion) > REVIEW_MAX_WORDS ? "text-red-500" : "font-normal text-[var(--public-muted)]"}>{reviewWordCount(opinion)}/{REVIEW_MAX_WORDS} {t.words}</span></span><textarea className="public-field min-h-32 resize-y" dir="auto" maxLength={1600} minLength={10} name="opinion" onChange={(event) => setOpinion(event.target.value)} required value={opinion}/></label>

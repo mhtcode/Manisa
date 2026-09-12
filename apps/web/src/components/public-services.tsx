@@ -22,6 +22,7 @@ export function PublicServices({ categories, locale, empty }: { categories: Serv
   if (!active) return <p className="public-service-empty">{empty}</p>;
 
   const countLabel = locale === "fa" ? `${active._count.services} خدمت` : `${active._count.services} services`;
+  const serviceDirection = publicContentDirection(active.services[0]?.name || active.name);
   return <div className="public-service-browser">
     <div aria-label={locale === "fa" ? "دسته‌بندی خدمات" : "Service categories"} className="public-service-tabs" role="tablist">
       {categories.map((category, index) => {
@@ -36,7 +37,7 @@ export function PublicServices({ categories, locale, empty }: { categories: Serv
     </div>
     <section aria-live="polite" className="public-service-panel" id="public-service-panel" role="tabpanel">
       <div className="public-service-panel-heading"><span className="public-service-panel-icon"><CategoryIcon name={active.icon || "sparkles"} size={26}/></span><div className="min-w-0"><p>{countLabel}</p><h3 className="[unicode-bidi:isolate]" dir={publicContentDirection(active.name)}>{active.name}</h3></div></div>
-      <div className="public-service-list">{active.services.map((service, index) => <div className="public-service-item" dir={publicContentDirection(service.name)} key={service.id}><span dir="ltr">{String(index + 1).padStart(2, "0")}</span><Scissors size={15}/><strong className="[unicode-bidi:isolate]">{service.name}</strong></div>)}</div>
+      <div className="public-service-list" dir={serviceDirection}>{active.services.map((service, index) => <div className="public-service-item" dir={publicContentDirection(service.name)} key={service.id}><span dir="ltr">{String(index + 1).padStart(2, "0")}</span><Scissors size={15}/><strong className="[unicode-bidi:isolate]">{service.name}</strong></div>)}</div>
     </section>
   </div>;
 }

@@ -29,6 +29,13 @@ describe("public gallery helpers", () => {
     expect(zoom?.(0.5)).toBe(1);
     expect(zoom?.(5)).toBe(3);
   });
+
+  it("requests the uncropped public variant for the lightbox", async () => {
+    const publicSite = await import("./public-site") as Record<string, unknown>;
+    const fullSource = publicSite.publicGalleryFullSource as undefined | ((source: string) => string);
+    expect(fullSource?.("/public-media/gallery/photo-1")).toBe("/public-media/gallery/photo-1?view=full");
+    expect(fullSource?.("/landing/manicure.webp")).toBe("/landing/manicure.webp");
+  });
 });
 
 describe("publicReviewSummary", () => {
@@ -57,5 +64,16 @@ describe("resolvePublicSectionAtLine", () => {
     expect(resolveSection?.([{ id: "about", top: -200, bottom: 80 }, { id: "services", top: 80, bottom: 700 }], 220)).toBe("services");
     expect(resolveSection?.([{ id: "about", top: 400, bottom: 900 }], 220)).toBe("about");
     expect(resolveSection?.([], 220)).toBe("");
+  });
+});
+
+describe("publicProgressRailVisible", () => {
+  it("shows only during recent scroll activity", async () => {
+    const publicSite = await import("./public-site") as Record<string, unknown>;
+    const isVisible = publicSite.publicProgressRailVisible as undefined | ((lastScrollAt: number | null, now: number, idleDelay?: number) => boolean);
+    expect(typeof isVisible).toBe("function");
+    expect(isVisible?.(null, 5_000)).toBe(false);
+    expect(isVisible?.(4_600, 5_000)).toBe(true);
+    expect(isVisible?.(3_500, 5_000)).toBe(false);
   });
 });
