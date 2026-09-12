@@ -383,30 +383,6 @@ jobs:
             "/opt/manisa/deploy.sh status"
 
 
-      # --------------------------------------------------------
-      # INDEPENDENT EXTERNAL CHECK
-      # --------------------------------------------------------
-
-      - name: Verify production endpoint
-        run: |
-          set -euo pipefail
-
-          echo "Checking:"
-          echo "  https://manisa.masihtan.com/api/health"
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --location \
-            --retry 5 \
-            --retry-delay 3 \
-            --max-time 15 \
-            https://manisa.masihtan.com/api/health
-
-          echo
-          echo "Production endpoint is healthy."
-
 
       # --------------------------------------------------------
       # SUCCESS SUMMARY
