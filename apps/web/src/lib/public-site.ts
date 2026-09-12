@@ -4,8 +4,21 @@ export type PublicTheme = "light" | "dark";
 export function publicSitePreferences(params: { lang?: string; theme?: string }) {
   return {
     locale: params.lang === "fa" ? "fa" : "en" as PublicLocale,
-    theme: params.theme === "dark" ? "dark" : "light" as PublicTheme,
+    theme: params.theme === "light" ? "light" : "dark" as PublicTheme,
   };
+}
+
+export function publicContentDirection(value: string): "rtl" | "ltr" {
+  const firstStrongCharacter = value.match(/[A-Za-z\u0600-\u06ff]/u)?.[0] || "";
+  return /[\u0600-\u06ff]/u.test(firstStrongCharacter) ? "rtl" : "ltr";
+}
+
+export function resolvePublicGalleryIndex(current: number, offset: number, length: number) {
+  return length > 0 ? (current + offset + length) % length : 0;
+}
+
+export function clampPublicGalleryZoom(value: number) {
+  return Math.min(3, Math.max(1, value));
 }
 
 export function publicReviewSummary(ratings: number[]) {

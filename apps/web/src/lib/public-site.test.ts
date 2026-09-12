@@ -4,7 +4,30 @@ import { publicReviewSummary, publicSitePreferences } from "./public-site";
 describe("publicSitePreferences", () => {
   it("accepts Persian and dark mode while rejecting unsupported query values", () => {
     expect(publicSitePreferences({ lang: "fa", theme: "dark" })).toEqual({ locale: "fa", theme: "dark" });
-    expect(publicSitePreferences({ lang: "fr", theme: "neon" })).toEqual({ locale: "en", theme: "light" });
+    expect(publicSitePreferences({ lang: "fr", theme: "neon" })).toEqual({ locale: "en", theme: "dark" });
+  });
+});
+
+describe("publicContentDirection", () => {
+  it("keeps Persian service copy RTL even on the English public site", async () => {
+    const publicSite = await import("./public-site") as Record<string, unknown>;
+    const direction = publicSite.publicContentDirection as undefined | ((value: string) => "rtl" | "ltr");
+    expect(typeof direction).toBe("function");
+    expect(direction?.("کاشت و طراحی ناخن")).toBe("rtl");
+    expect(direction?.("Hair colour رنگ مو")).toBe("ltr");
+    expect(direction?.("رنگ مو Hair colour")).toBe("rtl");
+  });
+});
+
+describe("public gallery helpers", () => {
+  it("wraps gallery navigation and constrains zoom", async () => {
+    const publicSite = await import("./public-site") as Record<string, unknown>;
+    const move = publicSite.resolvePublicGalleryIndex as undefined | ((current: number, offset: number, length: number) => number);
+    const zoom = publicSite.clampPublicGalleryZoom as undefined | ((value: number) => number);
+    expect(move?.(0, -1, 3)).toBe(2);
+    expect(move?.(2, 1, 3)).toBe(0);
+    expect(zoom?.(0.5)).toBe(1);
+    expect(zoom?.(5)).toBe(3);
   });
 });
 
