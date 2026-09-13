@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, CalendarCheck2 } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
@@ -9,6 +10,8 @@ import { PublicSiteControls } from "@/components/public-site-controls";
 import { normalizeBookingWindows } from "@/lib/public-booking";
 import { prisma } from "@/lib/prisma";
 import { publicCopy, publicSitePreferences } from "@/lib/public-site";
+
+export const metadata: Metadata = { title: "Request an appointment | Manisa", robots: { index: false, follow: false } };
 
 export default async function PublicBookingPage({ searchParams }: { searchParams: Promise<{ lang?: string; theme?: string }> }) {
   const preferences = publicSitePreferences(await searchParams);

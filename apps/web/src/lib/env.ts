@@ -26,6 +26,9 @@ const serverEnvSchema = z.object({
   S3_SECRET_KEY: z.string().optional(),
   S3_PRIVATE_BUCKET: z.string().default("manisa-private"),
   S3_PUBLIC_BUCKET: z.string().default("manisa-public"),
+  WEB_PUSH_PUBLIC_KEY: z.string().min(20).optional(),
+  WEB_PUSH_PRIVATE_KEY: z.string().min(20).optional(),
+  WEB_PUSH_SUBJECT: z.string().default("mailto:admin@manisa.local"),
 });
 
 export function getServerEnv() {
@@ -55,7 +58,15 @@ export function getServerEnv() {
     S3_SECRET_KEY: process.env.S3_SECRET_KEY || undefined,
     S3_PRIVATE_BUCKET: process.env.S3_PRIVATE_BUCKET,
     S3_PUBLIC_BUCKET: process.env.S3_PUBLIC_BUCKET,
+    WEB_PUSH_PUBLIC_KEY: process.env.WEB_PUSH_PUBLIC_KEY || undefined,
+    WEB_PUSH_PRIVATE_KEY: process.env.WEB_PUSH_PRIVATE_KEY || undefined,
+    WEB_PUSH_SUBJECT: process.env.WEB_PUSH_SUBJECT,
   });
+}
+
+export function webPushConfigured() {
+  const env = getServerEnv();
+  return Boolean(env.WEB_PUSH_PUBLIC_KEY && env.WEB_PUSH_PRIVATE_KEY);
 }
 
 export function secureCookiesEnabled() {

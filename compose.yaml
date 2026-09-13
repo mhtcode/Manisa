@@ -78,6 +78,7 @@ services:
       args:
         NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     restart: unless-stopped
     init: true
     environment:
@@ -100,6 +101,7 @@ services:
       TRASH_CLEANUP_SECRET: ${TRASH_CLEANUP_SECRET:-change-this-local-trash-cleanup-secret}
       NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
       NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
       UPLOADS_DIR: /app/uploads
       S3_ENDPOINT: http://minio:9000
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://127.0.0.1:9000}
@@ -108,6 +110,9 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY:-replace-with-a-long-object-storage-secret}
       S3_PRIVATE_BUCKET: ${S3_PRIVATE_BUCKET:-manisa-private}
       S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-manisa-public}
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-mailto:admin@manisa.local}
     volumes:
       - manisa_uploads:/app/uploads
     ports:
@@ -147,6 +152,26 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      web-init:
+        condition: service_completed_successfully
+    security_opt:
+      - no-new-privileges:true
+
+  notification-worker:
+    build:
+      context: ./apps/web
+      target: worker
+    restart: unless-stopped
+    init: true
+    command: ["node", "scripts/notification-worker.mjs"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-manisa}:${POSTGRES_PASSWORD:-manisa}@postgres:5432/${POSTGRES_DB:-manisa}?schema=public
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-mailto:admin@manisa.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
       web-init:
         condition: service_completed_successfully
     security_opt:
@@ -206,6 +231,7 @@ services:
       args:
         NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     restart: unless-stopped
     init: true
     environment:
@@ -230,6 +256,7 @@ services:
       args:
         NEXT_PUBLIC_BUSINESS_ADDRESS: ${NEXT_PUBLIC_BUSINESS_ADDRESS:-77 Finch Avenue East, Toronto, ON}
         NEXT_PUBLIC_INSTAGRAM_URL: ${NEXT_PUBLIC_INSTAGRAM_URL:-}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     restart: unless-stopped
     init: true
     environment:

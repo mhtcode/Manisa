@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canManageStudioMember, hasBusinessPermission } from "./permissions";
+import { canManageStudioMember, hasBusinessPermission, rolePermissionDefaults } from "./permissions";
 
 describe("studio permissions", () => {
   it("gives owners and administrators full business access", () => {
@@ -21,6 +21,13 @@ describe("studio permissions", () => {
     expect(hasBusinessPermission("MANAGER", {}, "business.manage")).toBe(false);
     expect(hasBusinessPermission("MANAGER", {}, "data.import")).toBe(false);
     expect(hasBusinessPermission("MANAGER", {}, "reviews.manage")).toBe(true);
+  });
+
+  it("exposes distinct permission presets for each editable role", () => {
+    expect(rolePermissionDefaults("ADMIN")["members.manage"]).toBe(true);
+    expect(rolePermissionDefaults("MANAGER")["reviews.manage"]).toBe(true);
+    expect(rolePermissionDefaults("MANAGER")["members.manage"]).toBe(false);
+    expect(rolePermissionDefaults("STAFF")["payments.manage"]).toBe(false);
   });
 
   it("applies explicit grants and denials after the role preset", () => {

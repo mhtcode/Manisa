@@ -17,6 +17,10 @@ const rolePermissions: Record<Role, Set<BusinessPermission>> = {
   STAFF: new Set(["customers.view", "appointments.view", "appointments.manage", "services.view", "gallery.view", "gallery.manage"]),
 };
 
+export function rolePermissionDefaults(role: Role) {
+  return Object.fromEntries(businessPermissionKeys.map((key) => [key, rolePermissions[role].has(key)])) as Record<BusinessPermission, boolean>;
+}
+
 function overrideValue(overrides: Prisma.JsonValue, key: string) {
   if (!overrides || Array.isArray(overrides) || typeof overrides !== "object") return undefined;
   const value = (overrides as Record<string, unknown>)[key];
