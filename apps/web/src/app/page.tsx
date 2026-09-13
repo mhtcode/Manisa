@@ -16,6 +16,8 @@ import { instagramCacheIsStale } from "@/lib/instagram-media";
 import { prisma } from "@/lib/prisma";
 import { publicCopy, publicReviewSummary, publicSitePreferences, type PublicLocale, type PublicTheme } from "@/lib/public-site";
 import { syncInstagramConnection } from "@/server/instagram";
+import { formatBusinessDate } from "@/lib/time";
+import { MAX_FEATURED_GALLERY_ITEMS } from "@/lib/gallery-feature";
 
 const fallbackAddress = process.env.NEXT_PUBLIC_BUSINESS_ADDRESS?.trim() || "77 Finch Avenue East, Toronto, ON";
 
@@ -30,7 +32,7 @@ export async function StudioLanding({ locale, theme }: { locale: PublicLocale; t
   const [user, categories, featuredPhotos, connection, reviews, reviewRatings] = await Promise.all([
     getCurrentUser(),
     prisma.studioCategory.findMany({ where: { active: true, deletedAt: null, services: { some: { active: true, deletedAt: null } } }, orderBy: [{ position: "asc" }, { name: "asc" }], include: { services: { where: { active: true, deletedAt: null }, orderBy: { name: "asc" }, take: 5, select: { id: true, name: true } }, _count: { select: { services: { where: { active: true, deletedAt: null } } } } } }),
-    prisma.mediaAsset.findMany({ where: { deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED" } }, orderBy: { featuredAt: "desc" }, take: 6, select: { id: true } }),
+    prisma.mediaAsset.findMany({ where: { deletedAt: null, featuredAt: { not: null }, appointment: { deletedAt: null, status: "COMPLETED" } }, orderBy: { featuredAt: "desc" }, take: MAX_FEATURED_GALLERY_ITEMS, select: { id: true, width: true, height: true, appointment: { select: { serviceNameSnapshot: true, startAt: true } } } }),
     prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true, username: true, lastSyncedAt: true, posts: { where: { active: true }, orderBy: { publishedAt: "desc" }, take: 3, select: { id: true, caption: true, permalink: true } } } }),
     prisma.studioReview.findMany({ where: { status: "APPROVED", deletedAt: null }, orderBy: [{ approvedAt: "desc" }, { createdAt: "desc" }], take: 8, select: { id: true, reviewerName: true, rating: true, opinion: true, language: true } }),
     prisma.studioReview.findMany({ where: { status: "APPROVED", deletedAt: null }, select: { rating: true } }),
@@ -48,21 +50,12 @@ export async function StudioLanding({ locale, theme }: { locale: PublicLocale; t
   const bookingHref = studio.publicBookingEnabled ? `/book?lang=${locale}&theme=${theme}` : fallbackBooking;
   const managementHref = user ? "/report" : "/login";
   const address = studio.address || fallbackAddress;
-  const gallery = featuredPhotos.length ? featuredPhotos.map((photo) => ({ id: photo.id, src: `/public-media/gallery/${photo.id}`, alt: locale === "fa" ? "نمونه‌کار استودیو مانیسا" : "Featured Manisa studio work", unoptimized: true })) : [
-    { id: "hair", src: "/landing/hair-styling.webp", alt: locale === "fa" ? "نمونه خدمات مو" : "Hair styling in the Manisa studio" }, { id: "nails", src: "/landing/manicure.webp", alt: locale === "fa" ? "نمونه خدمات ناخن" : "Detailed manicure service" },
+  const gallery = featuredPhotos.length ? featuredPhotos.map((photo) => ({ id: photo.id, src: `/public-media/gallery/${photo.id}`, alt: locale === "fa" ? "نمونه‌کار استودیو مانیسا" : "Featured Manisa studio work", title: photo.appointment?.serviceNameSnapshot || (locale === "fa" ? "نمونه‌کار مانیسا" : "Manisa studio work"), detail: photo.appointment ? formatBusinessDate(photo.appointment.startAt, locale, studio.timezone) : undefined, width: photo.width, height: photo.height, unoptimized: true })) : [
+    { id: "hair", src: "/landing/hair-styling.webp", alt: locale === "fa" ? "نمونه خدمات مو" : "Hair styling in the Manisa studio", title: locale === "fa" ? "خدمات مو" : "Hair studio" }, { id: "nails", src: "/landing/manicure.webp", alt: locale === "fa" ? "نمونه خدمات ناخن" : "Detailed manicure service", title: locale === "fa" ? "خدمات ناخن" : "Nail studio" },
   ];
-  const structuredData = {
-    "@context": "https://schema.org", "@type": "BeautySalon", name: studio.name,
-    description: studio.studioBiography || t.studioBody, address, telephone: phone || undefined,
-    email: email || undefined, url: process.env.NEXT_PUBLIC_SITE_URL || undefined,
-    sameAs: instagramUrl ? [instagramUrl] : undefined,
-    aggregateRating: rating.count ? { "@type": "AggregateRating", ratingValue: rating.average, reviewCount: rating.count, bestRating: 5 } : undefined,
-  };
-
   return <main className="public-site min-h-screen overflow-x-clip bg-[var(--public-bg)] text-[var(--public-ink)]" data-public-theme={theme} dir={direction} lang={locale}>
-    <script dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} type="application/ld+json"/>
     <PublicMotion/>
-    <header className="public-header"><div className="public-nav-shell"><a className="public-brand" href="#top"><BrandLogo priority size={42}/><span dir="auto">{studio.name}</span></a><div className="public-nav-actions"><PublicSiteControls locale={locale} path="/" theme={theme}/><Link className="public-login" href={managementHref}>{t.login}</Link></div></div></header>
+    <header className="public-header"><div className="public-nav-shell"><a className="public-brand" href="#top"><BrandLogo priority size={42}/><span dir="auto">{studio.name}</span></a><div className="public-nav-actions"><PublicSiteControls locale={locale} path="/" theme={theme}/><Link className="public-login" href={managementHref} prefetch={false}>{t.login}</Link></div></div></header>
     <nav aria-label={locale === "fa" ? "پیشرفت در صفحه" : "Page progress"} className="public-progress-rail"><span aria-hidden="true"/><a aria-label={locale === "fa" ? "معرفی" : "Preview"} data-public-nav="preview" href="#top"/><a aria-label={t.navWork} data-public-nav="work" href="#work"/><a aria-label={t.navReviews} data-public-nav="reviews" href="#reviews"/><a aria-label={t.navAbout} data-public-nav="about" href="#about"/></nav>
 
     <section className="relative isolate min-h-[48rem] overflow-hidden px-5 pb-20 pt-24 sm:px-8 lg:min-h-[54rem] lg:px-10" data-public-section="preview" id="top">
@@ -98,5 +91,6 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const locale = (await searchParams).lang === "fa" ? "fa" : "en";
   const title = locale === "fa" ? "مانیسا | استودیوی خصوصی مو و ناخن در تورنتو" : "Manisa | Private Hair & Nail Studio in Toronto";
   const description = locale === "fa" ? "خدمات حرفه‌ای مو و ناخن در فضایی آرام و خصوصی در تورنتو. نمونه‌کارها را ببینید و آنلاین درخواست وقت ثبت کنید." : "Private hair and nail services in Toronto. Explore Manisa studio work, client reviews, and request an appointment online.";
-  return { title, description, alternates: { canonical: locale === "fa" ? "/?lang=fa" : "/", languages: { en: "/?lang=en", fa: "/?lang=fa", "x-default": "/" } }, openGraph: { type: "website", locale: locale === "fa" ? "fa_IR" : "en_CA", title, description, images: [{ url: "/landing/hair-styling.webp", alt: "Manisa Hair and Nail Studio" }] }, twitter: { card: "summary_large_image", title, description, images: ["/landing/hair-styling.webp"] }, robots: { index: true, follow: true } };
+  const origin = "https://manisa.masihtan.com";
+  return { title: { absolute: title }, description, alternates: { canonical: locale === "fa" ? `${origin}/?lang=fa` : `${origin}/`, languages: { en: `${origin}/?lang=en`, fa: `${origin}/?lang=fa`, "x-default": `${origin}/` } }, openGraph: { type: "website", url: locale === "fa" ? `${origin}/?lang=fa` : `${origin}/`, siteName: "Manisa Hair & Nail Studio", locale: locale === "fa" ? "fa_IR" : "en_CA", title, description, images: [{ url: `${origin}/opengraph-image`, width: 1200, height: 630, type: "image/png", alt: "Manisa private hair and nail studio in Toronto" }] }, twitter: { card: "summary_large_image", title, description, images: [`${origin}/opengraph-image`] }, robots: { index: true, follow: true } };
 }

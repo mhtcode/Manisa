@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { removePreparedPhotos } from "@/lib/photo-storage";
 import { prisma } from "@/lib/prisma";
-import { trashEntityTypes, type TrashEntityType } from "@/lib/trash-lifecycle";
+import { deletedInSameTrashOperation, trashEntityTypes, type TrashEntityType } from "@/lib/trash-lifecycle";
 import { requireBusinessPermission } from "@/lib/auth";
 import { removeObject } from "@/lib/object-storage";
 import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
@@ -83,9 +83,10 @@ export async function moveToTrash(typeValue: string, id: string) {
   } else if (typeValue === "service") {
     await prisma.service.update({ where: { id, deletedAt: null }, data: { deletedAt } });
   } else if (typeValue === "category") {
-    const remainingServices = await prisma.service.count({ where: { categoryId: id, deletedAt: null } });
-    if (remainingServices) throw new Error("Move every service in this category to Trash before deleting the category.");
-    await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+    await prisma.$transaction(async (tx) => {
+      await tx.studioCategory.update({ where: { id, deletedAt: null }, data: { deletedAt } });
+      await tx.service.updateMany({ where: { categoryId: id, deletedAt: null }, data: { deletedAt } });
+    });
   } else {
     await prisma.paymentMethod.update({ where: { id, deletedAt: null }, data: { deletedAt, active: false } });
   }
@@ -104,10 +105,9 @@ export async function bulkMoveToTrash(typeValue: string, formData: FormData) {
   const deletedAt = new Date();
   await prisma.$transaction(async (tx) => {
     if (typeValue === "category") {
-      const blocked = await tx.service.count({ where: { categoryId: { in: ids }, deletedAt: null } });
-      if (blocked) throw new Error("Every selected category must be empty before it can be moved to Trash.");
       const result = await tx.studioCategory.updateMany({ where: { id: { in: ids }, deletedAt: null }, data: { deletedAt } });
       if (result.count !== ids.length) throw new Error("The selection changed. Nothing was deleted.");
+      await tx.service.updateMany({ where: { categoryId: { in: ids }, deletedAt: null }, data: { deletedAt } });
     } else if (typeValue === "customer") {
       const found = await tx.customer.count({ where: { id: { in: ids }, deletedAt: null } });
       if (found !== ids.length) throw new Error("The selection changed. Nothing was deleted.");
@@ -175,7 +175,14 @@ export async function restoreFromTrash(typeValue: string, id: string) {
     if (!service || service.category.deletedAt) throw new Error("Restore the service category first.");
     await prisma.service.update({ where: { id }, data: { deletedAt: null } });
   } else if (typeValue === "category") {
-    await prisma.studioCategory.update({ where: { id }, data: { deletedAt: null } });
+    const category = await prisma.studioCategory.findUnique({ where: { id }, select: { deletedAt: true } });
+    if (!category?.deletedAt) throw new Error("This category is no longer in Trash.");
+    await prisma.$transaction(async (tx) => {
+      const dependants = await tx.service.findMany({ where: { categoryId: id, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
+      const dependantIds = dependants.filter((service) => deletedInSameTrashOperation(category.deletedAt!, service.deletedAt)).map((service) => service.id);
+      await tx.studioCategory.update({ where: { id }, data: { deletedAt: null } });
+      if (dependantIds.length) await tx.service.updateMany({ where: { id: { in: dependantIds } }, data: { deletedAt: null } });
+    });
   } else {
     await prisma.paymentMethod.update({ where: { id }, data: { deletedAt: null } });
   }
@@ -210,10 +217,12 @@ export async function deletePermanently(typeValue: string, id: string) {
     if (!service?.deletedAt) throw new Error("Only services in Trash can be permanently deleted.");
     await prisma.service.delete({ where: { id } });
   } else if (typeValue === "category") {
-    const category = await prisma.studioCategory.findUnique({ where: { id }, select: { deletedAt: true, _count: { select: { services: true } } } });
+    const category = await prisma.studioCategory.findUnique({ where: { id }, select: { deletedAt: true } });
     if (!category?.deletedAt) throw new Error("Only categories in Trash can be permanently deleted.");
-    if (category._count.services) throw new Error("Permanently delete the category’s services first.");
-    await prisma.studioCategory.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.service.deleteMany({ where: { categoryId: id } });
+      await tx.studioCategory.delete({ where: { id } });
+    });
   } else {
     const method = await prisma.paymentMethod.findUnique({ where: { id }, select: { deletedAt: true } });
     if (!method?.deletedAt) throw new Error("Only payment methods in Trash can be permanently deleted.");
@@ -234,10 +243,19 @@ export async function bulkRestoreFromTrash(formData: FormData) {
   const ids = (type: TrashEntityType) => items.filter((item) => item.type === type).map((item) => item.id);
   await prisma.$transaction(async (tx) => {
     const categoryIds = ids("category"); const customerIds = ids("customer");
-    if (categoryIds.length) { const result = await tx.studioCategory.updateMany({ where: { id: { in: categoryIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== categoryIds.length) throw new Error("The selection changed. Nothing was restored."); }
+    if (categoryIds.length) {
+      const categories = await tx.studioCategory.findMany({ where: { id: { in: categoryIds }, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
+      if (categories.length !== categoryIds.length) throw new Error("The selection changed. Nothing was restored.");
+      for (const category of categories) {
+        const dependants = await tx.service.findMany({ where: { categoryId: category.id, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
+        const dependantIds = dependants.filter((service) => deletedInSameTrashOperation(category.deletedAt!, service.deletedAt)).map((service) => service.id);
+        await tx.studioCategory.update({ where: { id: category.id }, data: { deletedAt: null } });
+        if (dependantIds.length) await tx.service.updateMany({ where: { id: { in: dependantIds } }, data: { deletedAt: null } });
+      }
+    }
     const methodIds = ids("paymentMethod"); if (methodIds.length) { const result = await tx.paymentMethod.updateMany({ where: { id: { in: methodIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== methodIds.length) throw new Error("The selection changed. Nothing was restored."); }
     const serviceIds = ids("service");
-    if (serviceIds.length) { const blocked = await tx.service.count({ where: { id: { in: serviceIds }, category: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected categories before their services."); const result = await tx.service.updateMany({ where: { id: { in: serviceIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); if (result.count !== serviceIds.length) throw new Error("The selection changed. Nothing was restored."); }
+    if (serviceIds.length) { const blocked = await tx.service.count({ where: { id: { in: serviceIds }, category: { deletedAt: { not: null } } } }); if (blocked) throw new Error("Restore selected categories before their services."); await tx.service.updateMany({ where: { id: { in: serviceIds }, deletedAt: { not: null } }, data: { deletedAt: null } }); const restored = await tx.service.count({ where: { id: { in: serviceIds }, deletedAt: null } }); if (restored !== serviceIds.length) throw new Error("The selection changed. Nothing was restored."); }
     if (customerIds.length) {
       const customers = await tx.customer.findMany({ where: { id: { in: customerIds }, deletedAt: { not: null } }, select: { id: true, deletedAt: true } });
       if (customers.length !== customerIds.length) throw new Error("The selection changed. Nothing was restored.");
@@ -267,10 +285,10 @@ export async function bulkDeletePermanently(formData: FormData) {
     const all = await Promise.all(items.map((item) => item.type === "customer" ? tx.customer.count({ where: { id: item.id, deletedAt: { not: null } } }) : item.type === "appointment" ? tx.appointment.count({ where: { id: item.id, deletedAt: { not: null } } }) : item.type === "photo" ? tx.mediaAsset.count({ where: { id: item.id, deletedAt: { not: null } } }) : item.type === "service" ? tx.service.count({ where: { id: item.id, deletedAt: { not: null } } }) : item.type === "category" ? tx.studioCategory.count({ where: { id: item.id, deletedAt: { not: null } } }) : tx.paymentMethod.count({ where: { id: item.id, deletedAt: { not: null } } })));
     if (all.some((count) => count !== 1)) throw new Error("The selection changed. Nothing was deleted.");
     const categoryIds = ids("category"); const serviceIds = ids("service");
-    if (categoryIds.length) { const blocked = await tx.service.count({ where: { categoryId: { in: categoryIds }, id: { notIn: serviceIds } } }); if (blocked) throw new Error("Select every related service before deleting its category."); }
     if (photoIds.length) await tx.mediaAsset.deleteMany({ where: { id: { in: photoIds } } });
     if (appointmentIds.length) await tx.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
     if (customerIds.length) { await tx.appointment.deleteMany({ where: { customerId: { in: customerIds } } }); await tx.customer.deleteMany({ where: { id: { in: customerIds } } }); }
+    if (categoryIds.length) await tx.service.deleteMany({ where: { categoryId: { in: categoryIds } } });
     if (serviceIds.length) await tx.service.deleteMany({ where: { id: { in: serviceIds } } });
     if (categoryIds.length) await tx.studioCategory.deleteMany({ where: { id: { in: categoryIds } } });
     const methodIds = ids("paymentMethod"); if (methodIds.length) await tx.paymentMethod.deleteMany({ where: { id: { in: methodIds } } });

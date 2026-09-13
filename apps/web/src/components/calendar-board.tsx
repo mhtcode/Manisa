@@ -5,15 +5,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addDays, addMonths, addWeeks, addYears, format, parseISO, startOfMonth, startOfWeek, subDays, subMonths, subWeeks, subYears } from "date-fns";
 import {
+  Calendar1,
   CalendarDays,
+  CircleDot,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Columns3,
   Grid2X2,
   List,
   Minus,
   Plus,
-  Rows3,
   Sparkles,
 } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
@@ -56,8 +58,8 @@ type CalendarBoardProps = {
 };
 
 const views: { key: CalendarView; label: string; icon: typeof CalendarDays }[] = [
-  { key: "day", label: "Day", icon: Rows3 },
-  { key: "week", label: "Week", icon: CalendarDays },
+  { key: "day", label: "Day", icon: Calendar1 },
+  { key: "week", label: "Week", icon: Columns3 },
   { key: "month", label: "Month", icon: CalendarDays },
   { key: "year", label: "Year", icon: Grid2X2 },
   { key: "agenda", label: "Agenda", icon: List },
@@ -73,8 +75,8 @@ const eventColors = [
 const startHour = 7;
 const endHour = 22;
 const hours = Array.from({ length: endHour - startHour }, (_, index) => startHour + index);
-const minimumSlotHeight = 44;
-const maximumSlotHeight = 96;
+const minimumSlotHeight = 36;
+const maximumSlotHeight = 80;
 
 function touchDistance(touches: TouchList) {
   const first = touches.item(0);
@@ -106,7 +108,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   const router = useRouter();
   const [view, setView] = useState<CalendarView>(initialView);
   const [selectedKey, setSelectedKey] = useState(anchorKey);
-  const [slotHeight, setSlotHeight] = useState(64);
+  const [slotHeight, setSlotHeight] = useState(52);
   const [compactScreen, setCompactScreen] = useState(false);
   const gestureSurface = useRef<HTMLDivElement>(null);
   const slotHeightRef = useRef(slotHeight);
@@ -204,40 +206,36 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   }
 
   return (
-    <section className="-mx-4 -mt-2 min-w-0 overflow-hidden border-y border-white/9 bg-[#0b1017] shadow-[0_24px_70px_rgba(0,0,0,.24)] sm:-mx-5 md:mx-0 md:mt-0 md:rounded-[1.4rem] md:border-x">
-      <div className="border-b border-white/9 bg-[#080b10] px-3 py-3 sm:p-5">
+    <section className="studio-calendar-board -mx-4 -mt-2 flex h-[calc(100svh-10.25rem)] min-w-0 flex-col overflow-hidden border-y border-white/9 bg-[#0b1017] shadow-[0_20px_55px_rgba(0,0,0,.22)] sm:-mx-5 md:mx-0 md:mt-0 md:h-[calc(100svh-8rem)] md:rounded-[1.2rem] md:border-x">
+      <div className="shrink-0 border-b border-white/9 bg-[#080b10] px-2.5 py-2 sm:px-4 sm:py-3">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
-          <button aria-label="Previous period" className="flex size-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(-1)} type="button"><ChevronLeft size={19} /></button>
+          <button aria-label="Previous period" className="flex size-9 items-center justify-center rounded-full bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(-1)} title="Previous" type="button"><ChevronLeft size={18} /></button>
           <div className="min-w-0 text-center sm:text-start">
             <p className="hidden text-[10px] font-semibold uppercase tracking-[.16em] text-teal-300/65 sm:block">Studio calendar</p>
-            <h1 className="truncate text-lg font-bold tracking-[-.025em] text-white sm:mt-0.5 sm:text-xl">{currentTitle}</h1>
+            <h1 className="truncate text-base font-bold tracking-[-.025em] text-white sm:mt-0.5 sm:text-lg">{currentTitle}</h1>
           </div>
           <div className="flex items-center gap-1.5">
-            <button className="flex h-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] px-2.5 text-xs font-semibold text-slate-200 transition active:scale-95 active:bg-white/[0.08]" onClick={goToday} type="button">Today</button>
-            <button aria-label="Next period" className="flex size-10 items-center justify-center rounded-xl border border-white/9 bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(1)} type="button"><ChevronRight size={19} /></button>
+            <button aria-label="Today" className="flex size-9 items-center justify-center rounded-full bg-white/[0.035] text-teal-300 transition active:scale-95 active:bg-white/[0.08]" onClick={goToday} title="Today" type="button"><CircleDot size={17}/></button>
+            <button aria-label="Next period" className="flex size-9 items-center justify-center rounded-full bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(1)} title="Next" type="button"><ChevronRight size={18} /></button>
           </div>
         </div>
 
-        <div aria-label="Calendar view" className="mt-3 grid grid-cols-5 rounded-xl border border-white/9 bg-[#0d131b] p-1" role="group">
+        <div aria-label="Calendar view" className="mt-2 grid grid-cols-5 rounded-full bg-[#0d131b] p-1" role="group">
           {views.map(({ key, label, icon: Icon }) => (
-            <button aria-pressed={view === key} className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-semibold transition sm:text-xs ${view === key ? "bg-teal-300/14 text-teal-200 shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : "text-slate-500 active:bg-white/[0.05]"}`} key={key} onClick={() => chooseView(key)} type="button">
-              <Icon className="hidden sm:block" size={14} /><span className="truncate">{label}</span>
+            <button aria-label={label} aria-pressed={view === key} className={`flex min-w-0 items-center justify-center rounded-full py-2 transition ${view === key ? "bg-teal-300/14 text-teal-200 shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : "text-slate-600 active:bg-white/[0.05]"}`} key={key} onClick={() => chooseView(key)} title={label} type="button">
+              <Icon size={15}/><span className="sr-only">{label}</span>
             </button>
           ))}
         </div>
 
-        {(view === "day" || view === "week" || view === "month") && <div className="mt-2 flex items-center justify-between gap-3 px-1">
-          <p className="text-[10px] text-slate-600"><span className="sm:hidden">Swipe to move · pinch to resize</span><span className="hidden sm:inline">Adjust calendar density</span></p>
-          <div className="flex items-center rounded-xl border border-white/8 bg-white/[0.025] p-0.5" title="Calendar zoom">
-            <button aria-label="Zoom out" className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition active:bg-white/[0.08] disabled:opacity-30" disabled={slotHeight <= minimumSlotHeight} onClick={() => setSlotHeight((height) => Math.max(minimumSlotHeight, height - 12))} type="button"><Minus size={14} /></button>
-            <span className="min-w-12 text-center text-[9px] font-semibold uppercase tracking-wide text-slate-500">{slotHeight <= 52 ? "Compact" : slotHeight >= 84 ? "Large" : "Comfy"}</span>
-            <button aria-label="Zoom in" className="flex size-8 items-center justify-center rounded-lg text-slate-400 transition active:bg-white/[0.08] disabled:opacity-30" disabled={slotHeight >= maximumSlotHeight} onClick={() => setSlotHeight((height) => Math.min(maximumSlotHeight, height + 12))} type="button"><Plus size={14} /></button>
-          </div>
+        {(view === "day" || view === "week" || view === "month") && <div className="mt-1 flex justify-end gap-1">
+          <button aria-label="Make calendar more compact" className="flex size-7 items-center justify-center rounded-full text-slate-600 active:bg-white/[0.08] disabled:opacity-20" disabled={slotHeight <= minimumSlotHeight} onClick={() => setSlotHeight((height) => Math.max(minimumSlotHeight, height - 8))} title="Compact" type="button"><Minus size={13}/></button>
+          <button aria-label="Make calendar larger" className="flex size-7 items-center justify-center rounded-full text-slate-600 active:bg-white/[0.08] disabled:opacity-20" disabled={slotHeight >= maximumSlotHeight} onClick={() => setSlotHeight((height) => Math.min(maximumSlotHeight, height + 8))} title="Larger" type="button"><Plus size={13}/></button>
         </div>}
       </div>
 
       <div
-        className="calendar-gesture-surface"
+        className="calendar-gesture-surface min-h-0 flex-1 overflow-hidden"
         onClickCapture={(event) => {
           if (!suppressClick.current) return;
           event.preventDefault();
@@ -271,7 +269,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
         {view === "agenda" && <Agenda days={days} items={scopedItems} />}
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/8 px-4 py-3 text-xs text-slate-600 sm:px-5">
+      <div className="flex shrink-0 items-center justify-between border-t border-white/8 px-3 py-2 text-[10px] text-slate-600 sm:px-4">
         <span>{scopedItems.length} scheduled</span>
         <span className="flex items-center gap-1.5"><Clock3 size={13} /><span className="hidden sm:inline">Times shown in Toronto</span><span className="sm:hidden">Toronto time</span></span>
       </div>
@@ -284,7 +282,7 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
   const minWidth = visibleDays.length === 1 ? 0 : visibleDays.length <= 3 ? 380 : 920;
 
   return (
-    <div className="max-h-[68vh] overflow-auto">
+    <div className="h-full overflow-auto">
       <div style={{ minWidth }}>
         <div className="sticky top-0 z-20 grid border-b border-white/8 bg-[#0c121a]/95 backdrop-blur-xl" style={{ gridTemplateColumns: `4.5rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
           <div className="border-e border-white/8" />
@@ -326,16 +324,16 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
   const selectedItems = itemsByDay.get(selectedKey) ?? [];
   return (
     <>
-      <div className="md:hidden">
+      <div className="flex h-full min-h-0 flex-col md:hidden">
         <div className="grid grid-cols-7 border-b border-white/8 bg-[#080b10] px-1">
           {days.slice(0, 7).map((day, index) => <div className={`py-2.5 text-center text-[9px] font-bold uppercase tracking-wide ${index === 0 ? "text-rose-400/70" : "text-slate-500"}`} key={day.weekday}>{day.shortWeekday.slice(0, 1)}</div>)}
         </div>
-        <div className="grid grid-cols-7 gap-[2px] bg-[#070a0e] p-1">
+        <div className="grid min-h-0 flex-1 grid-cols-7 grid-rows-6 gap-[2px] bg-[#070a0e] p-1">
           {days.map((day) => {
             const dayItems = itemsByDay.get(day.key) ?? [];
             const selected = day.key === selectedKey;
             const visibleItems = slotHeight <= 52 ? 1 : 2;
-            return <button aria-label={`${day.weekday}, ${day.monthLabel} ${day.dayNumber}, ${dayItems.length} appointments`} className={`min-w-0 overflow-hidden rounded-md border p-1 text-start transition active:scale-[.98] ${!day.isCurrentMonth ? "border-transparent bg-[#0c1015] opacity-35" : "border-white/[0.035] bg-[#12171d]"} ${selected ? "border-teal-300/45 bg-teal-300/[0.075] shadow-[inset_0_0_0_1px_rgba(94,234,212,.12)]" : ""}`} key={day.key} onClick={() => setSelectedKey(day.key)} style={{ minHeight: Math.max(72, slotHeight + 20) }} type="button">
+            return <button aria-label={`${day.weekday}, ${day.monthLabel} ${day.dayNumber}, ${dayItems.length} appointments`} className={`min-h-0 min-w-0 overflow-hidden rounded-md border p-1 text-start transition active:scale-[.98] ${!day.isCurrentMonth ? "border-transparent bg-[#0c1015] opacity-35" : "border-white/[0.035] bg-[#12171d]"} ${selected ? "border-teal-300/45 bg-teal-300/[0.075] shadow-[inset_0_0_0_1px_rgba(94,234,212,.12)]" : ""}`} key={day.key} onClick={() => setSelectedKey(day.key)} type="button">
               <span className="flex items-center justify-center">
                 <span className={`flex size-6 items-center justify-center rounded-full text-[11px] font-bold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-white/10 text-teal-200" : "text-slate-200"}`}>{day.dayNumber}</span>
               </span>
@@ -346,12 +344,9 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             </button>;
           })}
         </div>
-        <div className="border-t border-white/8 bg-[#0b1017] px-3 py-4">
-          <div className="mb-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-semibold text-white">{selectedDay ? `${selectedDay.weekday}, ${selectedDay.monthLabel} ${selectedDay.dayNumber}` : "Selected day"}</p><p className="mt-0.5 text-xs text-slate-500">{selectedItems.length ? `${selectedItems.length} scheduled` : "Available for appointments"}</p></div><Link className="button-secondary h-9 min-h-9 shrink-0 px-3" href={`/appointments/new?date=${selectedKey}`}><Plus size={14}/>Add</Link></div>
-          <div className="space-y-2">{selectedItems.map((item) => <Link className={`flex items-center gap-3 rounded-xl border p-3 ${eventColors[item.colorIndex % eventColors.length]} ${item.kind === "request" ? "border-dashed" : ""}`} href={item.href} key={item.id}><span className="text-xs font-semibold">{item.time}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.customer}</span><span className="block truncate text-[11px] opacity-65">{item.service} · {item.durationMinutes} min</span></span></Link>)}{!selectedItems.length && <Link className="flex min-h-20 items-center justify-center rounded-xl border border-dashed border-white/10 text-sm text-slate-500" href={`/appointments/new?date=${selectedKey}`}>No appointments · tap to add</Link>}</div>
-        </div>
+        <div className="flex shrink-0 items-center gap-2 border-t border-white/8 bg-[#0b1017] px-3 py-2"><p className="min-w-0 flex-1 truncate text-xs text-slate-400">{selectedDay ? `${selectedDay.shortWeekday} ${selectedDay.dayNumber}` : "Day"} · {selectedItems.length} scheduled</p><Link aria-label="Add appointment on selected day" className="flex size-8 items-center justify-center rounded-full bg-blue-500 text-white" href={`/appointments/new?date=${selectedKey}`} title="Add appointment"><Plus size={15}/></Link></div>
       </div>
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden h-full overflow-auto md:block">
         <div className="min-w-[720px]">
         <div className="grid grid-cols-7 border-b border-white/8 bg-white/[0.018]">
           {days.slice(0, 7).map((day) => <div className="border-e border-white/8 px-3 py-2.5 text-center text-[10px] font-medium uppercase tracking-[0.13em] text-slate-600 last:border-e-0" key={day.weekday}>{day.weekday}</div>)}
@@ -361,7 +356,7 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             const dayItems = itemsByDay.get(day.key) ?? [];
             const selected = day.key === selectedKey;
             return (
-              <div className={`relative min-h-32 border-b border-e border-white/[0.065] p-2 text-start transition last:border-e-0 hover:bg-white/[0.025] ${!day.isCurrentMonth ? "bg-black/10 opacity-45" : ""} ${selected ? "bg-teal-300/[0.045] shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : ""}`} key={day.key}>
+              <div className={`relative min-h-24 border-b border-e border-white/[0.065] p-2 text-start transition last:border-e-0 hover:bg-white/[0.025] ${!day.isCurrentMonth ? "bg-black/10 opacity-45" : ""} ${selected ? "bg-teal-300/[0.045] shadow-[inset_0_0_0_1px_rgba(94,234,212,.18)]" : ""}`} key={day.key}>
                 <button aria-label={`Select ${day.weekday}, ${day.monthLabel} ${day.dayNumber}`} className="absolute inset-0 z-0" onClick={() => setSelectedKey(day.key)} type="button"/>
                 <span className={`pointer-events-none relative z-[1] flex size-7 items-center justify-center rounded-full text-xs font-semibold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-teal-300/15 text-teal-200" : "text-slate-400"}`}>{day.dayNumber}</span>
                 {selected && <Link aria-label={`Add appointment on ${day.weekday}, ${day.monthLabel} ${day.dayNumber}`} className="absolute end-2 top-2 z-10 flex size-7 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400" href={`/appointments/new?date=${day.key}`}><Plus size={15}/></Link>}
@@ -391,7 +386,7 @@ function YearGrid({ anchorKey, itemsByDay, onSelectMonth, todayKey, locale }: { 
     return { appointmentCount, monthDate, monthDays, monthIndex };
   });
 
-  return <div className="grid grid-cols-2 gap-2 bg-[#080b10] p-2 sm:gap-3 sm:p-4 lg:grid-cols-3 2xl:grid-cols-4">
+  return <div className="grid h-full grid-cols-2 gap-2 overflow-auto bg-[#080b10] p-2 sm:gap-3 sm:p-4 lg:grid-cols-3 2xl:grid-cols-4">
     {months.map(({ appointmentCount, monthDate, monthDays, monthIndex }) => <button aria-label={`Open ${new Intl.DateTimeFormat(intlLocale(locale), { month: "long", year: "numeric" }).format(monthDate)}, ${appointmentCount} appointments`} className="min-w-0 rounded-xl border border-white/8 bg-[#10151c] p-2.5 text-start transition hover:border-teal-300/25 hover:bg-[#121a22] active:scale-[.99] sm:p-3" key={monthIndex} onClick={() => onSelectMonth(format(monthDate, "yyyy-MM-dd"))} type="button">
       <span className="mb-2 flex items-center justify-between gap-2"><strong className="text-xs font-semibold text-slate-100 sm:text-sm">{new Intl.DateTimeFormat(intlLocale(locale), { month: "long" }).format(monthDate)}</strong><span className="text-[9px] font-medium text-slate-600">{appointmentCount || "—"}</span></span>
       <span aria-hidden="true" className="grid grid-cols-7 text-center">{weekdays.map((weekday, index) => <span className={`pb-1 text-[7px] font-semibold ${index === 0 ? "text-rose-400/55" : "text-slate-700"}`} key={`${weekday}-${index}`}>{weekday}</span>)}</span>
@@ -409,7 +404,7 @@ function Agenda({ days, items }: { days: CalendarDay[]; items: CalendarItem[] })
   const dayMap = new Map(days.map((day) => [day.key, day]));
   if (!items.length) return <div className="empty"><CalendarDays className="mb-3 text-slate-700" size={28} /><p>No appointments in this period.</p><Link className="mt-4 text-sm font-medium text-teal-300" href="/appointments/new">Schedule an appointment</Link></div>;
   return (
-    <div className="divide-y divide-white/8">
+    <div className="h-full divide-y divide-white/8 overflow-auto">
       {items.map((item, index) => {
         const day = dayMap.get(item.dateKey);
         const showDate = index === 0 || items[index - 1].dateKey !== item.dateKey;

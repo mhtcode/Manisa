@@ -44,14 +44,6 @@ export async function updateStudioCategory(id: string, formData: FormData) {
   revalidatePath("/");
 }
 
-export async function toggleStudioCategory(id: string, active: boolean) {
-  const user = await requireBusinessPermission("services.manage");
-  await prisma.studioCategory.update({ where: { id, deletedAt: null }, data: { active } });
-  revalidatePath("/services");
-  revalidatePath("/settings/categories");
-  revalidatePath("/");
-}
-
 export async function moveStudioCategory(id: string, direction: "up" | "down") {
   const user = await requireBusinessPermission("services.manage");
   const categories = await prisma.studioCategory.findMany({ where: { deletedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }], select: { id: true, position: true } });

@@ -2,14 +2,21 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Info, Maximize2, Minus, Plus, RotateCcw, X } from "lucide-react";
 import { clampPublicGalleryZoom, publicGalleryFullSource, resolvePublicGalleryIndex, type PublicLocale } from "@/lib/public-site";
 
-type GalleryItem = { id: string; src: string; alt: string; unoptimized?: boolean };
+type GalleryItem = {
+  id: string;
+  src: string;
+  alt: string;
+  title?: string;
+  detail?: string;
+  unoptimized?: boolean;
+};
 
 export function PublicGallery({ items, locale }: { items: GalleryItem[]; locale: PublicLocale }) {
   const [active, setActive] = useState<number | null>(null);
-  const [slide, setSlide] = useState(0);
+  const [flipped, setFlipped] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const touchStart = useRef<number | null>(null);
   const closeLabel = locale === "fa" ? "بستن نمایشگر" : "Close gallery";
@@ -27,19 +34,28 @@ export function PublicGallery({ items, locale }: { items: GalleryItem[]; locale:
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKeyDown); };
   }, [active, items.length, locale]);
 
-  useEffect(() => {
-    if (items.length < 2) return;
-    const timer = window.setInterval(() => setSlide((index) => resolvePublicGalleryIndex(index, 1, items.length)), 5500);
-    return () => window.clearInterval(timer);
-  }, [items.length]);
-
   const move = (offset: number) => { setActive((index) => resolvePublicGalleryIndex(index ?? 0, offset, items.length)); setZoom(1); };
   const open = (index: number) => { setActive(index); setZoom(1); };
 
   return <>
-    <div className="public-work-slideshow">
-      <button aria-label={`${locale === "fa" ? "باز کردن تصویر" : "Open studio image"} ${slide + 1}`} className="public-work-slide" onClick={() => open(slide)} type="button"><Image alt={items[slide]?.alt || ""} className="object-contain" fill sizes="(max-width:768px) 100vw, 80vw" src={publicGalleryFullSource(items[slide]?.src || "")} unoptimized={items[slide]?.unoptimized}/><span><Maximize2 size={18}/></span></button>
-      {items.length > 1 && <div className="public-work-slide-controls"><button aria-label={locale === "fa" ? "تصویر قبلی" : "Previous image"} onClick={() => setSlide((index) => resolvePublicGalleryIndex(index, -1, items.length))} type="button"><ChevronLeft size={20}/></button><div>{items.map((item, index) => <button aria-label={`${locale === "fa" ? "نمایش تصویر" : "Show image"} ${index + 1}`} data-active={index === slide ? "true" : undefined} key={item.id} onClick={() => setSlide(index)} type="button"/>)}</div><button aria-label={locale === "fa" ? "تصویر بعدی" : "Next image"} onClick={() => setSlide((index) => resolvePublicGalleryIndex(index, 1, items.length))} type="button"><ChevronRight size={20}/></button></div>}
+    <div className="public-work-puzzle">
+      {items.map((item, index) => {
+        const isFlipped = flipped === item.id;
+        const fullSource = publicGalleryFullSource(item.src);
+        return <article className={`public-work-card public-work-card-${index % 6}`} data-flipped={isFlipped ? "true" : undefined} key={item.id}>
+          <div className="public-work-card-inner">
+            <button aria-label={locale === "fa" ? "نمایش اطلاعات تصویر" : "Show image details"} aria-pressed={isFlipped} className="public-work-card-face public-work-card-front" onClick={() => setFlipped(item.id)} type="button">
+              <span aria-hidden className="public-work-card-blur" style={{ backgroundImage: `url("${fullSource}")` }}/>
+              <Image alt={item.alt} className="public-work-card-image object-contain" fill sizes="(max-width:768px) 50vw, 32vw" src={fullSource} unoptimized={item.unoptimized}/>
+              <span className="public-work-card-hint"><Info size={16}/></span>
+            </button>
+            <div aria-hidden={!isFlipped} className="public-work-card-face public-work-card-back">
+              <div><p>{locale === "fa" ? "نمونه‌کار مانیسا" : "Manisa studio work"}</p><h3 dir="auto">{item.title || (locale === "fa" ? "زیبایی در جزئیات" : "Beauty in every detail")}</h3><span dir="auto">{item.detail || (locale === "fa" ? "برای دیدن تصویر کامل آن را باز کنید." : "Open the full image and explore every detail.")}</span></div>
+              <div className="public-work-card-actions"><button aria-label={locale === "fa" ? "بازگشت به تصویر" : "Flip back to image"} onClick={() => setFlipped(null)} title={locale === "fa" ? "بازگشت" : "Flip back"} type="button"><RotateCcw size={17}/></button><button aria-label={locale === "fa" ? "باز کردن تصویر کامل" : "Open full image"} onClick={() => open(index)} title={locale === "fa" ? "تصویر کامل" : "Full image"} type="button"><Maximize2 size={17}/></button></div>
+            </div>
+          </div>
+        </article>;
+      })}
     </div>
     {active !== null && items[active] ? <div aria-label={locale === "fa" ? "نمایشگر نمونه‌کارها" : "Studio gallery viewer"} aria-modal="true" className="public-lightbox" onClick={(event) => { if (event.target === event.currentTarget) setActive(null); }} role="dialog">
       <div className="public-lightbox-toolbar"><p dir="ltr">{active + 1} / {items.length}</p><div><button aria-label={locale === "fa" ? "کوچک‌نمایی" : "Zoom out"} disabled={zoom <= 1} onClick={() => setZoom((value) => clampPublicGalleryZoom(value - .25))} type="button"><Minus size={19}/></button><button aria-label={locale === "fa" ? "بزرگ‌نمایی" : "Zoom in"} disabled={zoom >= 3} onClick={() => setZoom((value) => clampPublicGalleryZoom(value + .25))} type="button"><Plus size={19}/></button><button aria-label={closeLabel} onClick={() => setActive(null)} type="button"><X size={20}/></button></div></div>

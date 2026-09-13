@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { CalendarRange, Check, ChevronDown, Clock3, Copy, LoaderCircle, Power, Save } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { ArrowLeft, ArrowRight, CalendarDays, Check, Clock3, Copy, LoaderCircle, Moon, Power, Save, Sun, Sunrise, Trash2 } from "lucide-react";
 import { updateOnlineBookingSettings } from "@/server/actions/settings";
 
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -9,41 +9,67 @@ const times = Array.from({ length: 25 }, (_, index) => {
   const minutes = 8 * 60 + index * 30;
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 });
+const defaultDayTimes = times.filter((time) => time >= "09:00" && time <= "17:00");
 
 export function OnlineBookingSettingsForm({ settings }: { settings: { publicBookingEnabled: boolean; publicBookingMessage?: string | null; publicBookingLeadHours: number; publicBookingWindows: Record<string, string[]> } }) {
   const [enabled, setEnabled] = useState(settings.publicBookingEnabled);
   const [selected, setSelected] = useState(() => new Set(Object.entries(settings.publicBookingWindows).flatMap(([day, values]) => values.map((time) => `${day}:${time}`))));
+  const initialDays = Object.entries(settings.publicBookingWindows).filter(([, values]) => values.length).map(([day]) => Number(day));
+  const [activeDays, setActiveDays] = useState(() => new Set(initialDays));
+  const [activeDay, setActiveDay] = useState(initialDays[0] ?? 1);
+  const [step, setStep] = useState(1);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
+  const selectedValues = useMemo(() => [...selected].sort(), [selected]);
 
-  function toggle(value: string) {
+  function toggleDay(dayIndex: number) {
+    setMessage("");
+    setActiveDays((current) => {
+      const next = new Set(current);
+      if (next.has(dayIndex)) {
+        next.delete(dayIndex);
+        setSelected((values) => new Set([...values].filter((value) => !value.startsWith(`${dayIndex}:`))));
+        if (activeDay === dayIndex) setActiveDay([...next].sort((a, b) => a - b)[0] ?? 1);
+      } else {
+        next.add(dayIndex);
+        setSelected((values) => {
+          const copy = new Set(values);
+          defaultDayTimes.forEach((time) => copy.add(`${dayIndex}:${time}`));
+          return copy;
+        });
+        setActiveDay(dayIndex);
+      }
+      return next;
+    });
+  }
+
+  function toggleTime(time: string) {
+    const value = `${activeDay}:${time}`;
     setMessage("");
     setSelected((current) => { const next = new Set(current); if (next.has(value)) next.delete(value); else next.add(value); return next; });
   }
 
-  function setDay(dayIndex: number, mode: "all" | "clear", sourceDay?: number) {
-    setMessage("");
-    setSelected((current) => {
-      const next = new Set([...current].filter((value) => !value.startsWith(`${dayIndex}:`)));
-      const sourceTimes = sourceDay === undefined ? times : [...current].filter((value) => value.startsWith(`${sourceDay}:`)).map((value) => value.split(":").slice(1).join(":"));
-      if (mode === "all") sourceTimes.forEach((time) => next.add(`${dayIndex}:${time}`));
-      return next;
-    });
-  }
-
-  function addPeriod(dayIndex: number, from: string, to: string) {
+  function fillPeriod(from: string, to: string) {
     setSelected((current) => {
       const next = new Set(current);
-      times.filter((time) => time >= from && time <= to).forEach((time) => next.add(`${dayIndex}:${time}`));
+      times.filter((time) => time >= from && time <= to).forEach((time) => next.add(`${activeDay}:${time}`));
       return next;
     });
   }
 
-  function copyMondayToWeekdays() {
+  function clearDay() {
+    setSelected((current) => new Set([...current].filter((value) => !value.startsWith(`${activeDay}:`))));
+  }
+
+  function copyMonday() {
     setSelected((current) => {
       const monday = [...current].filter((value) => value.startsWith("1:")).map((value) => value.slice(2));
-      const next = new Set([...current].filter((value) => !/^[2-5]:/.test(value)));
-      for (let day = 2; day <= 5; day += 1) monday.forEach((time) => next.add(`${day}:${time}`));
+      const next = new Set(current);
+      for (const day of activeDays) {
+        if (day === 1) continue;
+        [...next].filter((value) => value.startsWith(`${day}:`)).forEach((value) => next.delete(value));
+        monday.forEach((time) => next.add(`${day}:${time}`));
+      }
       return next;
     });
   }
@@ -51,20 +77,76 @@ export function OnlineBookingSettingsForm({ settings }: { settings: { publicBook
   function save(formData: FormData) {
     setMessage("");
     startTransition(async () => {
-      try { await updateOnlineBookingSettings(formData); setMessage("Availability published."); }
+      try { await updateOnlineBookingSettings(formData); setMessage(enabled ? "Availability published." : "Online booking is off."); }
       catch (error) { setMessage(error instanceof Error ? error.message : "Availability could not be saved."); }
     });
   }
 
-  return <form action={save} className="space-y-5">
-    <section className="panel p-5 sm:p-6">
-      <div className="flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Power size={18}/></span><div><h2 className="font-semibold">Online booking visibility</h2><p className="mt-1 text-sm text-slate-500">Choose whether customers can request published times from the website.</p></div></div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2"><label className={`cursor-pointer rounded-2xl border p-4 transition ${enabled ? "border-emerald-400/40 bg-emerald-400/10" : "border-white/8 bg-white/[.025]"}`}><span className="flex items-center gap-3"><input checked={enabled} className="size-4 accent-emerald-400" name="publicBookingEnabled" onChange={() => setEnabled(true)} type="radio" value="on"/><span><strong className="block text-sm">On</strong><span className="text-xs text-slate-500">Show available times and accept requests.</span></span></span></label><label className={`cursor-pointer rounded-2xl border p-4 transition ${!enabled ? "border-amber-400/35 bg-amber-400/10" : "border-white/8 bg-white/[.025]"}`}><span className="flex items-center gap-3"><input checked={!enabled} className="size-4 accent-amber-400" name="publicBookingEnabled" onChange={() => setEnabled(false)} type="radio" value="off"/><span><strong className="block text-sm">Off</strong><span className="text-xs text-slate-500">Show your contact message instead.</span></span></span></label></div>
-      <div className="mt-5 grid gap-4 sm:grid-cols-2"><label><span className="label">Minimum notice</span><select className="field" defaultValue={settings.publicBookingLeadHours} name="publicBookingLeadHours"><option value="0">No minimum</option><option value="2">2 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option></select></label><label><span className="label">Message when booking is hidden</span><input className="field" defaultValue={settings.publicBookingMessage || "Call or message us on WhatsApp to book your appointment."} maxLength={300} name="publicBookingMessage"/></label></div>
+  const orderedActiveDays = [...activeDays].sort((a, b) => a - b);
+  const hasTimes = selectedValues.length > 0;
+  const success = message === "Availability published." || message === "Online booking is off.";
+
+  return <form action={save} className="mx-auto max-w-4xl space-y-4">
+    <section className="panel p-4 sm:p-5">
+      <div className="flex items-center gap-3">
+        <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${enabled ? "bg-emerald-400/12 text-emerald-300" : "bg-white/[.04] text-slate-500"}`}><Power size={18}/></span>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Online booking</h2><p className="mt-0.5 truncate text-xs text-slate-500">Accept appointment requests from the website.</p></div>
+        <div className="flex rounded-full bg-black/20 p-1" role="radiogroup" aria-label="Online booking visibility">
+          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${enabled ? "bg-emerald-400/18 text-emerald-200" : "text-slate-600"}`}><input checked={enabled} className="sr-only" name="publicBookingEnabled" onChange={() => { setEnabled(true); setMessage(""); }} type="radio" value="on"/>On</label>
+          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${!enabled ? "bg-white/[.08] text-slate-200" : "text-slate-600"}`}><input checked={!enabled} className="sr-only" name="publicBookingEnabled" onChange={() => { setEnabled(false); setMessage(""); }} type="radio" value="off"/>Off</label>
+        </div>
+      </div>
+      {!enabled && <div className="mt-4 flex justify-end"><button aria-label="Save online booking setting" className="icon-button bg-blue-500/15 text-blue-200" disabled={pending} title="Save">{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}</button></div>}
     </section>
-    <section className="panel overflow-hidden"><div className="panel-header flex-wrap"><div><h2 className="flex items-center gap-2 font-semibold"><CalendarRange size={17}/>Weekly availability</h2><p className="mt-1 text-xs text-slate-500">Appointments and pending requests are automatically removed from customer choices.</p></div><div className="flex flex-wrap items-center gap-2"><button className="button-secondary min-h-9 px-3 text-xs" onClick={copyMondayToWeekdays} type="button"><Copy size={13}/>Copy Monday to weekdays</button><span className="badge"><Clock3 size={13}/>{selected.size} starts</span></div></div>
-      <div className="divide-y divide-white/8">{days.map((day, dayIndex) => { const count = [...selected].filter((value) => value.startsWith(`${dayIndex}:`)).length; return <details className="group" key={day} open={dayIndex === 1}><summary className="flex cursor-pointer list-none items-center gap-3 px-5 py-4"><span className={`size-2 rounded-full ${count ? "bg-emerald-400" : "bg-slate-700"}`}/><span className="flex-1 font-medium">{day}</span><span className="text-xs text-slate-500">{count ? `${count} starts` : "Closed"}</span><ChevronDown className="transition group-open:rotate-180" size={17}/></summary><div className="px-5 pb-5"><div className="mb-3 flex flex-wrap gap-2"><button className="button-secondary min-h-8 px-3 text-[11px]" onClick={() => addPeriod(dayIndex, "08:00", "12:00")} type="button">Morning</button><button className="button-secondary min-h-8 px-3 text-[11px]" onClick={() => addPeriod(dayIndex, "12:30", "16:30")} type="button">Afternoon</button><button className="button-secondary min-h-8 px-3 text-[11px]" onClick={() => addPeriod(dayIndex, "17:00", "20:00")} type="button">Evening</button><button className="button-secondary min-h-8 px-3 text-[11px]" onClick={() => setDay(dayIndex, "all")} type="button">All day</button><button className="min-h-8 rounded-lg px-3 text-[11px] text-rose-300 hover:bg-rose-400/10" onClick={() => setDay(dayIndex, "clear")} type="button">Clear</button></div><div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6">{times.map((time) => { const value = `${dayIndex}:${time}`; const checked = selected.has(value); return <label className={`cursor-pointer rounded-xl px-2 py-2.5 text-center text-xs font-medium transition ${checked ? "bg-blue-500/20 text-blue-100 ring-1 ring-blue-400/35" : "bg-white/[0.035] text-slate-500 hover:bg-white/[0.06]"}`} key={value}><input checked={checked} className="sr-only" name="bookingSlot" onChange={() => toggle(value)} type="checkbox" value={value}/>{time}</label>; })}</div></div></details>; })}</div>
-    </section>
-    <div className="flex items-center gap-3"><button className="button" disabled={pending}>{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}Save availability</button>{message && <span className={`flex items-center gap-1.5 text-sm ${message === "Availability published." ? "text-emerald-300" : "text-rose-300"}`}>{message === "Availability published." && <Check size={15}/>} {message}</span>}</div>
+
+    {enabled && <section className="panel overflow-hidden">
+      <header className="flex items-center gap-3 border-b border-white/7 px-4 py-3">
+        {[1, 2, 3].map((value) => <button aria-label={`Go to booking setup step ${value}`} className={`flex size-8 items-center justify-center rounded-full text-xs font-bold transition ${step === value ? "bg-blue-500 text-white" : value < step ? "bg-emerald-400/14 text-emerald-300" : "bg-white/[.04] text-slate-600"}`} key={value} onClick={() => setStep(value)} type="button">{value < step ? <Check size={14}/> : value}</button>)}
+        <span className="ms-auto text-xs text-slate-500">{step === 1 ? "Working days" : step === 2 ? "Start times" : "Publish"}</span>
+      </header>
+
+      <div className="p-4 sm:p-6">
+        {step === 1 && <div>
+          <div className="mb-5 flex items-center gap-3"><CalendarDays className="text-blue-300" size={19}/><div><h3 className="font-semibold">Choose working days</h3><p className="mt-1 text-xs text-slate-500">A sensible 9:00–17:00 schedule is added when you open a day.</p></div></div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{days.map((day, index) => <label className={`cursor-pointer rounded-xl p-3 text-center text-sm transition ${activeDays.has(index) ? "bg-blue-500/16 text-blue-100 ring-1 ring-blue-400/25" : "bg-white/[.03] text-slate-500"}`} key={day}><input checked={activeDays.has(index)} className="sr-only" onChange={() => toggleDay(index)} type="checkbox"/><span className="block text-[10px] uppercase tracking-wide opacity-60">{day.slice(0, 3)}</span><span className={`mx-auto mt-2 block size-2 rounded-full ${activeDays.has(index) ? "bg-emerald-400" : "bg-slate-700"}`}/></label>)}</div>
+        </div>}
+
+        {step === 2 && <div>
+          <div className="flex gap-2 overflow-x-auto pb-2" data-horizontal-scroll>{orderedActiveDays.map((day) => <button aria-pressed={activeDay === day} className={`shrink-0 rounded-full px-3 py-2 text-xs font-semibold transition ${activeDay === day ? "bg-blue-500/18 text-blue-100" : "bg-white/[.035] text-slate-500"}`} key={day} onClick={() => setActiveDay(day)} type="button">{days[day]}</button>)}</div>
+          {!orderedActiveDays.length ? <button className="mt-5 text-sm text-blue-300" onClick={() => setStep(1)} type="button">Choose at least one working day</button> : <>
+            <div className="my-4 flex items-center gap-1.5">
+              <IconAction label="Morning" onClick={() => fillPeriod("08:00", "12:00")}><Sunrise size={16}/></IconAction>
+              <IconAction label="Afternoon" onClick={() => fillPeriod("12:30", "16:30")}><Sun size={16}/></IconAction>
+              <IconAction label="Evening" onClick={() => fillPeriod("17:00", "20:00")}><Moon size={16}/></IconAction>
+              <IconAction label="All day" onClick={() => fillPeriod("08:00", "20:00")}><Clock3 size={16}/></IconAction>
+              {activeDays.has(1) && activeDays.size > 1 && <IconAction label="Copy Monday to all open days" onClick={copyMonday}><Copy size={16}/></IconAction>}
+              <span className="flex-1"/>
+              <IconAction danger label={`Clear ${days[activeDay]}`} onClick={clearDay}><Trash2 size={16}/></IconAction>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-9">{times.map((time) => { const checked = selected.has(`${activeDay}:${time}`); return <label className={`cursor-pointer rounded-lg py-2.5 text-center text-[11px] font-semibold transition ${checked ? "bg-blue-500/18 text-blue-100 ring-1 ring-blue-400/25" : "bg-white/[.025] text-slate-600"}`} key={time}><input checked={checked} className="sr-only" onChange={() => toggleTime(time)} type="checkbox"/>{time}</label>; })}</div>
+          </>}
+        </div>}
+
+        {step === 3 && <div className="mx-auto max-w-lg">
+          <div className="flex items-center gap-3"><Check className="text-emerald-300" size={20}/><div><h3 className="font-semibold">Ready to publish</h3><p className="mt-1 text-xs text-slate-500">{selectedValues.length} available starts across {activeDays.size} days.</p></div></div>
+          <label className="mt-6 block"><span className="label">Minimum notice</span><select className="field" defaultValue={settings.publicBookingLeadHours} name="publicBookingLeadHours"><option value="0">No minimum</option><option value="2">2 hours</option><option value="12">12 hours</option><option value="24">24 hours</option><option value="48">48 hours</option></select></label>
+          <div className="mt-6 flex justify-center"><button aria-label="Publish online booking availability" className="flex size-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400 active:scale-95 disabled:opacity-45" disabled={pending || !hasTimes} title="Publish">{pending ? <LoaderCircle className="animate-spin" size={19}/> : <Save size={19}/>}</button></div>
+        </div>}
+      </div>
+
+      <footer className="flex items-center justify-between border-t border-white/7 px-4 py-3">
+        <button aria-label="Previous step" className="icon-button" disabled={step === 1} onClick={() => setStep((value) => Math.max(1, value - 1))} title="Previous" type="button"><ArrowLeft size={17}/></button>
+        <p className={`text-xs ${success ? "text-emerald-300" : "text-rose-300"}`} role="status">{message}</p>
+        <button aria-label="Next step" className="icon-button" disabled={step === 3 || (step === 1 && !activeDays.size)} onClick={() => setStep((value) => Math.min(3, value + 1))} title="Next" type="button"><ArrowRight size={17}/></button>
+      </footer>
+    </section>}
+
+    <input name="publicBookingMessage" type="hidden" value={settings.publicBookingMessage || "Call or message us on WhatsApp to book your appointment."}/>
+    {selectedValues.map((value) => <input key={value} name="bookingSlot" type="hidden" value={value}/>)}
+    {!enabled && message && <p className={`text-center text-xs ${success ? "text-emerald-300" : "text-rose-300"}`} role="status">{message}</p>}
   </form>;
+}
+
+function IconAction({ label, danger = false, onClick, children }: { label: string; danger?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return <button aria-label={label} className={`flex size-9 items-center justify-center rounded-full transition active:scale-95 ${danger ? "text-rose-300 hover:bg-rose-400/10" : "bg-white/[.04] text-slate-400 hover:bg-white/[.08] hover:text-white"}`} onClick={onClick} title={label} type="button">{children}</button>;
 }

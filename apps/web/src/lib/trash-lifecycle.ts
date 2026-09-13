@@ -13,3 +13,7 @@ export function trashTimeRemaining(deletedAt: Date, now = new Date()) {
   const hours = Math.ceil(milliseconds / 3_600_000);
   return hours > 48 ? `${Math.ceil(hours / 24)} days` : hours > 1 ? `${hours} hours` : "less than 1 hour";
 }
+
+export function deletedInSameTrashOperation(parentDeletedAt: Date, dependantDeletedAt: Date | null) {
+  return Boolean(dependantDeletedAt && dependantDeletedAt.getTime() === parentDeletedAt.getTime());
+}

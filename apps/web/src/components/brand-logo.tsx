@@ -4,7 +4,7 @@ export function BrandLogo({
   size = 40,
   className = "",
   priority = false,
-  alt = "",
+  alt = "Manisa studio logo",
 }: {
   size?: number;
   className?: string;

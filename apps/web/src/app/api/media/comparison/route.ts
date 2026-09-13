@@ -7,6 +7,7 @@ import { readObject } from "@/lib/object-storage";
 import { absoluteUploadPath } from "@/lib/photo-storage";
 import { hasBusinessPermission } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { imageCropGeometry, type ImageFocus } from "@/lib/social-composer";
 
 type Photo = NonNullable<Awaited<ReturnType<typeof loadPhoto>>>;
 
@@ -24,23 +25,38 @@ async function photoBytes(photo: Photo) {
   return legacyPath ? readFile(absoluteUploadPath(legacyPath)).catch(() => null) : null;
 }
 
-const allowedPositions = new Set(["northwest", "north", "northeast", "west", "centre", "east", "southwest", "south", "southeast"]);
-function cropPosition(value: string | null) { return value && allowedPositions.has(value) ? value : "centre"; }
 function boundedNumber(value: string | null, fallback: number, min: number, max: number) { const parsed = Number(value); return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback; }
 function escapeXml(value: string) { return value.replace(/[<>&'\"]/g, (character) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", "\"": "&quot;" })[character] || character); }
 function cleanText(value: string | null, fallback: string, limit: number) { return (value || fallback).replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, limit) || fallback; }
 
-function labelOverlay(regionWidth: number, regionHeight: number, regionLeft: number, regionTop: number, label: string, scale: number): OverlayOptions {
-  const fontSize = Math.max(14, Math.round(Math.min(regionWidth, regionHeight) * 0.055));
+function labelOverlay(regionWidth: number, regionHeight: number, regionLeft: number, regionTop: number, label: string, scale: number, fontSize: number): OverlayOptions {
   const margin = Math.max(9, Math.round(28 * scale));
   const estimatedWidth = Math.round(fontSize * (Array.from(label).length * 0.68 + 1.8));
-  const boxWidth = Math.max(72 * scale, Math.min(regionWidth - margin * 2, estimatedWidth));
+  const boxWidth = Math.min(Math.max(16, regionWidth - margin * 2), Math.max(72 * scale, estimatedWidth));
   const boxHeight = Math.max(28 * scale, Math.round(fontSize * 1.85));
   const safeLeft = Math.min(regionLeft + margin, regionLeft + regionWidth - Math.round(boxWidth) - margin);
   return {
     input: Buffer.from(`<svg width="${Math.round(boxWidth)}" height="${Math.round(boxHeight)}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" rx="${Math.round(boxHeight / 2)}" fill="rgba(7,11,18,.78)"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="white" font-family="DejaVu Sans,sans-serif" font-weight="700" font-size="${fontSize}">${escapeXml(label)}</text></svg>`),
     left: Math.max(regionLeft, Math.round(safeLeft)), top: regionTop + margin,
   };
+}
+
+function imageFocus(query: URLSearchParams, prefix: "before" | "after"): ImageFocus {
+  return {
+    x: boundedNumber(query.get(`${prefix}X`), 0, -100, 100),
+    y: boundedNumber(query.get(`${prefix}Y`), 0, -100, 100),
+    zoom: boundedNumber(query.get(`${prefix}Zoom`), 1, 1, 3),
+  };
+}
+
+async function cropPhoto(input: Buffer, width: number, height: number, focus: ImageFocus, quality: number) {
+  const normalized = await sharp(input).rotate().toBuffer({ resolveWithObject: true });
+  const geometry = imageCropGeometry(normalized.info.width, normalized.info.height, width, height, focus);
+  return sharp(normalized.data)
+    .resize(geometry.width, geometry.height, { fit: "fill" })
+    .extract({ left: geometry.left, top: geometry.top, width, height })
+    .jpeg({ quality })
+    .toBuffer();
 }
 
 function detailOverlay(width: number, height: number, text: string, scale: number): OverlayOptions {
@@ -86,8 +102,8 @@ export async function GET(request: Request) {
   const afterWidth = layout === "side" ? width - beforeWidth : width;
   const afterHeight = layout === "stack" ? height - beforeHeight : height;
   const [beforeImage, afterImage] = await Promise.all([
-    sharp(beforeInput).rotate().resize({ width: beforeWidth, height: beforeHeight, fit: "cover", position: cropPosition(query.get("beforePosition")) }).jpeg({ quality: preview ? 80 : 92 }).toBuffer(),
-    sharp(afterInput).rotate().resize({ width: afterWidth, height: afterHeight, fit: "cover", position: cropPosition(query.get("afterPosition")) }).jpeg({ quality: preview ? 80 : 92 }).toBuffer(),
+    cropPhoto(beforeInput, beforeWidth, beforeHeight, imageFocus(query, "before"), preview ? 80 : 92),
+    cropPhoto(afterInput, afterWidth, afterHeight, imageFocus(query, "after"), preview ? 80 : 92),
   ]);
   const afterLeft = layout === "side" ? beforeWidth : 0;
   const afterTop = layout === "stack" ? beforeHeight : 0;
@@ -98,12 +114,6 @@ export async function GET(request: Request) {
   if (dividerWidth > 0) overlays.push(layout === "side"
     ? { input: { create: { width: dividerWidth, height, channels: 4, background: dividerColor } }, left: Math.max(0, beforeWidth - Math.floor(dividerWidth / 2)), top: 0 }
     : { input: { create: { width, height: dividerWidth, channels: 4, background: dividerColor } }, left: 0, top: Math.max(0, beforeHeight - Math.floor(dividerWidth / 2)) });
-
-  if (query.get("showLabels") !== "0") {
-    const beforeLabel = cleanText(query.get("beforeLabel"), "BEFORE", 18);
-    const afterLabel = cleanText(query.get("afterLabel"), "AFTER", 18);
-    overlays.push(labelOverlay(beforeWidth, beforeHeight, 0, 0, beforeLabel, scale), labelOverlay(afterWidth, afterHeight, afterLeft, afterTop, afterLabel, scale));
-  }
 
   const detailParts: string[] = [];
   const timezone = settings?.timezone || "America/Toronto";
@@ -121,6 +131,13 @@ export async function GET(request: Request) {
     const logoMeta = await sharp(logo).metadata();
     const margin = Math.round(width * 0.03);
     overlays.push({ input: logo, ...logoCoordinates(logoPosition, width, height, logoMeta.width || logoWidth, logoMeta.height || logoWidth, margin) });
+  }
+
+  if (query.get("showLabels") !== "0") {
+    const beforeLabel = cleanText(query.get("beforeLabel"), "BEFORE", 18);
+    const afterLabel = cleanText(query.get("afterLabel"), "AFTER", 18);
+    const fontSize = Math.max(14, Math.round(34 * scale));
+    overlays.push(labelOverlay(beforeWidth, beforeHeight, 0, 0, beforeLabel, scale, fontSize), labelOverlay(afterWidth, afterHeight, afterLeft, afterTop, afterLabel, scale, fontSize));
   }
 
   const output = await sharp({ create: { width, height, channels: 3, background: "#111827" } }).composite(overlays).jpeg({ quality: preview ? 82 : 94, chromaSubsampling: "4:4:4" }).toBuffer();

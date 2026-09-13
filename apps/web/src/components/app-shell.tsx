@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus, LogOut, Settings2 } from "lucide-react";
+import { CalendarPlus, LogOut, Settings } from "lucide-react";
 import { DesktopNavigation, MobileNavigation } from "@/components/app-navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleRuntime } from "@/components/locale-runtime";
@@ -26,7 +26,7 @@ export function AppShell({ children, locale, userName, businessName, mobileNavOr
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/8 bg-[#080b10]/88 px-4 backdrop-blur-xl md:px-8">
         <Link href="/report" prefetch={false} className="flex min-w-0 items-center gap-2 font-semibold md:hidden"><BrandLogo size={36}/><span className="truncate">{businessName}</span></Link>
         <div className="hidden text-sm text-slate-500 md:block">{new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: "full" }).format(new Date())}</div>
-        <div className="flex items-center gap-2"><GlobalSearch permissions={permissions}/><NotificationCenter items={notifications} locale={locale} timezone={timezone}/><Link aria-label={t.settings} className="header-profile" href="/settings" prefetch={false} title={`${t.settings} · ${userName}`}><Settings2 size={17}/><span className="hidden sm:inline">{t.settings}</span></Link><Link href="/appointments/new" prefetch={false} className="button appointment-cta h-10 min-h-10 px-3 sm:px-4"><CalendarPlus size={17}/><span className="hidden min-[520px]:inline">{t.newAppointment}</span></Link></div>
+        <div className="flex items-center gap-2"><GlobalSearch permissions={permissions}/><NotificationCenter items={notifications} locale={locale} timezone={timezone}/><Link aria-label={t.settings} className="header-profile size-10 p-0" href="/settings" prefetch={false} title={`${t.settings} · ${userName}`}><Settings size={18}/></Link><Link href="/appointments/new" prefetch={false} className="button appointment-cta h-10 min-h-10 px-3 sm:px-4"><CalendarPlus size={17}/><span className="hidden min-[520px]:inline">{t.newAppointment}</span></Link></div>
       </header>
       <LocaleRuntime locale={locale}><PageSwipeNavigation order={mobileOrder} rtl={locale === "fa"}><main className="mx-auto max-w-[94rem] p-4 sm:p-5 md:p-8 lg:p-10">{children}</main></PageSwipeNavigation></LocaleRuntime>
     </div>

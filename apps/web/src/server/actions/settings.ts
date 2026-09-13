@@ -9,6 +9,7 @@ import { importCategory, normalizedImportValue, parseManualCalendarJson } from "
 import { secureCookiesEnabled } from "@/lib/env";
 import { mobileNavigationKeys } from "@/lib/mobile-navigation";
 import { prisma } from "@/lib/prisma";
+import { normalizeCanadianPhone } from "@/lib/canadian-phone";
 
 const collectionKeys = ["appointments", "customers", "services", "gallery", "reportRecords"] as const;
 type CollectionKey = (typeof collectionKeys)[number];
@@ -28,17 +29,17 @@ export type CalendarImportState = {
 };
 
 export async function updateSettings(formData: FormData) {
-  const user = await requireUser();
+  const user = await requireBusinessPermission("business.manage");
   const locale = formData.get("locale") === "fa" ? "fa" : "en";
   const themeValue = String(formData.get("theme"));
   const theme = themeValue === "LIGHT" || themeValue === "SYSTEM" ? themeValue : "DARK";
   const businessName = String(formData.get("businessName") || "Manisa").trim().slice(0, 120);
   const currency = String(formData.get("currency") || "CAD").toUpperCase().slice(0, 3);
   const optional = (name: string, max: number) => String(formData.get(name) || "").trim().slice(0, max) || null;
-  const publicPhone = optional("publicPhone", 50);
+  const publicPhone = normalizeCanadianPhone(String(formData.get("publicPhone") || ""));
   const publicEmail = optional("publicEmail", 160);
   const bookingUrl = optional("bookingUrl", 500);
-  const whatsappNumber = optional("whatsappNumber", 50);
+  const whatsappNumber = normalizeCanadianPhone(String(formData.get("whatsappNumber") || ""));
   const studioTagline = optional("studioTagline", 160);
   const studioBiography = optional("studioBiography", 1200);
   const address = optional("address", 300);
