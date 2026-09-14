@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
   const config = await getInstagramOAuthConfig();
-  if (!config) return NextResponse.redirect(new URL("/settings/instagram?error=config", request.url));
+  if (!config) return NextResponse.redirect(new URL("/settings/integrations?section=instagram&error=config", request.url));
   const env = getServerEnv();
   const created = createInstagramOAuthState(user.id, env.AUTH_SECRET);
   (await cookies()).set(OAUTH_COOKIE, created.nonce, { httpOnly: true, sameSite: "lax", secure: secureCookiesEnabled(), path: "/", maxAge: 10 * 60 });

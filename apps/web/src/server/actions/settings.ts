@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { Prisma } from "@prisma/client";
 import { requireBusinessPermission, requireUser } from "@/lib/auth";
-import { normalizeBookingWindows } from "@/lib/public-booking";
+import { normalizeBookingWindows, normalizePublicBookingCatalog } from "@/lib/public-booking";
 import { importCategory, normalizedImportValue, parseManualCalendarJson } from "@/lib/manual-calendar-import";
 import { secureCookiesEnabled } from "@/lib/env";
 import { mobileNavigationKeys } from "@/lib/mobile-navigation";
@@ -69,6 +69,27 @@ export async function updateOnlineBookingSettings(formData: FormData) {
   const message = String(formData.get("publicBookingMessage") || "").trim().slice(0, 300) || null;
   await prisma.studioSettings.update({ where: { id: "studio" }, data: { publicBookingEnabled: enabled, publicBookingLeadHours: leadHours, publicBookingMessage: message, publicBookingWindows: normalized } });
   revalidatePath("/");
+  revalidatePath("/settings/online-booking");
+}
+
+export async function disableOnlineBooking() {
+  await requireBusinessPermission("business.manage");
+  await prisma.studioSettings.update({ where: { id: "studio" }, data: { publicBookingEnabled: false } });
+  revalidatePath("/");
+  revalidatePath("/book");
+  revalidatePath("/settings/online-booking");
+}
+
+export async function updatePublicBookingCatalog(formData: FormData) {
+  await requireBusinessPermission("business.manage");
+  let source: unknown;
+  try { source = JSON.parse(String(formData.get("catalog") || "[]")); }
+  catch { throw new Error("The booking catalog is invalid."); }
+  const catalog = normalizePublicBookingCatalog(source);
+  const serviceCount = catalog.reduce((total, category) => total + category.services.length, 0);
+  if (!catalog.length || !serviceCount) throw new Error("Add at least one category and service.");
+  await prisma.studioSettings.update({ where: { id: "studio" }, data: { publicBookingCatalog: catalog } });
+  revalidatePath("/book");
   revalidatePath("/settings/online-booking");
 }
 

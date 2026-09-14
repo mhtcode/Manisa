@@ -16,5 +16,5 @@ export function ViewModeToggle({ page, initialMode }: { page: CollectionKey; ini
     setMode(next);
     startTransition(async () => { await updateCollectionView(page, next); router.refresh(); });
   }
-  return <div aria-label="Collection layout" className="view-toggle" data-swipe-lock>{(["grid", "list"] as const).map((value) => <button aria-label={`${value} view`} aria-pressed={mode === value} className={mode === value ? "active" : ""} disabled={pending} key={value} onClick={() => choose(value)} type="button">{value === "grid" ? <Grid2X2 size={15}/> : <List size={16}/>}<span className="hidden sm:inline">{value === "grid" ? "Grid" : "List"}</span></button>)}</div>;
+  return <div aria-label="Collection layout" className="view-toggle" data-swipe-lock onClick={(event) => event.stopPropagation()}>{(["grid", "list"] as const).map((value) => <button aria-label={`${value} view`} aria-pressed={mode === value} className={mode === value ? "active" : ""} disabled={pending} key={value} onClick={() => choose(value)} type="button">{value === "grid" ? <Grid2X2 size={15}/> : <List size={16}/>}<span className="hidden sm:inline">{value === "grid" ? "Grid" : "List"}</span></button>)}</div>;
 }

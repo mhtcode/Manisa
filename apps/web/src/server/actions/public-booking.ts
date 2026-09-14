@@ -69,7 +69,7 @@ export async function submitPublicBooking(_previous: PublicBookingResult, formDa
         notificationConsentAt: data.notificationPreference === "NONE" ? null : new Date(),
         requestedStartAt: startAt, durationMinutes: availability.durationMinutes, totalPrice: availability.totalPrice,
         currency: availability.currency, notes: data.notes || null,
-        services: { create: availability.services.map((service, position) => ({ serviceId: service.id, serviceNameSnapshot: service.name, durationMinutes: service.defaultDurationMinutes, price: service.defaultPrice, position })) },
+        services: { create: availability.services.map((service, position) => ({ serviceId: null, serviceNameSnapshot: service.name, durationMinutes: service.durationMinutes, price: service.price, position })) },
       } });
       await tx.auditLog.create({ data: { actorSnapshot: "Public booking page", action: "booking_request.submitted", targetType: "PublicBookingRequest", targetId: created.id, after: { notificationPreference: data.notificationPreference } } });
       await enqueueNotification(tx, { kind: "BOOKING_REQUEST", title: "New online booking request", body: "A customer is waiting for appointment approval.", actionHref: "/appointments?stage=requests" });

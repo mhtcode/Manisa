@@ -70,7 +70,7 @@ export function StudioSettingsForm({ settings }: { settings: SettingsValue }) {
           <span className="min-w-0 flex-1"><strong className="block text-sm font-semibold">{title}</strong><span className="mt-0.5 block truncate text-xs text-slate-500">{sectionSummary(key, settings)}</span></span>
           <button aria-label={`Modify ${title}`} className="icon-button size-9" onClick={(event) => { event.preventDefault(); setSaved(false); setEditing(key); }} title="Modify" type="button"><Pencil size={15}/></button>
         </summary>
-        <fieldset className="border-t border-white/7 p-4 sm:p-5" disabled={!isEditing || pending}>
+        <fieldset aria-disabled={!isEditing} className={`border-t border-white/7 p-4 transition sm:p-5 ${isEditing ? "" : "pointer-events-none opacity-55"}`} disabled={!isEditing || pending}>
           {key === "identity" && <div className="grid gap-4 sm:grid-cols-2">
             <Field className="sm:col-span-2" label="Business name"><input className="field" defaultValue={settings.businessName} name="businessName" required/></Field>
             <Field label="Workspace language"><select className="field" name="locale" onChange={(event) => setLocale(event.target.value as SettingsValue["locale"])} value={locale}><option value="en">English</option><option value="fa">فارسی</option></select></Field>

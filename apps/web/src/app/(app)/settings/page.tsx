@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeftRight, CalendarClock, CalendarSync, ChevronRight, GitFork, Images, Instagram, LogOut, MessageSquareQuote, Settings2, ShieldCheck, SlidersHorizontal, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
+import { ArrowLeftRight, CalendarClock, CalendarSync, ChevronRight, GitFork, Images, LogOut, MessageSquareQuote, ShieldCheck, SwatchBook, Trash2, UserRound, UsersRound, WalletCards, UserCog } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { PageHeading } from "@/components/page-heading";
 import { requireUser } from "@/lib/auth";
@@ -23,13 +23,10 @@ const groups = [
     items: [
       ["/settings/financial", "Financial", "Payments, methods, balances, and collections", WalletCards],
       ["/settings/reviews", "Customer reviews", "Approve ratings and comments before they appear publicly", MessageSquareQuote],
-      ["/settings/business", "Studio profile & appearance", "Name, language, currency, timezone, and theme", SlidersHorizontal],
+      ["/settings/business", "Business, security & navigation", "Studio profile, account security, notifications, and mobile navigation", ShieldCheck],
       ["/settings/online-booking", "Online booking", "Publish the exact start times customers can request", CalendarClock],
-      ["/settings/navigation", "Navigation", "Choose and reorder the four mobile destinations", Settings2],
       ["/settings/data-transfer", "Data transfer", "Import records and create secure business exports", ArrowLeftRight],
-      ["/settings/google-calendar", "Google Calendar", "One-way appointment synchronization", CalendarSync],
-      ["/settings/instagram", "Instagram", "Connect a Professional account and refresh public posts", Instagram],
-      ["/settings/security", "Profile & security", "Administrator identity, access, and session details", ShieldCheck],
+      ["/settings/integrations", "Connected services", "Google Calendar and Instagram connections", CalendarSync],
       ["/settings/members", "Members", "Invite and manage this business team", UserCog],
       ["/settings/trash", "Trash", "Restore deleted items for seven days or erase them now", Trash2],
     ],
@@ -39,9 +36,8 @@ const groups = [
 const contextualDestinations = new Set(["/appointments", "/customers", "/services", "/gallery"]);
 const requiredPermission: Record<string, BusinessPermission> = {
   "/appointments": "appointments.view", "/customers": "customers.view", "/settings/referrals": "customers.view", "/services": "services.view",
-  "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/reviews": "business.manage", "/settings/business": "business.manage",
-  "/settings/navigation": "business.manage", "/settings/online-booking": "business.manage", "/settings/data-transfer": "data.import", "/settings/instagram": "integrations.manage",
-  "/settings/google-calendar": "integrations.manage",
+  "/gallery": "gallery.view", "/settings/financial": "financial.view", "/settings/reviews": "business.manage",
+  "/settings/online-booking": "business.manage", "/settings/data-transfer": "data.import", "/settings/integrations": "integrations.manage",
   "/settings/members": "members.manage", "/settings/trash": "trash.manage",
 };
 

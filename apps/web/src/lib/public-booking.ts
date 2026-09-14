@@ -24,6 +24,54 @@ export type PublicBookingContactDraft = {
   consent: boolean;
 };
 
+export type PublicBookingCatalogService = {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  price: string;
+  currency: string;
+  position: number;
+};
+
+export type PublicBookingCatalogCategory = {
+  id: string;
+  name: string;
+  position: number;
+  services: PublicBookingCatalogService[];
+};
+
+export function bookingStepIntent(step: number) {
+  return step >= 3 ? "submit" as const : "advance" as const;
+}
+
+export function normalizePublicBookingCatalog(value: unknown): PublicBookingCatalogCategory[] {
+  if (!Array.isArray(value)) return [];
+  const categoryIds = new Set<string>();
+  const serviceIds = new Set<string>();
+  return value.slice(0, 20).flatMap((candidate, categoryPosition) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return [];
+    const category = candidate as Record<string, unknown>;
+    const id = typeof category.id === "string" ? category.id.trim().slice(0, 100) : "";
+    const name = typeof category.name === "string" ? category.name.normalize("NFKC").trim().slice(0, 120) : "";
+    if (!/^[-_a-zA-Z0-9]{1,100}$/.test(id) || !name || categoryIds.has(id)) return [];
+    categoryIds.add(id);
+    const sourceServices = Array.isArray(category.services) ? category.services : [];
+    const services = sourceServices.slice(0, 50).flatMap((serviceCandidate, servicePosition) => {
+      if (!serviceCandidate || typeof serviceCandidate !== "object" || Array.isArray(serviceCandidate)) return [];
+      const service = serviceCandidate as Record<string, unknown>;
+      const serviceId = typeof service.id === "string" ? service.id.trim().slice(0, 100) : "";
+      const serviceName = typeof service.name === "string" ? service.name.normalize("NFKC").trim().slice(0, 160) : "";
+      const durationMinutes = Math.round(Number(service.durationMinutes));
+      const numericPrice = Number(service.price);
+      const currency = typeof service.currency === "string" ? service.currency.trim().toUpperCase() : "CAD";
+      if (!/^[-_a-zA-Z0-9]{1,100}$/.test(serviceId) || !serviceName || serviceIds.has(serviceId) || durationMinutes < 5 || durationMinutes > 1440 || !Number.isFinite(numericPrice) || numericPrice < 0 || numericPrice > 1_000_000 || !/^[A-Z]{3}$/.test(currency)) return [];
+      serviceIds.add(serviceId);
+      return [{ id: serviceId, name: serviceName, durationMinutes, price: numericPrice.toFixed(2), currency, position: servicePosition }];
+    });
+    return [{ id, name, position: categoryPosition, services }];
+  });
+}
+
 export function bookingSubmissionFields(draft: PublicBookingContactDraft) {
   return {
     name: draft.name,

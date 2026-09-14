@@ -10,7 +10,7 @@ const COOKIE = "manisa_google_calendar_oauth";
 export async function GET(request: Request) {
   const user = await requireBusinessPermission("integrations.manage");
   const config = await getGoogleCalendarOAuthConfig();
-  if (!config || !config.redirectUri.startsWith("https://")) return NextResponse.redirect(new URL("/settings/google-calendar?error=config", request.url));
+  if (!config || !config.redirectUri.startsWith("https://")) return NextResponse.redirect(new URL("/settings/integrations?section=google&error=config", request.url));
   const env = getServerEnv();
   const created = createGoogleCalendarOAuthState(user.id, env.AUTH_SECRET);
   (await cookies()).set(COOKIE, created.nonce, { httpOnly: true, sameSite: "lax", secure: secureCookiesEnabled(), path: "/", maxAge: 600 });

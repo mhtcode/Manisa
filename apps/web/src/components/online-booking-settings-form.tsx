@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, CalendarDays, Check, Clock3, Copy, LoaderCircle, Moon, Power, Save, Sun, Sunrise, Trash2 } from "lucide-react";
-import { updateOnlineBookingSettings } from "@/server/actions/settings";
+import { disableOnlineBooking, updateOnlineBookingSettings } from "@/server/actions/settings";
 
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const times = Array.from({ length: 25 }, (_, index) => {
@@ -11,7 +11,7 @@ const times = Array.from({ length: 25 }, (_, index) => {
 });
 const defaultDayTimes = times.filter((time) => time >= "09:00" && time <= "17:00");
 
-export function OnlineBookingSettingsForm({ settings }: { settings: { publicBookingEnabled: boolean; publicBookingMessage?: string | null; publicBookingLeadHours: number; publicBookingWindows: Record<string, string[]> } }) {
+export function OnlineBookingSettingsForm({ settings, catalogEditor }: { settings: { publicBookingEnabled: boolean; publicBookingMessage?: string | null; publicBookingLeadHours: number; publicBookingWindows: Record<string, string[]> }; catalogEditor: ReactNode }) {
   const [enabled, setEnabled] = useState(settings.publicBookingEnabled);
   const [selected, setSelected] = useState(() => new Set(Object.entries(settings.publicBookingWindows).flatMap(([day, values]) => values.map((time) => `${day}:${time}`))));
   const initialDays = Object.entries(settings.publicBookingWindows).filter(([, values]) => values.length).map(([day]) => Number(day));
@@ -82,24 +82,34 @@ export function OnlineBookingSettingsForm({ settings }: { settings: { publicBook
     });
   }
 
+  function turnOff() {
+    setEnabled(false);
+    setMessage("");
+    startTransition(async () => {
+      try { await disableOnlineBooking(); setMessage("Online booking is off."); }
+      catch (error) { setEnabled(true); setMessage(error instanceof Error ? error.message : "Online booking could not be disabled."); }
+    });
+  }
+
   const orderedActiveDays = [...activeDays].sort((a, b) => a - b);
   const hasTimes = selectedValues.length > 0;
   const success = message === "Availability published." || message === "Online booking is off.";
 
-  return <form action={save} className="mx-auto max-w-4xl space-y-4">
+  return <div className="mx-auto max-w-4xl space-y-4">
     <section className="panel p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${enabled ? "bg-emerald-400/12 text-emerald-300" : "bg-white/[.04] text-slate-500"}`}><Power size={18}/></span>
         <div className="min-w-0 flex-1"><h2 className="font-semibold">Online booking</h2><p className="mt-0.5 truncate text-xs text-slate-500">Accept appointment requests from the website.</p></div>
         <div className="flex rounded-full bg-black/20 p-1" role="radiogroup" aria-label="Online booking visibility">
-          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${enabled ? "bg-emerald-400/18 text-emerald-200" : "text-slate-600"}`}><input checked={enabled} className="sr-only" name="publicBookingEnabled" onChange={() => { setEnabled(true); setMessage(""); }} type="radio" value="on"/>On</label>
-          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${!enabled ? "bg-white/[.08] text-slate-200" : "text-slate-600"}`}><input checked={!enabled} className="sr-only" name="publicBookingEnabled" onChange={() => { setEnabled(false); setMessage(""); }} type="radio" value="off"/>Off</label>
+          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${enabled ? "bg-emerald-400/18 text-emerald-200" : "text-slate-600"}`}><input checked={enabled} className="sr-only" onChange={() => { setEnabled(true); setMessage(""); }} type="radio"/>On</label>
+          <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${!enabled ? "bg-white/[.08] text-slate-200" : "text-slate-600"}`}><input checked={!enabled} className="sr-only" disabled={pending} onChange={turnOff} type="radio"/>Off</label>
         </div>
       </div>
-      {!enabled && <div className="mt-4 flex justify-end"><button aria-label="Save online booking setting" className="icon-button bg-blue-500/15 text-blue-200" disabled={pending} title="Save">{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}</button></div>}
+      {!enabled && message && <p className={`mt-3 text-end text-xs ${success ? "text-emerald-300" : "text-rose-300"}`} role="status">{message}</p>}
     </section>
 
-    {enabled && <section className="panel overflow-hidden">
+    {enabled && <>{catalogEditor}<form action={save} className="panel overflow-hidden">
+      <input name="publicBookingEnabled" type="hidden" value="on"/>
       <header className="flex items-center gap-3 border-b border-white/7 px-4 py-3">
         {[1, 2, 3].map((value) => <button aria-label={`Go to booking setup step ${value}`} className={`flex size-8 items-center justify-center rounded-full text-xs font-bold transition ${step === value ? "bg-blue-500 text-white" : value < step ? "bg-emerald-400/14 text-emerald-300" : "bg-white/[.04] text-slate-600"}`} key={value} onClick={() => setStep(value)} type="button">{value < step ? <Check size={14}/> : value}</button>)}
         <span className="ms-auto text-xs text-slate-500">{step === 1 ? "Working days" : step === 2 ? "Start times" : "Publish"}</span>
@@ -139,12 +149,10 @@ export function OnlineBookingSettingsForm({ settings }: { settings: { publicBook
         <p className={`text-xs ${success ? "text-emerald-300" : "text-rose-300"}`} role="status">{message}</p>
         <button aria-label="Next step" className="icon-button" disabled={step === 3 || (step === 1 && !activeDays.size)} onClick={() => setStep((value) => Math.min(3, value + 1))} title="Next" type="button"><ArrowRight size={17}/></button>
       </footer>
-    </section>}
-
-    <input name="publicBookingMessage" type="hidden" value={settings.publicBookingMessage || "Call or message us on WhatsApp to book your appointment."}/>
-    {selectedValues.map((value) => <input key={value} name="bookingSlot" type="hidden" value={value}/>)}
-    {!enabled && message && <p className={`text-center text-xs ${success ? "text-emerald-300" : "text-rose-300"}`} role="status">{message}</p>}
-  </form>;
+      <input name="publicBookingMessage" type="hidden" value={settings.publicBookingMessage || "Call or message us on WhatsApp to book your appointment."}/>
+      {selectedValues.map((value) => <input key={value} name="bookingSlot" type="hidden" value={value}/>)}
+    </form></>}
+  </div>;
 }
 
 function IconAction({ label, danger = false, onClick, children }: { label: string; danger?: boolean; onClick: () => void; children: React.ReactNode }) {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Instagram, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { InstagramCredentialsForm } from "@/components/instagram-credentials-form";
@@ -21,7 +22,7 @@ const errors: Record<string, string> = {
   "not-connected": "Connect Instagram before refreshing it.",
 };
 
-export default async function InstagramSettingsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+export async function InstagramSettingsContent({ searchParams, embedded = false }: { searchParams: Promise<{ success?: string; error?: string }>; embedded?: boolean }) {
   const [query, user] = await Promise.all([searchParams, requireBusinessPermission("integrations.manage")]);
   const [connection, credential, env] = await Promise.all([
     prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, include: { _count: { select: { posts: { where: { active: true } } } } } }),
@@ -35,7 +36,7 @@ export default async function InstagramSettingsPage({ searchParams }: { searchPa
   const redirectUri = credential?.redirectUri || env.INSTAGRAM_REDIRECT_URI || "";
 
   return <>
-    <PageHeading backHref="/settings" title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed."/>
+    {!embedded && <PageHeading backHref="/settings" title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed."/>}
     {query.success && notices[query.success] && <div className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-200">{notices[query.success]}</div>}
     {query.error && errors[query.error] && <div className="mb-5 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200">{errors[query.error]}</div>}
 
@@ -45,4 +46,12 @@ export default async function InstagramSettingsPage({ searchParams }: { searchPa
       <section className="panel p-5"><span className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><ShieldCheck size={19}/></span><h2 className="mt-4 font-semibold text-white">Private by design</h2><p className="mt-2 text-sm leading-6 text-slate-400">Manisa requests only <code className="text-blue-200">instagram_business_basic</code>. The access token is encrypted at rest, and the landing page receives cached covers without customer data.</p></section>
     </div> : <section className="panel max-w-3xl overflow-hidden"><div className="panel-header"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Instagram size={19}/></span><div><h2 className="font-semibold text-white">Connect Instagram</h2><p className="mt-0.5 text-xs text-slate-500">Professional Business or Creator accounts</p></div></div></div><div className="p-5 sm:p-6"><p className="text-sm leading-6 text-slate-400">Connecting imports only the latest post covers into Manisa’s cache. Instagram can be disconnected at any time, and the landing-page section stays hidden when the integration is not configured.</p>{!configured && <div className="mt-5 rounded-xl bg-amber-300/[0.04] p-4 ring-1 ring-amber-300/15"><p className="text-sm font-semibold text-amber-100">Complete credentials first</p><p className="mt-2 text-xs leading-5 text-amber-100/65">Save the Instagram app ID, app secret, and exact public HTTPS callback above. The server encryption key is still required to protect secrets.</p></div>}<div className="mt-6"><Link aria-disabled={!configured} className={`button ${configured ? "" : "pointer-events-none opacity-45"}`} href="/api/integrations/instagram/connect"><Instagram size={16}/>Connect Professional account</Link></div></div></section>}
   </>;
+}
+
+export default async function InstagramSettingsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
+  const query = await searchParams;
+  const params = new URLSearchParams({ section: "instagram" });
+  if (query.success) params.set("success", query.success);
+  if (query.error) params.set("error", query.error);
+  redirect(`/settings/integrations?${params}`);
 }

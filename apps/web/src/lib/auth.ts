@@ -58,6 +58,7 @@ export async function getCurrentUser() {
     publicBookingSlotMins: studio.publicBookingSlotMins,
     publicBookingLeadHours: studio.publicBookingLeadHours,
     publicBookingWindows: studio.publicBookingWindows,
+    publicBookingCatalog: studio.publicBookingCatalog,
     whatsappNumber: studio.whatsappNumber,
     studioTagline: studio.studioTagline,
     studioBiography: studio.studioBiography,

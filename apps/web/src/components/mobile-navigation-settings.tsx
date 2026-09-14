@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowUp, Check, GripVertical, LoaderCircle, Save, Settings2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, GripVertical, LoaderCircle, Save } from "lucide-react";
 import { mobileNavigationKeys, mobileNavigationLabels, type MobileNavigationKey } from "@/lib/mobile-navigation";
 import { updateMobileNavigation } from "@/server/actions/settings";
 
@@ -42,18 +42,17 @@ export function MobileNavigationSettings({ initialOrder }: { initialOrder: Mobil
   return <form action={save} className="panel overflow-hidden">
     <div className="panel-header"><div><h2 className="font-semibold text-white">Mobile navigation</h2><p className="mt-1 text-xs text-slate-400">Choose and reorder four direct destinations.</p></div><span className="badge border-blue-400/20 bg-blue-500/8 text-blue-200">4 slots</span></div>
     <div className="space-y-2 p-4 sm:p-5">
-      <div className="mb-4 flex items-start gap-3 rounded-xl border border-blue-300/15 bg-blue-400/[0.055] p-3 text-xs leading-5 text-blue-100/80"><Settings2 className="mt-0.5 shrink-0 text-blue-300" size={16}/><p><strong className="font-semibold text-blue-100">Settings stays reachable:</strong> the permanent Settings button in the top bar is available even when Settings is not one of these four slots.</p></div>
       {items.map((item, index) => <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-white/9 bg-white/[0.025] p-2 sm:gap-2" key={`${item}-${index}`}>
         <GripVertical className="hidden shrink-0 text-slate-600 sm:block" size={17}/>
         <span className="hidden w-12 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600 sm:block">Slot {index + 1}</span>
         <select aria-label={`Mobile navigation slot ${index + 1}`} className="field min-w-0 flex-1" onChange={(event) => replace(index, event.target.value as MobileNavigationKey)} value={item}>
           {selectableItems.map((option) => <option disabled={items.includes(option) && option !== item} key={option} value={option}>{mobileNavigationLabels[option]}</option>)}
         </select>
-        <button aria-label={`Move ${mobileNavigationLabels[item]} up`} className="button-secondary size-9 min-h-9 shrink-0 p-0 sm:size-10 sm:min-h-10" disabled={index === 0} onClick={() => move(index, -1)} type="button"><ArrowUp size={15}/></button>
-        <button aria-label={`Move ${mobileNavigationLabels[item]} down`} className="button-secondary size-9 min-h-9 shrink-0 p-0 sm:size-10 sm:min-h-10" disabled={index === items.length - 1} onClick={() => move(index, 1)} type="button"><ArrowDown size={15}/></button>
+        <button aria-label={`Move ${mobileNavigationLabels[item]} up`} className="icon-button rounded-full" disabled={index === 0} onClick={() => move(index, -1)} type="button"><ArrowUp size={15}/></button>
+        <button aria-label={`Move ${mobileNavigationLabels[item]} down`} className="icon-button rounded-full" disabled={index === items.length - 1} onClick={() => move(index, 1)} type="button"><ArrowDown size={15}/></button>
         <input name="mobileNavItems" type="hidden" value={item}/>
       </div>)}
-      <div className="flex items-center justify-end gap-3 pt-2">{saved && <span className="flex items-center gap-1.5 text-xs text-emerald-300"><Check size={14}/>Saved</span>}<button className="button" disabled={pending}>{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}Save mobile navigation</button></div>
+      <div className="flex items-center justify-end gap-3 pt-2">{saved && <span className="flex items-center gap-1.5 text-xs text-emerald-300"><Check size={14}/>Saved</span>}<button aria-label="Save mobile navigation" className="icon-button rounded-full bg-blue-500/15 text-blue-100" disabled={pending} title="Save mobile navigation">{pending ? <LoaderCircle className="animate-spin" size={16}/> : <Save size={16}/>}</button></div>
     </div>
   </form>;
 }

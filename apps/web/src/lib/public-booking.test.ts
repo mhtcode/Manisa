@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingSubmissionFields, bookingWeekdays, buildPublicBookingSlots, normalizeBookingWindows, parseClock } from "./public-booking";
+import { bookingStepIntent, bookingSubmissionFields, bookingWeekdays, buildPublicBookingSlots, normalizeBookingWindows, normalizePublicBookingCatalog, parseClock } from "./public-booking";
 
 describe("public booking availability", () => {
   it("builds future slots and excludes overlaps", () => {
@@ -40,5 +40,19 @@ describe("public booking availability", () => {
       notificationPreference: "WHATSAPP",
       consent: "on",
     });
+  });
+
+  it("advances through details without submitting until review", () => {
+    expect(bookingStepIntent(0)).toBe("advance");
+    expect(bookingStepIntent(1)).toBe("advance");
+    expect(bookingStepIntent(2)).toBe("advance");
+    expect(bookingStepIntent(3)).toBe("submit");
+  });
+
+  it("normalizes an independent public booking catalog", () => {
+    expect(normalizePublicBookingCatalog([{ id: "cat-nails", name: " ناخن ", services: [
+      { id: "svc-gel", name: " ژل ", durationMinutes: 60, price: "45.00", currency: "cad" },
+      { id: "bad", name: "", durationMinutes: 0, price: -1 },
+    ] }])).toEqual([{ id: "cat-nails", name: "ناخن", position: 0, services: [{ id: "svc-gel", name: "ژل", durationMinutes: 60, price: "45.00", currency: "CAD", position: 0 }] }]);
   });
 });

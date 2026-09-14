@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarCheck2, CheckCircle2, RefreshCw, SearchCheck, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { GoogleCalendarSelector, GoogleCredentialsForm } from "@/components/google-calendar-settings";
@@ -11,7 +12,7 @@ import { checkGoogleCalendar, disconnectGoogleCalendar, retryGoogleCalendar, syn
 const notices: Record<string, string> = { connected: "Google account connected. Its primary calendar was queued for synchronization." };
 const errors: Record<string, string> = { config: "Save valid Google OAuth credentials before connecting an account.", state: "The authorization request expired or could not be verified.", cancelled: "Google authorization was cancelled.", token: "Google did not provide offline access. Reconnect and approve access.", scope: "Calendar event and calendar-list access were not granted.", account: "The selected Google account could not be verified.", oauth: "Google Calendar could not be connected." };
 
-export default async function GoogleCalendarSettings({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; queued?: string }> }) {
+export async function GoogleCalendarSettingsContent({ searchParams, embedded = false }: { searchParams: Promise<{ success?: string; error?: string; queued?: string }>; embedded?: boolean }) {
   const [query] = await Promise.all([searchParams, requireBusinessPermission("integrations.manage")]);
   const [credential, connections, groupedJobs] = await Promise.all([
     prisma.googleCalendarCredential.findUnique({ where: { id: "google-calendar" }, select: { clientId: true, redirectUri: true } }),
@@ -28,7 +29,8 @@ export default async function GoogleCalendarSettings({ searchParams }: { searchP
   const accounts = Array.from(new Map(connections.map((item) => [item.googleAccountEmail, item])).values());
 
   return <>
-    <PageHeading backHref="/settings" title="Google Calendar" actions={configured ? <Link className="button" href="/api/integrations/google-calendar/connect"><CalendarCheck2 size={16}/>Connect Google account</Link> : undefined}/>
+    {!embedded && <PageHeading backHref="/settings" title="Google Calendar" actions={configured ? <Link className="button" href="/api/integrations/google-calendar/connect"><CalendarCheck2 size={16}/>Connect Google account</Link> : undefined}/>}
+    {embedded && configured && <div className="mb-4 flex justify-end"><Link aria-label="Connect Google account" className="icon-button rounded-full" href="/api/integrations/google-calendar/connect" title="Connect Google account"><CalendarCheck2 size={16}/></Link></div>}
     {query.success && notices[query.success] && <div className="mb-5 rounded-xl bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-200 ring-1 ring-emerald-300/15">{notices[query.success]}{query.queued ? ` ${query.queued} queued.` : ""}</div>}
     {query.error && errors[query.error] && <div className="mb-5 rounded-xl bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200 ring-1 ring-rose-300/15">{errors[query.error]}</div>}
     <div className="space-y-5">
@@ -47,4 +49,13 @@ export default async function GoogleCalendarSettings({ searchParams }: { searchP
       {configured && !connections.length && <section className="panel max-w-3xl p-6 text-center"><CalendarCheck2 className="mx-auto text-blue-300" size={27}/><h2 className="mt-4 font-semibold">No calendars connected</h2><p className="mt-2 text-sm text-slate-400">Connect a Google account, then choose any additional owned calendars you want Manisa to maintain.</p><Link className="button mt-5" href="/api/integrations/google-calendar/connect">Connect Google account</Link></section>}
     </div>
   </>;
+}
+
+export default async function GoogleCalendarSettings({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; queued?: string }> }) {
+  const query = await searchParams;
+  const params = new URLSearchParams({ section: "google" });
+  if (query.success) params.set("success", query.success);
+  if (query.error) params.set("error", query.error);
+  if (query.queued) params.set("queued", query.queued);
+  redirect(`/settings/integrations?${params}`);
 }
