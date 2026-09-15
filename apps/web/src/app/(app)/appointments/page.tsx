@@ -43,7 +43,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
 
   return <>
     <PageHeading backHref={params.from === "settings" ? "/settings" : undefined} title="Appointments" description="Review online requests, schedule estimates, and confirm visits." actions={<><ViewModeToggle initialMode={view} page="appointments"/><Link className="button" href="/appointments/new"><CalendarPlus size={17}/>New appointment</Link></>}/>
-    <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
+    <div className="mb-3 grid grid-cols-3 gap-2">
       <StageCard active={stage === "scheduled"} count={scheduledCount} href={stageHref("scheduled")} icon={CalendarClock} label="Schedule" tone="sky"/>
       <StageCard active={stage === "confirmed"} count={confirmedCount} href={stageHref("confirmed")} icon={CalendarCheck2} label="Confirm" tone="blue"/>
       <StageCard active={stage === "finalized"} count={finalizedCount} href={stageHref("finalized")} icon={BadgeCheck} label="Finalize" tone="emerald"/>
@@ -63,5 +63,5 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
 
 function StageCard({ active, count, href, icon: Icon, label, tone }: { active: boolean; count: number; href: string; icon: typeof CalendarClock; label: string; tone: "sky" | "blue" | "emerald" }) {
   const colors = tone === "sky" ? "text-sky-300 bg-sky-300/12 border-sky-300/30" : tone === "blue" ? "text-blue-300 bg-blue-400/12 border-blue-300/30" : "text-emerald-300 bg-emerald-300/12 border-emerald-300/30";
-  return <Link className={`min-w-0 rounded-2xl border p-3 transition active:scale-[.98] sm:p-4 ${active ? colors.split(" ").at(-1) + " bg-white/[0.055]" : "border-white/8 bg-[#0e131b] hover:border-white/15"}`} href={href}><div className="flex items-center justify-between gap-1"><span className={`flex size-8 items-center justify-center rounded-xl sm:size-9 ${colors.split(" ").slice(0, 2).join(" ")}`}><Icon size={17}/></span><span className="text-xl font-semibold text-white sm:text-2xl">{count}</span></div><p className={`mt-2 truncate text-[10px] font-semibold uppercase tracking-wide sm:mt-3 sm:text-xs ${colors.split(" ")[0]}`}>{label}</p></Link>;
+  return <Link className={`min-w-0 rounded-xl border p-2.5 transition active:scale-[.98] sm:p-3 ${active ? colors.split(" ").at(-1) + " bg-white/[0.055]" : "border-white/8 bg-[#0e131b] hover:border-white/15"}`} href={href}><div className="flex items-center justify-between gap-1"><span className={`flex size-8 items-center justify-center rounded-full ${colors.split(" ").slice(0, 2).join(" ")}`}><Icon size={17}/></span><span className="text-xl font-semibold text-white">{count}</span></div><p className={`mt-1.5 truncate text-sm font-semibold uppercase tracking-wide ${colors.split(" ")[0]}`}>{label}</p></Link>;
 }

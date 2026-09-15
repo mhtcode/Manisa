@@ -31,7 +31,7 @@ export function ReferralNetwork({ customers }: { customers: ReferralNode[] }) {
   const referrerCount = new Set(customers.flatMap((customer) => customer.referrerId ? [customer.referrerId] : [])).size;
 
   return <div className="space-y-4">
-    <section className="grid grid-cols-3 gap-2.5">
+    <section className="grid grid-cols-3 gap-2">
       <Metric icon={UsersRound} label="Customers" value={customers.length} tone="text-blue-300"/>
       <Metric icon={GitFork} label="Referral links" value={relationCount} tone="text-violet-300"/>
       <Metric icon={UserRound} label="Referrers" value={referrerCount} tone="text-emerald-300"/>
@@ -56,5 +56,5 @@ function Avatar({ node }: { node: ReferralNode }) {
 }
 
 function Metric({ icon: Icon, label, value, tone }: { icon: typeof UsersRound; label: string; value: number; tone: string }) {
-  return <article className="stat p-3.5 sm:p-5"><Icon className={tone} size={18}/><p className="mt-3 text-xs text-slate-400">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></article>;
+  return <article className="stat flex min-h-16 items-center gap-2.5 p-2.5 sm:min-h-20 sm:p-3"><span className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] ${tone}`}><Icon size={16}/></span><span className="min-w-0"><span className="block truncate text-sm text-slate-400">{label}</span><strong className="mt-0.5 block text-lg leading-none">{value}</strong></span></article>;
 }
