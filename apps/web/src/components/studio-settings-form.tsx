@@ -37,7 +37,6 @@ export function StudioSettingsForm({ settings }: { settings: SettingsValue }) {
   const [error, setError] = useState("");
   const [locale, setLocale] = useState(settings.locale);
   const [theme, setTheme] = useState(settings.theme);
-  const [currency, setCurrency] = useState(settings.currency);
 
   function save(formData: FormData) {
     setSaved(false);
@@ -75,7 +74,7 @@ export function StudioSettingsForm({ settings }: { settings: SettingsValue }) {
             <Field className="sm:col-span-2" label="Business name"><input className="field" defaultValue={settings.businessName} name="businessName" required/></Field>
             <Field label="Workspace language"><select className="field" name="locale" onChange={(event) => setLocale(event.target.value as SettingsValue["locale"])} value={locale}><option value="en">English</option><option value="fa">فارسی</option></select></Field>
             <Field label="Appearance"><select className="field" name="theme" onChange={(event) => setTheme(event.target.value as SettingsValue["theme"])} value={theme}><option value="DARK">Dark</option><option value="LIGHT">Light</option><option value="SYSTEM">System</option></select></Field>
-            <Field label="Currency"><select className="field" name="currency" onChange={(event) => setCurrency(event.target.value)} value={currency}><option>CAD</option><option>USD</option></select></Field>
+            <Field label="Currency"><div className="field flex items-center gap-2 font-semibold"><span aria-hidden="true">$</span><span>CAD</span></div><input name="currency" type="hidden" value="CAD"/></Field>
             <Field label="Business timezone"><input className="field opacity-70" readOnly value={settings.timezone}/></Field>
           </div>}
           {key === "profile" && <div className="grid gap-4">
@@ -110,7 +109,7 @@ function sectionSummary(section: SectionKey, settings: SettingsValue) {
 }
 
 function PreservedFields({ section, settings }: { section: SectionKey; settings: SettingsValue }) {
-  if (section === "identity") return <><input name="businessName" type="hidden" value={settings.businessName}/><input name="locale" type="hidden" value={settings.locale}/><input name="theme" type="hidden" value={settings.theme}/><input name="currency" type="hidden" value={settings.currency}/></>;
+  if (section === "identity") return <><input name="businessName" type="hidden" value={settings.businessName}/><input name="locale" type="hidden" value={settings.locale}/><input name="theme" type="hidden" value={settings.theme}/><input name="currency" type="hidden" value="CAD"/></>;
   if (section === "profile") return <><input name="address" type="hidden" value={settings.address || ""}/><input name="studioTagline" type="hidden" value={settings.studioTagline || ""}/><input name="studioBiography" type="hidden" value={settings.studioBiography || ""}/></>;
   return <><input name="publicPhone" type="hidden" value={settings.publicPhone || ""}/><input name="whatsappNumber" type="hidden" value={settings.whatsappNumber || ""}/><input name="publicEmail" type="hidden" value={settings.publicEmail || ""}/><input name="bookingUrl" type="hidden" value={settings.bookingUrl || ""}/></>;
 }

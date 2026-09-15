@@ -34,7 +34,7 @@ export async function updateSettings(formData: FormData) {
   const themeValue = String(formData.get("theme"));
   const theme = themeValue === "LIGHT" || themeValue === "SYSTEM" ? themeValue : "DARK";
   const businessName = String(formData.get("businessName") || "Manisa").trim().slice(0, 120);
-  const currency = String(formData.get("currency") || "CAD").toUpperCase().slice(0, 3);
+  const currency = "CAD";
   const optional = (name: string, max: number) => String(formData.get(name) || "").trim().slice(0, max) || null;
   const publicPhone = normalizeCanadianPhone(String(formData.get("publicPhone") || ""));
   const publicEmail = optional("publicEmail", 160);
