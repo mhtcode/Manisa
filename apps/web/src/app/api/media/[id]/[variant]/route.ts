@@ -14,10 +14,13 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!asset) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const permission = asset.ownerType === "CUSTOMER_AVATAR" ? "customers.view" : "gallery.view";
   if (!hasBusinessPermission(user.role, user.permissionOverrides, permission)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  const isDownload = variant.toLowerCase() === "download";
+  const requestedVariant = variant.toLowerCase();
+  const isDownload = requestedVariant === "download";
   const selected = isDownload
     ? asset.variants.find((item) => item.kind === "LARGE") || asset.variants.find((item) => item.kind === "MEDIUM") || asset.variants[0]
-    : asset.variants.find((item) => item.kind.toLowerCase() === variant.toLowerCase()) || asset.variants[0];
+    : requestedVariant === "original"
+      ? asset.variants.find((item) => item.kind === "LARGE") || asset.variants.find((item) => item.kind === "MEDIUM") || asset.variants[0]
+      : asset.variants.find((item) => item.kind.toLowerCase() === requestedVariant) || asset.variants.find((item) => item.kind === "LARGE") || asset.variants[0];
   const key = selected?.objectKey || asset.objectKey;
   const legacyPath = isDownload ? asset.imagePath || asset.thumbnailPath : asset.thumbnailPath || asset.imagePath;
   const object = key ? await readObject(key).catch(() => null) : null;

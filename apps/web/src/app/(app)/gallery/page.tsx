@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element -- protected media uses intrinsic proportions */
 import Link from "next/link";
-import { CalendarDays, Camera, Filter, Images, Scissors, UserRound } from "lucide-react";
+import { CalendarDays, Camera, ChevronDown, Filter, Images, Scissors, UserRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { BulkSelection, SelectableLink } from "@/components/bulk-selection";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
@@ -50,17 +50,24 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
 
   return <>
     <PageHeading backHref={query.from === "settings" ? "/settings" : undefined} title="Gallery" description="Each finalized visit is one album. Open an album to manage its photos." actions={<ViewModeToggle initialMode={view} page="gallery"/>}/>
-    <form className="panel mb-5 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" method="get">
-      {query.from === "settings" && <input name="from" type="hidden" value="settings"/>}
-      <div><label className="label" htmlFor="gallery-customer">Customer</label><select className="field" defaultValue={customerId} id="gallery-customer" name="customerId"><option value="">All customers</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customerName(customer)}</option>)}</select></div>
-      <div><label className="label" htmlFor="gallery-service">Service</label><select className="field" defaultValue={serviceId} id="gallery-service" name="serviceId"><option value="">All services</option>{services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select></div>
-      <div className="flex gap-2"><button className="button flex-1 sm:flex-none"><Filter size={16}/><span>Apply</span></button>{(customerId || serviceId) && <Link aria-label="Clear filters" className="icon-button" href={query.from === "settings" ? "/gallery?from=settings" : "/gallery"} title="Clear filters">×</Link>}</div>
-    </form>
+    <details className="group panel mb-5 overflow-hidden">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
+        <span className="icon-button pointer-events-none size-9"><Filter size={15}/></span>
+        <span className="min-w-0 flex-1"><strong className="block text-sm">Gallery filters</strong><span className="block truncate text-xs text-slate-400">{customerId || serviceId ? "Filters are active" : "All customers and services"}</span></span>
+        <ChevronDown className="text-slate-400 transition group-open:rotate-180" size={18}/>
+      </summary>
+      <form className="grid gap-3 border-t border-white/10 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" method="get">
+        {query.from === "settings" && <input name="from" type="hidden" value="settings"/>}
+        <div><label className="label" htmlFor="gallery-customer">Customer</label><select className="field" defaultValue={customerId} id="gallery-customer" name="customerId"><option value="">All customers</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customerName(customer)}</option>)}</select></div>
+        <div><label className="label" htmlFor="gallery-service">Service</label><select className="field" defaultValue={serviceId} id="gallery-service" name="serviceId"><option value="">All services</option>{services.map((service) => <option key={service.id} value={service.id}>{service.name}</option>)}</select></div>
+        <div className="flex gap-2"><button aria-label="Apply gallery filters" className="icon-button" title="Apply filters"><Filter size={16}/></button>{(customerId || serviceId) && <Link aria-label="Clear gallery filters" className="icon-button" href={query.from === "settings" ? "/gallery?from=settings" : "/gallery"} title="Clear filters">×</Link>}</div>
+      </form>
+    </details>
 
     {albums.length ? <BulkSelection action={bulkMoveGalleryAlbumsToTrash} allIds={allAlbumIds.map((album) => album.id)} locale={locale}><div className={`gallery-surface ${view === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4" : "space-y-3"}`} data-swipe-lock>
       {albums.map((album) => { const serviceNames = album.actualServiceLines.length ? album.actualServiceLines.map((line) => line.serviceNameSnapshot) : [album.serviceNameSnapshot]; return <SelectableLink className={`group min-w-0 overflow-hidden rounded-2xl border border-white/9 bg-[#0d141e] p-0 shadow-[0_12px_35px_rgba(0,0,0,.18)] transition active:scale-[.985] hover:border-blue-400/25 ${view === "list" ? "grid grid-cols-[7.5rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)]" : "block"}`} href={`/gallery/${album.id}`} id={album.id} key={album.id} reserveSelectionSpace={false}>
-        <div className={`relative grid overflow-hidden bg-slate-900 ${view === "grid" ? "aspect-[4/3] grid-cols-2 grid-rows-2" : "min-h-28 grid-cols-2 grid-rows-2"}`}>
-          {album.photos.map((photo, index) => <span className={`relative block overflow-hidden border-black/30 ${album.photos.length === 1 ? "col-span-2 row-span-2" : album.photos.length === 2 ? "row-span-2" : album.photos.length === 3 && index === 0 ? "row-span-2" : ""}`} key={photo.id}><Image alt="" className="object-cover transition duration-500 group-hover:scale-[1.025]" fill sizes="(max-width:640px) 25vw, 15vw" src={`/api/media/${photo.id}/thumbnail`} unoptimized/></span>)}
+        <div className={`relative flex overflow-hidden bg-slate-950 ${view === "grid" ? "aspect-[4/3]" : "min-h-28"}`}>
+          {album.photos.map((photo, index) => <span className="flex min-w-0 flex-1 items-center justify-center overflow-hidden border-e border-black/30 last:border-0" key={photo.id}><img alt={`${customerName(album.customer)} visit photo ${index + 1}`} className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-[1.015]" src={`/api/media/${photo.id}/medium`}/></span>)}
           {album._count.photos > 4 && <span className="absolute bottom-2 end-2 rounded-full bg-black/75 px-2 py-1 text-[10px] font-semibold text-white">+{album._count.photos - 4}</span>}
         </div>
         <div className="min-w-0 p-3 sm:p-4"><p className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-white"><UserRound className="shrink-0 text-blue-300" size={14}/><span className="truncate" dir="auto">{customerName(album.customer)}</span></p><p className="mt-2 flex min-w-0 items-center gap-1.5 text-[11px] text-slate-400" title={serviceNames.join(" · ")}><Scissors className="shrink-0 text-slate-500" size={13}/><span className="truncate" dir="auto">{serviceNames[0]}</span>{serviceNames.length > 1 && <span className="shrink-0 rounded-full bg-white/7 px-1.5 py-0.5">+{serviceNames.length - 1}</span>}</p><p className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-600"><CalendarDays className="shrink-0" size={12}/><span className="truncate">{formatBusinessDate(album.startAt, locale, timezone)}</span></p></div>

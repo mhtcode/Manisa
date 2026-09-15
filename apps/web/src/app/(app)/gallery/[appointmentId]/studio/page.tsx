@@ -17,6 +17,6 @@ export default async function SocialImageStudioPage({ params }: { params: Promis
   if (!appointment || appointment.photos.length < 2) notFound();
   return <>
     <PageHeading backHref={`/gallery/${appointmentId}`} backLabel="Back to album" title={`Social image studio · ${customerName(appointment.customer)}`}/>
-    <SocialImageComposer photos={appointment.photos.map((photo) => ({ id: photo.id, comparisonTag: photo.comparisonTag, url: `/api/media/${photo.id}/medium` }))}/>
+    <SocialImageComposer photos={appointment.photos.map((photo) => ({ id: photo.id, comparisonTag: photo.comparisonTag, url: `/api/media/${photo.id}/large` }))}/>
   </>;
 }
