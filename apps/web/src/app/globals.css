@@ -322,6 +322,7 @@ body:has(.studio-calendar-board) main { padding-bottom: 0; }
 .app-background { font-size: 1rem; line-height: 1.5; }
 .app-background .text-xs { font-size: .8125rem; line-height: 1.25rem; }
 .app-background .text-sm { font-size: .9375rem; line-height: 1.45rem; }
+.app-background [class~="text-[10px]"] { font-size: .75rem; line-height: 1.1rem; }
 .app-background .text-slate-600 { color: #8796aa; }
 .app-background .text-slate-500 { color: #9eacbd; }
 .app-background .text-slate-400 { color: #c5cfda; }
@@ -331,6 +332,7 @@ body:has(.studio-calendar-board) main { padding-bottom: 0; }
 .app-background .icon-button:is([aria-label*="save" i],[aria-label*="apply" i],[aria-label*="approve" i],[title*="save" i],[title*="record payment" i]) { border-color: rgba(52,211,153,.34); color: #6ee7b7; background: rgba(6,78,59,.26); }
 .app-background .icon-button:is([aria-label*="save" i],[aria-label*="apply" i],[aria-label*="approve" i],[title*="save" i],[title*="record payment" i]):hover { border-color: rgba(52,211,153,.72); color: #ecfdf5; background: rgba(5,150,105,.42); box-shadow: 0 8px 24px rgba(5,150,105,.2); }
 .app-background .icon-button:is([aria-label*="edit" i],[aria-label*="modify" i],[title*="edit" i],[title*="modify" i]) { border-color: rgba(251,191,36,.32); color: #fcd34d; background: rgba(120,53,15,.25); }
+.app-background .icon-button:is([aria-label*="disable" i],[aria-label*="cancel" i],[title*="disable" i],[title*="cancel" i]) { border-color: rgba(251,191,36,.32); color: #fcd34d; background: rgba(120,53,15,.25); }
 .app-background .icon-button:is([aria-label*="download" i],[aria-label*="export" i],[title*="download" i],[title*="export" i]) { border-color: rgba(167,139,250,.36); color: #c4b5fd; background: rgba(76,29,149,.24); }
 html[data-theme="light"] body { background: var(--background); color: var(--foreground); }
 html[data-theme="light"] .app-background { color: #2f241f; background-color: #f5eee6; background-image: radial-gradient(circle at 75% 0%, rgba(174,103,82,.15), transparent 32rem); }
