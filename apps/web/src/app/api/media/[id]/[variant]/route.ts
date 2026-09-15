@@ -16,13 +16,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   if (!hasBusinessPermission(user.role, user.permissionOverrides, permission)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const requestedVariant = variant.toLowerCase();
   const isDownload = requestedVariant === "download";
+  const wantsFullImage = isDownload || requestedVariant === "large" || requestedVariant === "original";
   const selected = isDownload
     ? asset.variants.find((item) => item.kind === "LARGE") || asset.variants.find((item) => item.kind === "MEDIUM") || asset.variants[0]
     : requestedVariant === "original"
       ? asset.variants.find((item) => item.kind === "LARGE") || asset.variants.find((item) => item.kind === "MEDIUM") || asset.variants[0]
       : asset.variants.find((item) => item.kind.toLowerCase() === requestedVariant) || asset.variants.find((item) => item.kind === "LARGE") || asset.variants[0];
-  const key = selected?.objectKey || asset.objectKey;
-  const legacyPath = isDownload ? asset.imagePath || asset.thumbnailPath : asset.thumbnailPath || asset.imagePath;
+  const key = wantsFullImage && asset.imagePath ? null : selected?.objectKey || asset.objectKey;
+  const legacyPath = wantsFullImage ? asset.imagePath || asset.thumbnailPath : asset.thumbnailPath || asset.imagePath;
   const object = key ? await readObject(key).catch(() => null) : null;
   const bytes = object?.Body ? await object.Body.transformToByteArray() : legacyPath ? await readFile(absoluteUploadPath(legacyPath)).catch(() => null) : null;
   if (!bytes) return NextResponse.json({ error: "Photo unavailable" }, { status: 502 });
