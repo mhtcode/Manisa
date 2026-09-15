@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const user = await getCurrentUser();
   if (!user) return target("/login");
   const config = await getInstagramOAuthConfig();
-  if (!config) return target("/settings/integrations?section=instagram&error=config");
+  if (!config) return target("/settings/instagram?error=config");
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -22,15 +22,15 @@ export async function GET(request: Request) {
   const nonce = cookieStore.get(OAUTH_COOKIE)?.value;
   cookieStore.delete(OAUTH_COOKIE);
   const payload = state && nonce ? verifyInstagramOAuthState(state, nonce, getServerEnv().AUTH_SECRET) : null;
-  if (!code || !payload || payload.userId !== user.id) return target("/settings/integrations?section=instagram&error=state");
+  if (!code || !payload || payload.userId !== user.id) return target("/settings/instagram?error=state");
 
   try {
     const token = await exchangeInstagramCode(code, config);
     await ensureInstagramCredential(user.id, config);
     const connection = await prisma.instagramConnection.upsert({ where: { singletonKey: 1 }, create: { singletonKey: 1, connectedById: user.id, ...token }, update: { ...token, connectedById: user.id, lastError: null } });
     try { await syncInstagramConnection(connection.id); } catch { /* The cached feed can be retried from Settings. */ }
-    return target("/settings/integrations?section=instagram&success=connected");
+    return target("/settings/instagram?success=connected");
   } catch {
-    return target("/settings/integrations?section=instagram&error=oauth");
+    return target("/settings/instagram?error=oauth");
   }
 }

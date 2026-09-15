@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CalendarCheck2, CheckCircle2, RefreshCw, SearchCheck, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { GoogleCalendarSelector, GoogleCredentialsForm } from "@/components/google-calendar-settings";
@@ -29,7 +28,7 @@ export async function GoogleCalendarSettingsContent({ searchParams, embedded = f
   const accounts = Array.from(new Map(connections.map((item) => [item.googleAccountEmail, item])).values());
 
   return <>
-    {!embedded && <PageHeading backHref="/settings" title="Google Calendar" actions={configured ? <Link className="button" href="/api/integrations/google-calendar/connect"><CalendarCheck2 size={16}/>Connect Google account</Link> : undefined}/>}
+    {!embedded && <PageHeading backHref="/settings/integrations" title="Google Calendar" actions={configured ? <Link className="button" href="/api/integrations/google-calendar/connect"><CalendarCheck2 size={16}/>Connect Google account</Link> : undefined}/>}
     {embedded && configured && <div className="mb-4 flex justify-end"><Link aria-label="Connect Google account" className="icon-button rounded-full" href="/api/integrations/google-calendar/connect" title="Connect Google account"><CalendarCheck2 size={16}/></Link></div>}
     {query.success && notices[query.success] && <div className="mb-5 rounded-xl bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-200 ring-1 ring-emerald-300/15">{notices[query.success]}{query.queued ? ` ${query.queued} queued.` : ""}</div>}
     {query.error && errors[query.error] && <div className="mb-5 rounded-xl bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200 ring-1 ring-rose-300/15">{errors[query.error]}</div>}
@@ -52,10 +51,5 @@ export async function GoogleCalendarSettingsContent({ searchParams, embedded = f
 }
 
 export default async function GoogleCalendarSettings({ searchParams }: { searchParams: Promise<{ success?: string; error?: string; queued?: string }> }) {
-  const query = await searchParams;
-  const params = new URLSearchParams({ section: "google" });
-  if (query.success) params.set("success", query.success);
-  if (query.error) params.set("error", query.error);
-  if (query.queued) params.set("queued", query.queued);
-  redirect(`/settings/integrations?${params}`);
+  return <GoogleCalendarSettingsContent searchParams={searchParams}/>;
 }

@@ -57,7 +57,6 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
   return <>
     <PageHeading backHref="/settings" title="Trash" description="Restore items for seven days, or permanently delete them now. Expired photos are removed from disk."/>
     <nav aria-label="Trash filters" className="mb-4 flex gap-2 overflow-x-auto pb-1" data-horizontal-scroll>{filters.map((filter) => <Link className={`filter-chip shrink-0 ${selected === filter ? "active" : ""}`} href={filter === "all" ? "/settings/trash" : `/settings/trash?type=${filter}`} key={filter}>{filterLabels[filter]}</Link>)}</nav>
-    <div className="mb-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.05] px-4 py-3 text-sm text-amber-100">Items are permanently deleted 7 days after being moved to Trash.</div>
     <BulkSelection action={bulkRestoreFromTrash} allIds={allIds} locale={user.settings?.locale || "en"} primary="restore" secondaryAction={bulkDeletePermanently}><section className="panel overflow-hidden">
       <div className="panel-header"><h2 className="font-semibold text-white">Deleted items</h2><span className="badge border-amber-300/15 bg-amber-300/[0.06] text-amber-200">{total} {total === 1 ? "item" : "items"}</span></div>
       {!total && <div className="empty"><Trash2 className="mx-auto mb-3 text-slate-700" size={28}/>Trash is empty.</div>}

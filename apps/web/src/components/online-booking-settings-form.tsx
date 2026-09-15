@@ -99,7 +99,7 @@ export function OnlineBookingSettingsForm({ settings, catalogEditor }: { setting
     <section className="panel p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <span className={`flex size-10 shrink-0 items-center justify-center rounded-full ${enabled ? "bg-emerald-400/12 text-emerald-300" : "bg-white/[.04] text-slate-500"}`}><Power size={18}/></span>
-        <div className="min-w-0 flex-1"><h2 className="font-semibold">Online booking</h2><p className="mt-0.5 truncate text-xs text-slate-500">Accept appointment requests from the website.</p></div>
+        <div className="min-w-0 flex-1"><h2 className="font-semibold">Online booking</h2></div>
         <div className="flex rounded-full bg-black/20 p-1" role="radiogroup" aria-label="Online booking visibility">
           <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${enabled ? "bg-emerald-400/18 text-emerald-200" : "text-slate-600"}`}><input checked={enabled} className="sr-only" onChange={() => { setEnabled(true); setMessage(""); }} type="radio"/>On</label>
           <label className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition ${!enabled ? "bg-white/[.08] text-slate-200" : "text-slate-600"}`}><input checked={!enabled} className="sr-only" disabled={pending} onChange={turnOff} type="radio"/>Off</label>

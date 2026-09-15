@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Instagram, RefreshCw, ShieldCheck, Unplug } from "lucide-react";
 import { ConfirmActionForm } from "@/components/confirm-action-form";
 import { InstagramCredentialsForm } from "@/components/instagram-credentials-form";
@@ -36,7 +35,7 @@ export async function InstagramSettingsContent({ searchParams, embedded = false 
   const redirectUri = credential?.redirectUri || env.INSTAGRAM_REDIRECT_URI || "";
 
   return <>
-    {!embedded && <PageHeading backHref="/settings" title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed."/>}
+    {!embedded && <PageHeading backHref="/settings/integrations" title="Instagram" description="Connect the studio’s Professional account and publish a fast, cached public feed."/>}
     {query.success && notices[query.success] && <div className="mb-5 rounded-xl border border-emerald-300/20 bg-emerald-300/[0.06] px-4 py-3 text-sm text-emerald-200">{notices[query.success]}</div>}
     {query.error && errors[query.error] && <div className="mb-5 rounded-xl border border-rose-300/20 bg-rose-300/[0.06] px-4 py-3 text-sm text-rose-200">{errors[query.error]}</div>}
 
@@ -49,9 +48,5 @@ export async function InstagramSettingsContent({ searchParams, embedded = false 
 }
 
 export default async function InstagramSettingsPage({ searchParams }: { searchParams: Promise<{ success?: string; error?: string }> }) {
-  const query = await searchParams;
-  const params = new URLSearchParams({ section: "instagram" });
-  if (query.success) params.set("success", query.success);
-  if (query.error) params.set("error", query.error);
-  redirect(`/settings/integrations?${params}`);
+  return <InstagramSettingsContent searchParams={searchParams}/>;
 }

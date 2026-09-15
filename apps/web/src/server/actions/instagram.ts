@@ -40,20 +40,20 @@ export async function saveInstagramCredentials(_previous: InstagramCredentialRes
 export async function refreshInstagram() {
   const user = await requireUser();
   const connection = await prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, select: { id: true } });
-  if (!connection) redirect("/settings/integrations?section=instagram&error=not-connected");
+  if (!connection) redirect("/settings/instagram?error=not-connected");
   try { await syncInstagramConnection(connection.id); }
-  catch { redirect("/settings/integrations?section=instagram&error=refresh"); }
+  catch { redirect("/settings/instagram?error=refresh"); }
   revalidatePath("/");
   revalidatePath("/settings/integrations");
-  redirect("/settings/integrations?section=instagram&success=refreshed");
+  redirect("/settings/instagram?success=refreshed");
 }
 
 export async function disconnectInstagram() {
   const user = await requireUser();
   const connection = await prisma.instagramConnection.findUnique({ where: { singletonKey: 1 }, include: { posts: { select: { cachedImagePath: true } } } });
-  if (!connection) redirect("/settings/integrations?section=instagram");
+  if (!connection) redirect("/settings/instagram");
   await prisma.instagramConnection.delete({ where: { id: connection.id } });
   await Promise.all(connection.posts.map((post) => unlink(absoluteUploadPath(post.cachedImagePath)).catch(() => undefined)));
   revalidatePath("/");
-  redirect("/settings/integrations?section=instagram&success=disconnected");
+  redirect("/settings/instagram?success=disconnected");
 }
