@@ -1,5 +1,6 @@
 export type ReferralNode = {
   active: boolean;
+  avatarId?: string | null;
   email: string | null;
   id: string;
   name: string;

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- protected customer avatars */
 
 import { useDeferredValue, useMemo, useState } from "react";
 import { GitFork, Search, UserRound, UsersRound, X } from "lucide-react";
@@ -6,8 +7,7 @@ import { filterReferralNodes, referralDepth, type ReferralFilter, type ReferralN
 
 type PositionedNode = ReferralNode & { x: number; y: number };
 const filters: Array<[ReferralFilter, string]> = [["all", "All"], ["connected", "Connected"], ["referrers", "Referrers"], ["unreferred", "No source"], ["archived", "Archived"]];
-
-function shortName(name: string) { return name.length > 22 ? `${name.slice(0, 20)}…` : name; }
+const shortName = (name: string) => name.length > 22 ? `${name.slice(0, 20)}…` : name;
 
 export function ReferralNetwork({ customers }: { customers: ReferralNode[] }) {
   const [query, setQuery] = useState("");
@@ -16,13 +16,12 @@ export function ReferralNetwork({ customers }: { customers: ReferralNode[] }) {
   const filtered = useMemo(() => filterReferralNodes(customers, deferredQuery, filter), [customers, deferredQuery, filter]);
   const limited = useMemo(() => filtered.slice(0, 180), [filtered]);
   const layout = useMemo(() => {
-    const byId = new Map(limited.map((node) => [node.id, node]));
+    const nodeMap = new Map(limited.map((node) => [node.id, node]));
     const groups = new Map<number, ReferralNode[]>();
-    limited.forEach((node) => { const depth = referralDepth(node.id, byId); groups.set(depth, [...(groups.get(depth) || []), node]); });
+    limited.forEach((node) => { const depth = referralDepth(node.id, nodeMap); groups.set(depth, [...(groups.get(depth) || []), node]); });
     const positions: PositionedNode[] = [];
     groups.forEach((items, depth) => items.forEach((node, index) => positions.push({ ...node, x: 34 + depth * 230, y: 30 + index * 86 })));
-    const maxDepth = positions.reduce((maximum, node) => Math.max(maximum, referralDepth(node.id, byId)), 0);
-    return { maxDepth, positions };
+    return { positions, maxDepth: positions.reduce((maximum, node) => Math.max(maximum, referralDepth(node.id, nodeMap)), 0) };
   }, [limited]);
   const positioned = layout.positions;
   const byId = new Map(positioned.map((node) => [node.id, node]));
@@ -32,10 +31,30 @@ export function ReferralNetwork({ customers }: { customers: ReferralNode[] }) {
   const referrerCount = new Set(customers.flatMap((customer) => customer.referrerId ? [customer.referrerId] : [])).size;
 
   return <div className="space-y-4">
-    <section className="grid grid-cols-3 gap-2.5"><article className="stat p-3.5 sm:p-5"><UsersRound className="text-blue-300" size={17}/><p className="mt-3 text-[11px] text-slate-500">Customers</p><p className="mt-1 text-xl font-semibold text-white">{customers.length}</p></article><article className="stat p-3.5 sm:p-5"><GitFork className="text-violet-300" size={17}/><p className="mt-3 text-[11px] text-slate-500">Referral links</p><p className="mt-1 text-xl font-semibold text-white">{relationCount}</p></article><article className="stat p-3.5 sm:p-5"><UserRound className="text-emerald-300" size={17}/><p className="mt-3 text-[11px] text-slate-500">Referrers</p><p className="mt-1 text-xl font-semibold text-white">{referrerCount}</p></article></section>
-    <section className="panel overflow-hidden"><div className="panel-header"><div><h2 className="font-semibold text-white">Customer referral graph</h2></div><span className="text-xs text-slate-500">{filtered.length} shown</span></div><div className="space-y-3 p-3 sm:p-5"><div className="field flex h-12 items-center gap-2 py-0"><Search className="shrink-0 text-slate-500" size={16}/><input aria-label="Filter referral customers" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-600" onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, phone, or email…" value={query}/>{query && <button aria-label="Clear referral filter" className="text-slate-500 hover:text-white" onClick={() => setQuery("")} type="button"><X size={16}/></button>}</div><div className="flex gap-2 overflow-x-auto pb-1" data-horizontal-scroll>{filters.map(([value, label]) => <button aria-pressed={filter === value} className={`filter-chip ${filter === value ? "active" : ""}`} key={value} onClick={() => setFilter(value)} type="button">{label}</button>)}</div></div>
-      {positioned.length ? <><div className="divide-y divide-white/8 border-t border-white/8 md:hidden">{limited.map((node) => { const source = node.referrerId ? customers.find((customer) => customer.id === node.referrerId) : null; return <a className="flex min-w-0 items-center gap-3 p-4 transition active:bg-white/[0.05]" href={`/customers/${node.id}`} key={node.id}><span className={`flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${node.active ? "bg-blue-500/15 text-blue-200" : "bg-slate-700/40 text-slate-400"}`}>{node.name.slice(0, 1).toLocaleUpperCase()}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold" dir="auto">{node.name}</span><span className="mt-1 block truncate text-xs text-slate-500" dir="auto">{source ? `Introduced by ${source.name}` : "No referral source"}{node.active ? "" : " · Archived"}</span></span><GitFork className={source ? "text-violet-300" : "text-slate-700"} size={16}/></a>; })}</div><div className="hidden max-h-[44rem] overflow-auto border-t border-white/8 bg-[radial-gradient(circle_at_20%_10%,rgba(59,130,246,.07),transparent_25rem)] md:block" data-horizontal-scroll data-swipe-lock><svg aria-label={`Referral network showing ${positioned.length} customers`} height={height} role="img" width={width}><defs><marker id="referral-arrow" markerHeight="7" markerWidth="7" orient="auto" refX="7" refY="3.5"><path d="M0,0 L7,3.5 L0,7 Z" fill="#526581"/></marker></defs>{positioned.map((node) => { const parent = node.referrerId ? byId.get(node.referrerId) : null; return parent ? <path d={`M${parent.x + 188},${parent.y + 29} C${parent.x + 208},${parent.y + 29} ${node.x - 22},${node.y + 29} ${node.x - 5},${node.y + 29}`} fill="none" key={`edge-${node.id}`} markerEnd="url(#referral-arrow)" stroke="#526581" strokeOpacity=".72" strokeWidth="1.5"/> : null; })}{positioned.map((node) => <a href={`/customers/${node.id}`} key={node.id}><g className="cursor-pointer"><rect fill={node.referrerId ? "#111d31" : "#15284a"} height="58" rx="13" stroke={node.active ? "#36547c" : "#3f4652"} width="188" x={node.x} y={node.y}/><circle cx={node.x + 25} cy={node.y + 29} fill={node.active ? "#214b7b" : "#303744"} r="15"/><text fill="#bfdbfe" fontSize="11" fontWeight="700" textAnchor="middle" x={node.x + 25} y={node.y + 33}>{node.name.slice(0, 1).toLocaleUpperCase()}</text><text direction="auto" fill="#f1f5f9" fontSize="12" fontWeight="600" x={node.x + 49} y={node.y + 25}>{shortName(node.name)}</text><text fill={node.active ? "#71839d" : "#64748b"} fontSize="10" x={node.x + 49} y={node.y + 42}>{node.referrerId ? "Referred customer" : "Referral source"}{node.active ? "" : " · archived"}</text><title>{node.name}</title></g></a>)}</svg></div></> : <div className="empty border-t border-white/8">No customers match this filter.</div>}
-      {filtered.length > limited.length && <p className="border-t border-white/8 px-5 py-3 text-xs text-amber-200/70">Showing the first {limited.length} results. Narrow the filter to inspect the remaining customers.</p>}
+    <section className="grid grid-cols-3 gap-2.5">
+      <Metric icon={UsersRound} label="Customers" value={customers.length} tone="text-blue-300"/>
+      <Metric icon={GitFork} label="Referral links" value={relationCount} tone="text-violet-300"/>
+      <Metric icon={UserRound} label="Referrers" value={referrerCount} tone="text-emerald-300"/>
+    </section>
+    <section className="panel overflow-hidden">
+      <div className="panel-header"><h2 className="font-semibold">Customer referral graph</h2><span className="text-xs text-slate-400">{filtered.length} shown</span></div>
+      <div className="space-y-3 p-3 sm:p-5"><div className="field flex h-12 items-center gap-2 py-0"><Search className="shrink-0 text-slate-400" size={16}/><input aria-label="Filter referral customers" className="min-w-0 flex-1 bg-transparent text-sm outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="Filter by name, phone, or email…" value={query}/>{query && <button aria-label="Clear referral filter" className="icon-button size-8" onClick={() => setQuery("")} type="button"><X size={14}/></button>}</div><div className="flex gap-2 overflow-x-auto" data-horizontal-scroll>{filters.map(([value, label]) => <button aria-pressed={filter === value} className={`filter-chip ${filter === value ? "active" : ""}`} key={value} onClick={() => setFilter(value)} type="button">{label}</button>)}</div></div>
+      {positioned.length ? <>
+        <div className="divide-y divide-white/10 border-t border-white/10 md:hidden">{limited.map((node) => { const source = node.referrerId ? customers.find((customer) => customer.id === node.referrerId) : null; return <a className="flex min-w-0 items-center gap-3 p-4" href={`/customers/${node.id}`} key={node.id}><Avatar node={node}/><span className="min-w-0 flex-1"><span className="block truncate font-semibold" dir="auto">{node.name}</span><span className="mt-1 block truncate text-xs text-slate-400">{source ? `Introduced by ${source.name}` : "No referral source"}</span></span><GitFork className={source ? "text-violet-300" : "text-slate-500"} size={16}/></a>; })}</div>
+        <div className="hidden max-h-[44rem] overflow-auto border-t border-white/10 md:block" data-horizontal-scroll data-swipe-lock><svg aria-label={`Referral network showing ${positioned.length} customers`} height={height} role="img" width={width}>
+          <defs><marker id="referral-arrow" markerHeight="7" markerWidth="7" orient="auto" refX="7" refY="3.5"><path d="M0,0 L7,3.5 L0,7 Z" fill="#71839d"/></marker>{positioned.filter((node) => node.avatarId).map((node) => <clipPath id={`avatar-${node.id}`} key={node.id}><circle cx={node.x + 25} cy={node.y + 29} r="15"/></clipPath>)}</defs>
+          {positioned.map((node) => { const parent = node.referrerId ? byId.get(node.referrerId) : null; return parent ? <path d={`M${parent.x + 188},${parent.y + 29} C${parent.x + 208},${parent.y + 29} ${node.x - 22},${node.y + 29} ${node.x - 5},${node.y + 29}`} fill="none" key={`edge-${node.id}`} markerEnd="url(#referral-arrow)" stroke="#71839d" strokeOpacity=".72" strokeWidth="1.5"/> : null; })}
+          {positioned.map((node) => <a href={`/customers/${node.id}`} key={node.id}><g className="cursor-pointer"><rect fill={node.referrerId ? "#111d31" : "#15284a"} height="58" rx="13" stroke={node.active ? "#4d6f9d" : "#56606f"} width="188" x={node.x} y={node.y}/>{node.avatarId ? <image clipPath={`url(#avatar-${node.id})`} height="30" href={`/api/media/${node.avatarId}/avatar_small`} preserveAspectRatio="xMidYMid slice" width="30" x={node.x + 10} y={node.y + 14}/> : <><circle cx={node.x + 25} cy={node.y + 29} fill="#214b7b" r="15"/><text fill="#dbeafe" fontSize="11" fontWeight="700" textAnchor="middle" x={node.x + 25} y={node.y + 33}>{node.name.slice(0, 1).toLocaleUpperCase()}</text></>}<text direction="auto" fill="#f8fafc" fontSize="12" fontWeight="600" x={node.x + 49} y={node.y + 25}>{shortName(node.name)}</text><text fill="#a7b4c7" fontSize="10" x={node.x + 49} y={node.y + 42}>{node.referrerId ? "Referred customer" : "Referral source"}</text><title>{node.name}</title></g></a>)}
+        </svg></div>
+      </> : <div className="empty border-t border-white/10">No customers match this filter.</div>}
     </section>
   </div>;
+}
+
+function Avatar({ node }: { node: ReferralNode }) {
+  return <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-500/15 font-bold text-blue-200">{node.avatarId ? <img alt="" className="size-full object-cover" src={`/api/media/${node.avatarId}/avatar_small`}/> : node.name.slice(0, 1).toLocaleUpperCase()}</span>;
+}
+
+function Metric({ icon: Icon, label, value, tone }: { icon: typeof UsersRound; label: string; value: number; tone: string }) {
+  return <article className="stat p-3.5 sm:p-5"><Icon className={tone} size={18}/><p className="mt-3 text-xs text-slate-400">{label}</p><p className="mt-1 text-xl font-semibold">{value}</p></article>;
 }
