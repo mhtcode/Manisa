@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Role } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { KeyRound, X } from "lucide-react";
@@ -25,7 +26,7 @@ const labels: Record<BusinessPermission, string> = {
 export function MemberAccessEditor({ id, name, role, permissions, canTransfer }: { id: string; name: string; role: string; permissions: Record<BusinessPermission, boolean>; canTransfer: boolean }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const initialDraft = createMemberAccessDraft(role as Role, permissions);
   const [selectedRole, setSelectedRole] = useState<Role>(initialDraft.role);
   const [selectedPermissions, setSelectedPermissions] = useState(initialDraft.permissions);
@@ -35,16 +36,25 @@ export function MemberAccessEditor({ id, name, role, permissions, canTransfer }:
     setSelectedPermissions(draft.permissions);
     setOpen(true);
   }
-  function save(formData: FormData) {
-    startTransition(async () => {
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
+  async function save(formData: FormData) {
+    setPending(true);
+    try {
       await updateMembershipAccess(id, formData);
       setOpen(false);
       router.refresh();
-    });
+    } finally {
+      setPending(false);
+    }
   }
   return <>
     <button aria-label={`Edit ${name} access`} className="icon-button" onClick={openEditor} title="Role and permissions" type="button"><KeyRound size={17}/></button>
-    {open && <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
+    {open && createPortal(<div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <section aria-label={`${name} access`} aria-modal="true" className="panel max-h-[88vh] w-full max-w-2xl overflow-y-auto p-5" role="dialog">
         <div className="flex items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{name}</h2><p className="text-xs text-slate-500">Role and permissions</p></div><button aria-label="Close" className="icon-button" onClick={() => setOpen(false)} type="button"><X size={17}/></button></div>
         <form action={save} className="mt-5">
@@ -55,6 +65,6 @@ export function MemberAccessEditor({ id, name, role, permissions, canTransfer }:
         </form>
         {canTransfer && <form action={transferBusinessOwnership.bind(null, id)} className="mt-3"><button className="button-secondary w-full" onClick={(event) => { if (!window.confirm(`Transfer sole ownership to ${name}? Your account will become an administrator.`)) event.preventDefault(); }}>Transfer ownership</button></form>}
       </section>
-    </div>}
+    </div>, document.body)}
   </>;
 }

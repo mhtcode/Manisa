@@ -4,6 +4,7 @@ import { publicReviewSchema, REVIEW_MAX_WORDS, reviewLanguage, reviewWordCount }
 describe("studio reviews", () => {
   it("validates ratings and meaningful opinions", () => {
     expect(publicReviewSchema.safeParse({ reviewerName: "Sara", rating: 5, opinion: "A wonderful appointment." }).success).toBe(true);
+    expect(publicReviewSchema.safeParse({ reviewerName: "Sara", rating: 4, opinion: "Great" }).success).toBe(true);
     expect(publicReviewSchema.safeParse({ reviewerName: "S", rating: 6, opinion: "Too short" }).success).toBe(false);
   });
 
