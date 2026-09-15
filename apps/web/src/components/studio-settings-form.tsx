@@ -44,8 +44,8 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
     setPending(true);
     try {
       await updateSettings(formData);
-      const nextLocale = String(formData.get("locale") || "en");
-      document.documentElement.dataset.theme = String(formData.get("theme") || "DARK").toLowerCase();
+      const nextLocale = formData.has("locale") ? String(formData.get("locale")) : settings.locale;
+      document.documentElement.dataset.theme = (formData.has("theme") ? String(formData.get("theme")) : settings.theme).toLowerCase();
       document.documentElement.lang = nextLocale;
       const shell = document.querySelector<HTMLElement>(".app-background");
       shell?.setAttribute("dir", nextLocale === "fa" ? "rtl" : "ltr");
@@ -93,7 +93,6 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
         {!isEditing && <PreservedFields section={key} settings={settings}/>}
       </section>;
     })}
-    {section && sections.filter(({ key }) => key !== section).map(({ key }) => <PreservedFields key={key} section={key} settings={settings}/>)}
     {error && <p className="text-sm text-rose-300" role="alert">{error}</p>}
     {saved && <p className="flex items-center gap-1.5 text-sm text-emerald-300"><Check size={15}/>Changes saved.</p>}
   </form>;

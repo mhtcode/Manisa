@@ -30,19 +30,19 @@ export type CalendarImportState = {
 
 export async function updateSettings(formData: FormData) {
   const user = await requireBusinessPermission("business.manage");
-  const locale = formData.get("locale") === "fa" ? "fa" : "en";
-  const themeValue = String(formData.get("theme"));
+  const locale = formData.has("locale") ? formData.get("locale") === "fa" ? "fa" : "en" : user.settings.locale;
+  const themeValue = formData.has("theme") ? String(formData.get("theme")) : user.settings.theme;
   const theme = themeValue === "LIGHT" || themeValue === "SYSTEM" ? themeValue : "DARK";
-  const businessName = String(formData.get("businessName") || "Manisa").trim().slice(0, 120);
+  const businessName = formData.has("businessName") ? String(formData.get("businessName") || "Manisa").trim().slice(0, 120) : user.settings.businessName;
   const currency = "CAD";
-  const optional = (name: string, max: number) => String(formData.get(name) || "").trim().slice(0, max) || null;
-  const publicPhone = normalizeCanadianPhone(String(formData.get("publicPhone") || ""));
-  const publicEmail = optional("publicEmail", 160);
-  const bookingUrl = optional("bookingUrl", 500);
-  const whatsappNumber = normalizeCanadianPhone(String(formData.get("whatsappNumber") || ""));
-  const studioTagline = optional("studioTagline", 160);
-  const studioBiography = optional("studioBiography", 1200);
-  const address = optional("address", 300);
+  const optional = (name: string, max: number, current: string | null | undefined) => formData.has(name) ? String(formData.get(name) || "").trim().slice(0, max) || null : current || null;
+  const publicPhone = formData.has("publicPhone") ? normalizeCanadianPhone(String(formData.get("publicPhone") || "")) : user.settings.publicPhone;
+  const publicEmail = optional("publicEmail", 160, user.settings.publicEmail);
+  const bookingUrl = optional("bookingUrl", 500, user.settings.bookingUrl);
+  const whatsappNumber = formData.has("whatsappNumber") ? normalizeCanadianPhone(String(formData.get("whatsappNumber") || "")) : user.settings.whatsappNumber;
+  const studioTagline = optional("studioTagline", 160, user.settings.studioTagline);
+  const studioBiography = optional("studioBiography", 1200, user.settings.studioBiography);
+  const address = optional("address", 300, user.settings.address);
   await prisma.$transaction([
     prisma.userPreference.upsert({ where: { userId: user.id }, create: { userId: user.id, locale, theme }, update: { locale, theme } }),
     prisma.studioSettings.upsert({ where: { id: "studio" }, create: { id: "studio", name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber }, update: { name: businessName, currency, address, publicPhone, publicEmail, bookingUrl, studioTagline, studioBiography, whatsappNumber } }),
