@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Check, Contact, LoaderCircle, MapPin, Pencil, Save, X } from "lucide-react";
 import { formatCanadianPhone } from "@/lib/canadian-phone";
@@ -37,6 +37,11 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
   const [error, setError] = useState("");
   const [locale, setLocale] = useState(settings.locale);
   const [theme, setTheme] = useState(settings.theme);
+
+  useEffect(() => {
+    setLocale(settings.locale);
+    setTheme(settings.theme);
+  }, [settings.locale, settings.theme]);
 
   async function save(formData: FormData) {
     setSaved(false);
