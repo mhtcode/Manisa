@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Check, Contact, LoaderCircle, MapPin, Pencil, Save, X } from "lucide-react";
 import { formatCanadianPhone } from "@/lib/canadian-phone";
@@ -35,13 +35,6 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
   const [editing, setEditing] = useState<StudioSettingsSection | null>(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [locale, setLocale] = useState(settings.locale);
-  const [theme, setTheme] = useState(settings.theme);
-
-  useEffect(() => {
-    setLocale(settings.locale);
-    setTheme(settings.theme);
-  }, [settings.locale, settings.theme]);
 
   async function save(formData: FormData) {
     setSaved(false);
@@ -77,8 +70,8 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
         <fieldset aria-disabled={!isEditing} className={`border-t border-white/7 p-4 transition sm:p-5 ${isEditing ? "" : "pointer-events-none opacity-55"}`} disabled={!isEditing || pending}>
           {key === "identity" && <div className="grid gap-4 sm:grid-cols-2">
             <Field className="sm:col-span-2" label="Business name"><input className="field" defaultValue={settings.businessName} name="businessName" required/></Field>
-            <Field label="Workspace language"><select className="field" name="locale" onChange={(event) => setLocale(event.target.value as SettingsValue["locale"])} value={locale}><option value="en">English</option><option value="fa">فارسی</option></select></Field>
-            <Field label="Appearance"><select className="field" name="theme" onChange={(event) => setTheme(event.target.value as SettingsValue["theme"])} value={theme}><option value="DARK">Dark</option><option value="LIGHT">Light</option><option value="SYSTEM">System</option></select></Field>
+            <Field label="Workspace language"><select className="field" defaultValue={settings.locale} name="locale"><option value="en">English</option><option value="fa">فارسی</option></select></Field>
+            <Field label="Appearance"><select className="field" defaultValue={settings.theme} name="theme"><option value="DARK">Dark</option><option value="LIGHT">Light</option><option value="SYSTEM">System</option></select></Field>
             <Field label="Currency"><div className="field flex items-center gap-2 font-semibold"><span aria-hidden="true">$</span><span>CAD</span></div><input name="currency" type="hidden" value="CAD"/></Field>
             <Field label="Business timezone"><input className="field opacity-70" readOnly value={settings.timezone}/></Field>
           </div>}
