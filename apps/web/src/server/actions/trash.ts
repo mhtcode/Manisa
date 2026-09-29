@@ -36,7 +36,7 @@ function refreshTrashViews() {
   revalidatePath("/appointments");
   revalidatePath("/customers");
   revalidatePath("/services");
-  revalidatePath("/gallery");
+  revalidatePath("/gallery", "layout");
   revalidatePath("/settings");
   revalidatePath("/settings/trash");
   revalidatePath("/settings/financial");
