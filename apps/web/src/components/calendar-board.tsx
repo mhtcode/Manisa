@@ -344,7 +344,7 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             </button>;
           })}
         </div>
-        <div className="flex shrink-0 items-center gap-2 border-t border-white/8 bg-[#0b1017] px-3 py-2"><p className="min-w-0 flex-1 truncate text-xs text-slate-400">{selectedDay ? `${selectedDay.shortWeekday} ${selectedDay.dayNumber}` : "Day"} · {selectedItems.length} scheduled</p><Link aria-label="Add appointment on selected day" className="flex size-8 items-center justify-center rounded-full bg-blue-500 text-white" href={`/appointments/new?date=${selectedKey}`} title="Add appointment"><Plus size={15}/></Link></div>
+        <SelectedDayAppointments compact dateKey={selectedKey} day={selectedDay} items={selectedItems}/>
       </div>
       <div className="hidden h-full overflow-auto md:block">
         <div className="min-w-[720px]">
@@ -368,10 +368,21 @@ function MonthGrid({ days, itemsByDay, selectedKey, setSelectedKey, slotHeight }
             );
           })}
         </div>
+        <SelectedDayAppointments dateKey={selectedKey} day={selectedDay} items={selectedItems}/>
         </div>
       </div>
     </>
   );
+}
+
+function SelectedDayAppointments({ compact = false, dateKey, day, items }: { compact?: boolean; dateKey: string; day?: CalendarDay; items: CalendarItem[] }) {
+  const label = day ? `${day.weekday}, ${day.monthLabel} ${day.dayNumber}` : dateKey;
+  return <section aria-label={`Appointments for ${label}`} className={`shrink-0 border-t border-white/8 bg-[#0b1017] ${compact ? "max-h-36" : "p-4"}`}>
+    <header className={`flex items-center gap-2 ${compact ? "px-3 py-2" : "mb-3"}`}><div className="min-w-0 flex-1"><h2 className="truncate text-xs font-semibold text-slate-100 sm:text-sm">{label}</h2><p className="text-[10px] text-slate-500">{items.length} {items.length === 1 ? "appointment" : "appointments"}</p></div><Link aria-label="Add appointment on selected day" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400" href={`/appointments/new?date=${dateKey}`} title="Add appointment"><Plus size={15}/></Link></header>
+    {items.length ? <div className={`${compact ? "max-h-20 border-t border-white/6" : "grid gap-2 sm:grid-cols-2 xl:grid-cols-3"} overflow-auto`}>
+      {items.map((item) => <Link className={`flex min-w-0 items-center gap-3 transition hover:bg-white/[0.05] ${compact ? "border-b border-white/6 px-3 py-2 last:border-b-0" : "rounded-xl border border-white/8 bg-white/[0.025] p-3"}`} href={item.href} key={item.id}><span className={`flex size-9 shrink-0 items-center justify-center rounded-lg border text-[10px] font-semibold ${eventColors[item.colorIndex % eventColors.length]}`}>{item.time}</span><span className="min-w-0 flex-1"><strong className="block truncate text-xs text-white">{item.customer}</strong><span className="block truncate text-[10px] text-slate-500">{item.service}</span></span><StatusBadge status={item.status}/></Link>)}
+    </div> : <p className={`${compact ? "border-t border-white/6 px-3 py-2" : "rounded-xl border border-dashed border-white/8 px-4 py-5 text-center"} text-xs text-slate-500`}>No appointments assigned to this date.</p>}
+  </section>;
 }
 
 function YearGrid({ anchorKey, itemsByDay, onSelectMonth, todayKey, locale }: { anchorKey: string; itemsByDay: Map<string, CalendarItem[]>; onSelectMonth: (key: string) => void; todayKey: string; locale: AppLocale }) {
