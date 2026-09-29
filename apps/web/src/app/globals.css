@@ -332,6 +332,7 @@ body:has(.studio-calendar-board) main { padding-bottom: 0; }
 .chart-panel .recharts-surface { overflow: hidden; }
 .chart-panel[data-expanded] .chart-canvas { height: min(68vh,48rem); min-height: 24rem; }
 .report-stat { min-height: 7.2rem; }
+@media (max-width: 767px) { .report-stat { min-height: 6.4rem; padding: .75rem; } }
 .app-background { font-size: 1rem; line-height: 1.5; }
 .app-background .text-xs { font-size: .875rem; line-height: 1.3rem; }
 .app-background .text-sm { font-size: 1rem; line-height: 1.5rem; }
