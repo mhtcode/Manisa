@@ -47,31 +47,11 @@ export function DesktopNavigation({ locale, permissions, pendingReviewCount = 0 
   </nav>;
 }
 
-export function DesktopTopNavigation({ locale, permissions }: { locale: AppLocale; permissions: BusinessPermission[] }) {
-  const pathname = usePathname();
-  const t = getMessages(locale);
-  const items = [
-    ["/report", t.report, ChartNoAxesCombined, "reports.view"],
-    ["/calendar", t.calendar, CalendarDays, "appointments.view"],
-    ["/gallery", t.gallery, Images, "gallery.view"],
-    ["/appointments", t.appointments, CalendarCheck2, "appointments.view"],
-    ["/customers", t.customers, UsersRound, "customers.view"],
-    ["/services", locale === "fa" ? "خدمات" : "Services", SwatchBook, "services.view"],
-    ["/settings", t.settings, Settings, null],
-  ] as const;
-  return <nav aria-label="Main navigation" className="desktop-top-navigation hidden overflow-x-auto border-t border-white/6 xl:flex">
-    {items.filter(([, , , permission]) => !permission || permissions.includes(permission)).map(([href, label, Icon]) => {
-      const active = href === "/settings" ? isActive(pathname, href) : isActive(pathname, href);
-      return <Link aria-current={active ? "page" : undefined} className={`desktop-top-navigation-item ${active ? "active" : ""}`} href={href} key={href}><Icon size={16}/><span>{label}</span></Link>;
-    })}
-  </nav>;
-}
-
 export function MobileNavigationDrawer({ locale, permissions, pendingReviewCount = 0 }: { locale: AppLocale; permissions: BusinessPermission[]; pendingReviewCount?: number }) {
   const [open, setOpen] = useState(false);
   return <>
     <button aria-expanded={open} aria-label={open ? "Close navigation" : "Open navigation"} className="header-profile large-navigation-trigger size-10 rounded-full p-0" onClick={() => setOpen((value) => !value)} type="button">{open ? <X size={18}/> : <Menu size={18}/>}</button>
-    {open && <div className="fixed inset-0 z-[70] hidden lg:block xl:hidden" data-swipe-lock>
+    {open && <div className="fixed inset-0 z-[70] hidden lg:block" data-swipe-lock>
       <button aria-label="Close navigation" className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)} type="button"/>
       <aside className="absolute inset-y-0 start-0 flex w-[min(86vw,20rem)] flex-col border-e border-blue-300/15 bg-[#080d15]/96 p-4 shadow-[1.5rem_0_4rem_rgba(0,0,0,.45)] backdrop-blur-2xl">
         <div className="flex items-center justify-between"><p className="font-semibold text-white">{locale === "fa" ? "پیمایش" : "Navigation"}</p><button aria-label="Close navigation" className="icon-button" onClick={() => setOpen(false)} type="button"><X size={18}/></button></div>

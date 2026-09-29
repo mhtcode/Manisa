@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarPlus, Settings } from "lucide-react";
-import { DesktopTopNavigation, MobileNavigation, MobileNavigationDrawer } from "@/components/app-navigation";
+import { MobileNavigation, MobileNavigationDrawer } from "@/components/app-navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { LocaleRuntime } from "@/components/locale-runtime";
 import { NotificationCenter } from "@/components/notification-center";
@@ -21,7 +21,6 @@ export function AppShell({ children, locale, userName, businessName, mobileNavOr
         <div className="flex min-w-0 items-center gap-2"><MobileNavigationDrawer locale={locale} pendingReviewCount={pendingReviewCount} permissions={permissions}/><Link href="/report" className="flex min-w-0 items-center gap-2 font-semibold"><BrandLogo size={36}/><span className="truncate">{businessName}</span></Link><span className="ms-4 hidden text-sm text-slate-500 xl:block">{new Intl.DateTimeFormat(intlLocale(locale), { dateStyle: "full" }).format(new Date())}</span></div>
         <div className="app-header-actions flex items-center gap-2"><GlobalSearch permissions={permissions}/><NotificationCenter items={notifications} locale={locale} timezone={timezone}/><Link aria-label={t.settings} className="header-profile size-10 rounded-full p-0" href="/settings" title={`${t.settings} · ${userName}`}><Settings size={18}/></Link><Link aria-label={t.newAppointment} className="header-profile size-10 rounded-full p-0" href="/appointments/new" title={t.newAppointment}><CalendarPlus size={17}/></Link></div>
       </div>
-      <DesktopTopNavigation locale={locale} permissions={permissions}/>
     </header>
     <LocaleRuntime locale={locale}><PageSwipeNavigation order={mobileOrder} rtl={locale === "fa"}><main className="mx-auto max-w-[94rem] p-4 sm:p-5 md:p-8 lg:p-10">{children}</main></PageSwipeNavigation></LocaleRuntime>
     <MobileNavigation locale={locale} order={mobileOrder}/>
