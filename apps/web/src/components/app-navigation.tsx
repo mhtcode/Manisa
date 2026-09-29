@@ -70,7 +70,7 @@ export function DesktopTopNavigation({ locale, permissions }: { locale: AppLocal
 export function MobileNavigationDrawer({ locale, permissions, pendingReviewCount = 0 }: { locale: AppLocale; permissions: BusinessPermission[]; pendingReviewCount?: number }) {
   const [open, setOpen] = useState(false);
   return <>
-    <button aria-expanded={open} aria-label={open ? "Close navigation" : "Open navigation"} className="header-profile hidden size-10 rounded-full p-0 lg:inline-flex xl:hidden" onClick={() => setOpen((value) => !value)} type="button">{open ? <X size={18}/> : <Menu size={18}/>}</button>
+    <button aria-expanded={open} aria-label={open ? "Close navigation" : "Open navigation"} className="header-profile large-navigation-trigger size-10 rounded-full p-0" onClick={() => setOpen((value) => !value)} type="button">{open ? <X size={18}/> : <Menu size={18}/>}</button>
     {open && <div className="fixed inset-0 z-[70] hidden lg:block xl:hidden" data-swipe-lock>
       <button aria-label="Close navigation" className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)} type="button"/>
       <aside className="absolute inset-y-0 start-0 flex w-[min(86vw,20rem)] flex-col border-e border-blue-300/15 bg-[#080d15]/96 p-4 shadow-[1.5rem_0_4rem_rgba(0,0,0,.45)] backdrop-blur-2xl">
