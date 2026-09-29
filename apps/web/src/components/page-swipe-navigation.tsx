@@ -39,5 +39,5 @@ export function PageSwipeNavigation({ children, order, rtl }: { children: React.
       const next = swipeDestinationIndex(current, deltaX, order.length, rtl);
       if (next >= 0) router.push(mobileNavigationHrefs[order[next]]);
     }}
-  >{children}</div>;
+  ><div className="page-transition-surface" key={pathname}>{children}</div></div>;
 }
