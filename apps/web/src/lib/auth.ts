@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
+import { cache } from "react";
 import { getServerEnv, secureCookiesEnabled } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 import { hasBusinessPermission, type BusinessPermission } from "@/lib/permissions";
@@ -29,7 +30,7 @@ export async function createSession(userId: string) {
 
 export async function destroySession() { (await cookies()).delete(COOKIE_NAME); }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const payload = await sessionPayload();
   if (!payload) return null;
   const [user, studio] = await Promise.all([
@@ -69,7 +70,7 @@ export async function getCurrentUser() {
     collapsedSections: user.preferences?.collapsedSections ?? {},
   };
   return { ...user, access: { role: user.role, permissionOverrides: user.permissionOverrides }, settings };
-}
+});
 
 export async function requireUser() {
   const user = await getCurrentUser();
