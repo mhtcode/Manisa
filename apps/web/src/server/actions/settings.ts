@@ -151,7 +151,7 @@ export async function importManualCalendarJson(_previous: CalendarImportState, f
   if (parsed.issues.length || !parsed.appointments.length) {
     return { status: "error", message: "The batch is invalid. Nothing was imported.", skipped: parsed.issues.length, issues: parsed.issues.slice(0, 8) };
   }
-  if (parsed.appointments.length > 200) return { status: "error", message: "Import at most 200 appointments at a time." };
+  if (parsed.appointments.length > 200) return { status: "error", message: "Only 200 appointments can be added at the same time." };
 
   try {
     const result = await prisma.$transaction(async (transaction) => {

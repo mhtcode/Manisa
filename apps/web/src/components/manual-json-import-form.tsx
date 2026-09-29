@@ -32,7 +32,7 @@ const example = `{
 export function ManualJsonImportForm() {
   const [state, action, pending] = useActionState(importManualCalendarJson, initialState);
   return <section className="panel overflow-hidden">
-    <div className="panel-header"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-blue-400/10 text-blue-300"><Braces size={19}/></span><div><h2 className="font-semibold text-white">JSON batch import</h2><p className="mt-1 text-xs text-slate-500">Create missing categories, services, customers, and appointments in one transaction.</p></div></div><span className="badge border-blue-300/20 bg-blue-300/8 text-blue-200">Up to 200</span></div>
+    <div className="panel-header"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-xl bg-blue-400/10 text-blue-300"><Braces size={19}/></span><h2 className="font-semibold text-white">JSON batch import</h2></div></div>
     <form action={action} className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[1fr_.85fr]">
       <div className="space-y-4">
         <div><label className="label" htmlFor="jsonFile">JSON file (optional)</label><input accept=".json,application/json" className="field file:me-3 file:rounded-lg file:border-0 file:bg-white/8 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-200" id="jsonFile" name="jsonFile" type="file"/></div>
