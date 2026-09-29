@@ -14,7 +14,7 @@ import { parsePaymentInputs, paymentStatusFor } from "@/lib/payments";
 import { publishObject, removeObject } from "@/lib/object-storage";
 import { enqueueGoogleCalendarSync } from "@/server/google-calendar";
 import { enqueueNotification } from "@/server/notification-events";
-import { canFeatureGalleryItem, galleryPublishSource } from "@/lib/gallery-feature";
+import { canFeatureGalleryItem, galleryAssetReady, galleryPublishSource } from "@/lib/gallery-feature";
 
 async function findConflict(startAt: Date, duration: number, excludeId?: string) {
   const candidates = await prisma.appointment.findMany({
@@ -232,7 +232,7 @@ export async function setAppointmentPhotoFeatured(photoId: string, featured: boo
   if (!asset) throw new Error("Only photos from finalized appointments can be featured.");
   const source = galleryPublishSource(asset);
   const publicKey = `studio/featured/${asset.id}.webp`;
-  if (featured && !asset.featuredAt && !source) throw new Error("This photo is still being prepared for the website.");
+  if (featured && !asset.featuredAt && !galleryAssetReady(asset)) throw new Error("This photo is still being prepared for the website.");
   if (featured && !asset.featuredAt && source) await publishObject(source, publicKey);
   try {
     await prisma.$transaction(async (tx) => {
