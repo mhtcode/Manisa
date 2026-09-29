@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { after } from "next/server";
-import { ArrowUpRight, Instagram, Mail, MapPin, Phone, Star } from "lucide-react";
+import { ArrowUpRight, Instagram, LogIn, Mail, MapPin, Phone, Star } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BrandLogo } from "@/components/brand-logo";
 import { PublicGallery } from "@/components/public-gallery";
@@ -55,7 +55,7 @@ export async function StudioLanding({ locale, theme }: { locale: PublicLocale; t
   ];
   return <main className="public-site min-h-screen overflow-x-clip bg-[var(--public-bg)] text-[var(--public-ink)]" data-public-theme={theme} dir={direction} lang={locale}>
     <PublicMotion/>
-    <header className="public-header"><div className="public-nav-shell"><a className="public-brand" href="#top"><BrandLogo priority size={42}/><span dir="auto">{studio.name}</span></a><nav aria-label={locale === "fa" ? "پیمایش صفحه" : "Page navigation"} className="public-top-links"><a data-public-nav="services" href="#services">{t.navServices}</a><a data-public-nav="work" href="#work">{t.navWork}</a><a data-public-nav="reviews" href="#reviews">{t.navReviews}</a><a data-public-nav="about" href="#about">{t.navAbout}</a></nav><div className="public-nav-actions"><PublicSiteControls locale={locale} path="/" theme={theme}/><Link className="public-login" href={managementHref} prefetch={false}>{t.login}</Link></div></div></header>
+    <header className="public-header"><div className="public-nav-shell"><a className="public-brand" href="#top"><BrandLogo priority size={42}/><span dir="auto">{studio.name}</span></a><nav aria-label={locale === "fa" ? "پیمایش صفحه" : "Page navigation"} className="public-top-links"><a data-public-nav="services" href="#services">{t.navServices}</a><a data-public-nav="work" href="#work">{t.navWork}</a><a data-public-nav="reviews" href="#reviews">{t.navReviews}</a><a data-public-nav="about" href="#about">{t.navAbout}</a></nav><div className="public-nav-actions"><PublicSiteControls locale={locale} path="/" theme={theme}/><Link className="public-login gap-1.5" href={managementHref} prefetch={false}><LogIn size={15}/>{t.login}</Link></div></div></header>
 
     <section className="public-hero relative isolate min-h-[48rem] overflow-hidden px-5 pb-20 pt-24 sm:px-8 lg:min-h-[54rem] lg:px-10" data-public-section="preview" id="top">
       <div className="public-orb -start-28 top-28 size-80 bg-[#c96f73]/34"/><div className="public-orb -end-24 bottom-10 size-96 bg-[#d69a64]/25 [animation-delay:-4s]"/>

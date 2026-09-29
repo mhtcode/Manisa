@@ -79,7 +79,7 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
 .public-login-page .field { color: var(--public-ink); background: var(--public-soft); border-color: var(--public-line); }
 .public-login-page .label { color: var(--public-muted); }
 .public-login-page .button { border-color: transparent; border-radius: 999px; background: var(--public-button); box-shadow: 0 12px 30px rgba(168,61,94,.25); }
-.public-header { position: fixed; inset-inline: 0; top: 0; z-index: 80; padding: .65rem; pointer-events: none; }
+.public-header { position: absolute; inset-inline: 0; top: 0; z-index: 80; padding: .65rem; pointer-events: none; }
 .public-nav-shell { display: flex; max-width: 80rem; align-items: center; justify-content: space-between; gap: .75rem; margin-inline: auto; padding: .4rem .5rem; border: 1px solid var(--public-line); border-radius: 1.2rem; background: color-mix(in srgb,var(--public-nav) 84%,transparent); box-shadow: 0 12px 38px rgba(24,12,10,.14); pointer-events: auto; -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%); }
 .public-brand { display: inline-flex; min-width: 0; align-items: center; gap: .55rem; padding-inline: .2rem .5rem; }
 .public-brand img { display: block; }
@@ -252,17 +252,18 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
 @media (max-width: 639px) {
   html:has(.public-site) { scroll-behavior: smooth; }
   .public-header { padding: .45rem; }
-  .public-nav-shell { flex-wrap: wrap; gap: .25rem; padding: .3rem; }
+  .public-nav-shell { flex-wrap: nowrap; justify-content: flex-start; gap: .25rem; overflow-x: auto; padding: .3rem; scrollbar-width: none; }
+  .public-nav-shell::-webkit-scrollbar { display: none; }
   .public-brand { gap: .35rem; }
   .public-brand img { width: 2.15rem; height: 2.15rem; }
   .public-brand span { max-width: 4.8rem; font-size: .78rem; }
-  .public-nav-actions { gap: .2rem; }
+  .public-nav-actions { flex: none; gap: .2rem; margin-inline-start: auto; }
   .public-nav-actions .public-control { width: 3rem; min-height: 3rem; padding: 0; }
   .public-nav-actions .public-login { min-height: 3rem; padding-inline: .9rem; }
-  .public-top-links { order: 3; width: 100%; overflow-x: auto; justify-content: space-around; scrollbar-width: none; }
+  .public-top-links { flex: none; width: auto; overflow-x: visible; justify-content: center; scrollbar-width: none; }
   .public-top-links::-webkit-scrollbar { display: none; }
   .public-top-links a { padding: .42rem .55rem; font-size: .7rem; }
-  .public-site #top { padding-top: 8.5rem; }
+  .public-site #top { padding-top: 5.25rem; }
   .public-site #top > .relative.mx-auto { min-height: calc(100svh - 6rem); }
   .public-stack-section { margin-top: -2.75rem; padding-bottom: 5rem; border-radius: 2.6rem 2.6rem 0 0; box-shadow: 0 -24px 54px rgba(8,3,2,.26), inset 0 1px rgba(255,255,255,.12); }
   .public-stack-section.public-stack-services { margin-top: .75rem; }
