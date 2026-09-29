@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- customer avatars use an authorized media endpoint */
 
 import { useDeferredValue, useMemo, useState } from "react";
-import { CalendarClock, Search, UserRound, X } from "lucide-react";
+import { CalendarClock, Phone, Search, UserRound, X } from "lucide-react";
 import { BulkSelection, SelectableLink } from "@/components/bulk-selection";
 import { bulkMoveToTrash } from "@/server/actions/trash";
 
@@ -44,6 +44,6 @@ function CustomerLink({ customer, mode }: { customer: CustomerRecord; mode: "gri
   const latestVisit = customer.latestVisit ? new Intl.DateTimeFormat("en-CA", { dateStyle: "medium" }).format(new Date(customer.latestVisit)) : "No visits";
   return <SelectableLink className={mode === "grid" ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-xl border border-white/8 bg-white/[0.02] p-3 transition hover:border-blue-400/25 hover:bg-blue-500/[0.05]" : "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 px-4 py-3 transition hover:bg-blue-500/[0.04] sm:px-5"} href={`/customers/${customer.id}`} id={customer.id}>
     <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-500/10 text-blue-200">{customer.avatarId ? <img alt="" className="size-full object-cover" src={`/api/media/${customer.avatarId}/avatar_small`}/> : <UserRound size={18}/>}</span>
-    <span className="min-w-0"><span className="block truncate text-base font-semibold" dir="auto">{customer.name}</span><span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400"><span className="truncate" dir="ltr">{customer.phone || "No phone"}</span><span className="inline-flex min-w-0 items-center gap-1.5"><CalendarClock className="shrink-0 text-blue-300/80" size={14}/><span className="truncate">{latestVisit}</span></span></span></span>
+    <span className="min-w-0"><span className="block truncate text-base font-semibold" dir="auto">{customer.name}</span><span className="mt-1 grid min-w-0 grid-cols-[minmax(0,1fr)_7.5rem] items-center gap-2 text-sm text-slate-400"><span className="inline-flex min-w-0 items-center gap-1.5" dir="ltr"><Phone className="shrink-0 text-blue-300/80" size={13}/><span className="truncate">{customer.phone || "No phone"}</span></span><span className="inline-flex min-w-0 items-center gap-1.5"><CalendarClock className="shrink-0 text-blue-300/80" size={14}/><span className="truncate">{latestVisit}</span></span></span></span>
   </SelectableLink>;
 }
