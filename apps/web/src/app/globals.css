@@ -323,9 +323,9 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
 .header-profile:active { transform: scale(.96); }
 .large-navigation-trigger { display: none; }
 @media (min-width: 1024px) { .large-navigation-trigger { display: inline-flex; } }
-.mobile-glass-nav { inset-inline-start: 50%; bottom: max(.8rem, env(safe-area-inset-bottom)); width: min(30rem,calc(100vw - 1.5rem)); overflow: visible; border: 1px solid rgba(148,180,220,.24); border-radius: 999px; background: rgba(8,16,29,.4); box-shadow: inset 0 1px rgba(255,255,255,.1), inset 0 -1px rgba(2,6,14,.5), 0 -18px 34px rgba(0,0,0,.3), 0 18px 34px rgba(0,0,0,.52); isolation: isolate; transform: translateX(-50%); -webkit-backdrop-filter: saturate(195%) blur(34px); backdrop-filter: saturate(195%) blur(34px); }
+.mobile-glass-nav { inset-inline-start: 50%; bottom: max(.8rem, env(safe-area-inset-bottom)); width: min(30rem,calc(100vw - 1.5rem)); overflow: visible; border: 1px solid rgba(148,180,220,.3); border-radius: 999px; background: rgba(8,16,29,.46); box-shadow: inset 0 1px rgba(255,255,255,.12), inset 0 -1px rgba(2,6,14,.62), -18px 0 34px rgba(0,0,0,.38), 18px 0 34px rgba(0,0,0,.38), 0 -20px 38px rgba(0,0,0,.42), 0 20px 40px rgba(0,0,0,.58), 0 0 42px 10px rgba(3,8,18,.34); isolation: isolate; transform: translateX(-50%); -webkit-backdrop-filter: saturate(210%) blur(44px); backdrop-filter: saturate(210%) blur(44px); }
 .mobile-glass-nav::before { position: absolute; z-index: 0; inset: 1px; pointer-events: none; content: ""; border: 1px solid rgba(255,255,255,.05); border-radius: inherit; }
-.mobile-glass-nav::after { position: absolute; z-index: -1; inset: -1.7rem -1rem; pointer-events: none; content: ""; border-radius: 999px; background: radial-gradient(ellipse at center,rgba(2,6,14,.74),rgba(2,6,14,.3) 55%,transparent 76%); filter: blur(9px); }
+.mobile-glass-nav::after { position: absolute; z-index: -1; inset: -2rem -1.5rem; pointer-events: none; content: ""; border-radius: 999px; background: radial-gradient(ellipse at center,rgba(2,6,14,.82),rgba(2,6,14,.42) 56%,transparent 78%); filter: blur(12px); }
 .mobile-nav-item { z-index: 1; color: #94a3b8; transition: color 160ms ease, transform 180ms cubic-bezier(.22,1,.36,1); }
 .mobile-nav-item:hover { color: #bfdbfe; }
 .mobile-nav-item:active { transform: scale(.96); }
