@@ -69,7 +69,7 @@ export function DismissiblePopover({
   const overlay = open && backdropClassName && typeof document !== "undefined" ? createPortal(<><button aria-label={`Close ${ariaLabel}`} className={backdropClassName} onClick={() => setOpen(false)} tabIndex={-1} type="button"/>{panel}</>, document.body) : null;
 
   return <div className={rootClassName} onPointerEnter={(event) => { if (event.pointerType === "mouse") { cancelClose(); setOpen(true); } }} onPointerLeave={(event) => scheduleClose(event.pointerType)} ref={rootRef}>
-    <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
+    <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); else setOpen(true); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
       {trigger}
     </button>
     {backdropClassName ? overlay : panel}
