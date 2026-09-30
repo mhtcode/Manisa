@@ -26,6 +26,7 @@ export function DismissiblePopover({
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const lastPointerType = useRef<string | null>(null);
+  const pinnedOpen = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function cancelClose() {
@@ -34,7 +35,7 @@ export function DismissiblePopover({
   }
 
   function scheduleClose(pointerType: string) {
-    if (pointerType !== "mouse") return;
+    if (pointerType !== "mouse" || pinnedOpen.current) return;
     cancelClose();
     closeTimer.current = setTimeout(() => setOpen(false), 80);
   }
@@ -45,10 +46,11 @@ export function DismissiblePopover({
     if (!open) return;
     const dismiss = (event: PointerEvent | MouseEvent) => {
       const target = event.target as Node;
-      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) setOpen(false);
+      if (!rootRef.current?.contains(target) && !panelRef.current?.contains(target)) { pinnedOpen.current = false; setOpen(false); }
     };
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        pinnedOpen.current = false;
         setOpen(false);
         triggerRef.current?.focus();
       }
@@ -64,12 +66,12 @@ export function DismissiblePopover({
   }, [open]);
 
   const panel = open ? <div className={panelClassName} id={panelId} onClickCapture={(event) => {
-    if ((event.target as Element).closest("a[href]")) setOpen(false);
+    if ((event.target as Element).closest("a[href]")) { pinnedOpen.current = false; setOpen(false); }
   }} onPointerEnter={cancelClose} onPointerLeave={(event) => scheduleClose(event.pointerType)} ref={panelRef} role="dialog">{children}</div> : null;
-  const overlay = open && backdropClassName && typeof document !== "undefined" ? createPortal(<><button aria-label={`Close ${ariaLabel}`} className={backdropClassName} onClick={() => setOpen(false)} tabIndex={-1} type="button"/>{panel}</>, document.body) : null;
+  const overlay = open && backdropClassName && typeof document !== "undefined" ? createPortal(<><button aria-label={`Close ${ariaLabel}`} className={backdropClassName} onClick={() => { pinnedOpen.current = false; setOpen(false); }} tabIndex={-1} type="button"/>{panel}</>, document.body) : null;
 
   return <div className={rootClassName} onPointerEnter={(event) => { if (event.pointerType === "mouse") { cancelClose(); setOpen(true); } }} onPointerLeave={(event) => scheduleClose(event.pointerType)} ref={rootRef}>
-    <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); else setOpen(true); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
+    <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => { pinnedOpen.current = !value; return !value; }); else { pinnedOpen.current = true; setOpen(true); } }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
       {trigger}
     </button>
     {backdropClassName ? overlay : panel}
