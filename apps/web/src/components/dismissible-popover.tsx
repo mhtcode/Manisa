@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export function DismissiblePopover({
   ariaLabel,
+  backdropClassName,
   children,
   panelClassName,
   rootClassName = "relative",
@@ -11,6 +12,7 @@ export function DismissiblePopover({
   triggerClassName,
 }: {
   ariaLabel: string;
+  backdropClassName?: string;
   children: React.ReactNode;
   panelClassName: string;
   rootClassName?: string;
@@ -62,8 +64,8 @@ export function DismissiblePopover({
     <button aria-controls={panelId} aria-expanded={open} aria-label={ariaLabel} className={triggerClassName} onClick={(event) => { if (event.detail === 0 || lastPointerType.current !== "mouse") setOpen((value) => !value); }} onPointerDown={(event) => { lastPointerType.current = event.pointerType; }} ref={triggerRef} type="button">
       {trigger}
     </button>
-    {open && <div className={panelClassName} id={panelId} onClickCapture={(event) => {
+    {open && <><button aria-label={`Close ${ariaLabel}`} className={backdropClassName} onClick={() => setOpen(false)} tabIndex={-1} type="button"/><div className={panelClassName} id={panelId} onClickCapture={(event) => {
       if ((event.target as Element).closest("a[href]")) setOpen(false);
-    }} role="dialog">{children}</div>}
+    }} role="dialog">{children}</div></>}
   </div>;
 }
