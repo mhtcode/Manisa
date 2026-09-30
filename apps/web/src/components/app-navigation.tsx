@@ -83,7 +83,7 @@ export function MobileNavigation({ locale, order = defaultMobileNavigation }: { 
     {order.map((key) => {
       const [href, messageKey, Icon] = navigationItems[key];
       const active = activeKey === key;
-      return <Link aria-current={active ? "page" : undefined} aria-label={t[messageKey]} className={`mobile-nav-item relative flex min-h-[3rem] min-w-0 flex-col items-center justify-center gap-0 px-0.5 py-0.5 transition ${active ? "mobile-nav-item-active text-blue-50" : "text-slate-400"} ${dragKey === key ? "mobile-nav-item-drag" : ""}`} data-mobile-nav-key={key} href={href} key={key} onClick={(event) => { if (suppressClick.current) event.preventDefault(); }}>
+      return <Link aria-current={active ? "page" : undefined} aria-label={t[messageKey]} className={`mobile-nav-item relative flex min-h-[3.25rem] min-w-0 flex-col items-center justify-center gap-1 px-0.5 py-0.5 transition ${active ? "mobile-nav-item-active text-blue-50" : "text-slate-400"} ${dragKey === key ? "mobile-nav-item-drag" : ""}`} data-mobile-nav-key={key} href={href} key={key} onClick={(event) => { if (suppressClick.current) event.preventDefault(); }}>
         <span className="mobile-nav-icon"><Icon className={active ? "text-blue-300 drop-shadow-[0_0_8px_rgba(96,165,250,.32)]" : "text-slate-400"} size={20} strokeWidth={active ? 2.35 : 1.85}/></span>
         <span className="mobile-nav-label">{t[messageKey]}</span>
       </Link>;
