@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeftRight, BookOpenCheck, CalendarCheck2, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Images, MessageSquareQuote, Network, PanelLeftClose, PanelLeftOpen, PlugZap, Settings, ShieldCheck, SwatchBook, Trash2, UserRoundCog, UsersRound, X } from "lucide-react";
+import { ArrowLeftRight, BookOpenCheck, CalendarCheck2, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Images, MessageSquareQuote, Network, PanelLeftClose, PanelLeftOpen, PlugZap, Settings, ShieldCheck, SwatchBook, Trash2, UserRoundCog, UsersRound } from "lucide-react";
 import type { AppLocale } from "@/lib/i18n";
 import { getMessages } from "@/lib/i18n";
 import { defaultMobileNavigation, mobileNavigationHrefs, type MobileNavigationKey } from "@/lib/mobile-navigation";
@@ -55,9 +55,9 @@ export function MobileNavigationDrawer({ locale, permissions, pendingReviewCount
     return () => { delete document.body.dataset.desktopSidebar; };
   }, [open]);
   return <>
-    <button aria-expanded={open} aria-label={open ? "Fold navigation" : "Unfold navigation"} className="header-profile large-navigation-trigger size-10 rounded-full p-0" onClick={() => setOpen((value) => !value)} title={open ? "Fold navigation" : "Unfold navigation"} type="button">{open ? <PanelLeftClose size={19}/> : <PanelLeftOpen size={19}/>}</button>
+    <button aria-expanded={open} aria-label={open ? "Fold navigation" : "Unfold navigation"} className="large-navigation-trigger inline-flex size-10 items-center justify-center text-slate-400 transition hover:text-white" onClick={() => setOpen((value) => !value)} title={open ? "Fold navigation" : "Unfold navigation"} type="button">{open ? <PanelLeftClose size={20}/> : <PanelLeftOpen size={20}/>}</button>
     {open && typeof document !== "undefined" ? createPortal(<aside aria-label="Sidebar navigation" className="desktop-fold-sidebar fixed inset-y-0 start-0 z-[60] hidden w-[21rem] flex-col border-e border-blue-300/15 bg-[#080d15]/96 p-4 shadow-[1.5rem_0_4rem_rgba(0,0,0,.38)] backdrop-blur-2xl lg:flex" data-swipe-lock>
-        <div className="flex items-center justify-between"><p className="font-semibold text-white">{locale === "fa" ? "پیمایش" : "Navigation"}</p><button aria-label="Fold navigation" className="icon-button" onClick={() => setOpen(false)} title="Fold navigation" type="button"><X size={18}/></button></div>
+        <div className="flex items-center justify-between"><p className="font-semibold text-white">{locale === "fa" ? "پیمایش" : "Navigation"}</p><button aria-label="Fold navigation" className="inline-flex size-10 items-center justify-center text-slate-400 transition hover:text-white" onClick={() => setOpen(false)} title="Fold navigation" type="button"><PanelLeftClose size={20}/></button></div>
         <div className="min-h-0 flex-1 overflow-hidden"><DesktopNavigation locale={locale} pendingReviewCount={pendingReviewCount} permissions={permissions}/></div>
       </aside>, document.body) : null}
   </>;

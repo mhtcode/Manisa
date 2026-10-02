@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { CalendarDays, Camera, ChevronDown, Filter, Images, Scissors, UserRound } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
-import { BulkSelection, SelectableLink } from "@/components/bulk-selection";
+import { BulkSelection, BulkSelectionControls, SelectableLink } from "@/components/bulk-selection";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
@@ -64,7 +64,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
       </form>
     </details>
 
-    {albums.length ? <BulkSelection action={bulkMoveGalleryAlbumsToTrash} allIds={allAlbumIds.map((album) => album.id)} controlsTargetId="gallery-selection-controls" locale={locale}><section className="panel overflow-hidden"><div className="panel-header"><div><h2 className="font-semibold text-white">Albums</h2><p className="mt-1 text-xs text-slate-500">{albums.length} shown</p></div><div id="gallery-selection-controls"/></div><div className={`gallery-surface p-3 ${view === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4" : "space-y-3"}`} data-swipe-lock>
+    {albums.length ? <BulkSelection action={bulkMoveGalleryAlbumsToTrash} allIds={allAlbumIds.map((album) => album.id)} integrated locale={locale}><section className="panel overflow-hidden"><div className="panel-header justify-start"><BulkSelectionControls/></div><div className={`gallery-surface p-3 ${view === "grid" ? "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4" : "space-y-3"}`} data-swipe-lock>
       {albums.map((album) => { const serviceNames = album.actualServiceLines.length ? album.actualServiceLines.map((line) => line.serviceNameSnapshot) : [album.serviceNameSnapshot]; return <SelectableLink className={`group min-w-0 overflow-hidden rounded-2xl border border-white/9 bg-[#0d141e] p-0 shadow-[0_12px_35px_rgba(0,0,0,.18)] transition active:scale-[.985] hover:border-blue-400/25 ${view === "list" ? "grid grid-cols-[7.5rem_minmax(0,1fr)] sm:grid-cols-[10rem_minmax(0,1fr)]" : "block"}`} href={`/gallery/${album.id}`} id={album.id} key={album.id} reserveSelectionSpace={false}>
         <div className={`relative flex overflow-hidden bg-slate-950 ${view === "grid" ? "aspect-[4/3]" : "min-h-28"}`}>
           {album.photos.map((photo, index) => <span className="flex min-w-0 flex-1 items-center justify-center overflow-hidden border-e border-black/30 last:border-0" key={photo.id}><img alt={`${customerName(album.customer)} visit photo ${index + 1}`} className="max-h-full max-w-full object-contain transition duration-500 group-hover:scale-[1.015]" src={`/api/media/${photo.id}/large`}/></span>)}

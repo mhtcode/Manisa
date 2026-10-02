@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CalendarDays, Check, CircleCheck, Clock3, DollarSign, LoaderCircle, Search, Sparkles, UserRound } from "lucide-react";
+import { AlertTriangle, CalendarDays, Check, ChevronDown, CircleCheck, Clock3, DollarSign, LoaderCircle, Search, Sparkles, UserRound } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import { WizardApproval, WizardCompletion, WizardNavigation, WizardProgress } from "@/components/form-wizard";
 import { checkAppointmentAvailability } from "@/server/actions/appointments";
@@ -146,13 +146,16 @@ export function AppointmentForm({ action, customers, services, appointment, init
 
         <section className={step === 1 ? "block" : "hidden"}>
           <div className="mb-5 flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-300"><Sparkles size={19} /></span><h2 className="font-semibold text-white">Choose one or more services</h2></div>
-          <div className="space-y-5">
-            {serviceGroups.map((group) => <div key={group.id}>
-              <div className="mb-2.5 flex items-center gap-2">
-                <CategoryIcon name={group.icon} size={16}/>
-                <h3 className="text-sm font-semibold text-slate-200" dir="auto">{group.name}</h3>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
+          <div className="space-y-3">
+            {serviceGroups.map((group) => {
+              const selectedInGroup = group.services.filter((service) => serviceIds.includes(service.id)).length;
+              return <details className="group overflow-hidden rounded-2xl border border-white/8 bg-white/[0.018]" key={group.id}>
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition hover:bg-white/[0.035] [&::-webkit-details-marker]:hidden">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04]"><CategoryIcon name={group.icon} size={17}/></span>
+                <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-200" dir="auto">{group.name}</strong><span className="mt-0.5 block text-xs text-slate-500">{group.services.length} services{selectedInGroup ? ` · ${selectedInGroup} selected` : ""}</span></span>
+                <ChevronDown className="shrink-0 text-slate-500 transition group-open:rotate-180" size={18}/>
+              </summary>
+              <div className="grid gap-2 border-t border-white/8 p-3 sm:grid-cols-2">
                 {group.services.map((service) => {
                   const selected = serviceIds.includes(service.id);
                   return <div className={`overflow-hidden rounded-2xl border transition ${selected ? "border-teal-300/35 bg-teal-300/[0.075]" : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"}`} key={service.id}>
@@ -165,7 +168,7 @@ export function AppointmentForm({ action, customers, services, appointment, init
                   </div>;
                 })}
               </div>
-            </div>)}
+            </details>;})}
           </div>
           {serviceIds.map((id) => <input key={id} name="serviceIds" type="hidden" value={id} />)}
         </section>

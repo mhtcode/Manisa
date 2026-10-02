@@ -210,7 +210,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
   }
 
   return (
-    <section className="studio-calendar-board -mx-4 -mt-2 flex h-[calc(100svh-10.25rem)] min-w-0 flex-col overflow-hidden border-y border-white/9 bg-[#0b1017] shadow-[0_20px_55px_rgba(0,0,0,.22)] sm:-mx-5 md:mx-0 md:mt-0 md:h-[calc(100svh-8rem)] md:rounded-[1.2rem] md:border-x">
+    <section className="studio-calendar-board -mx-4 -mt-2 flex h-auto min-w-0 flex-col overflow-visible border-y border-white/9 bg-[#0b1017] shadow-[0_20px_55px_rgba(0,0,0,.22)] sm:-mx-5 md:mx-0 md:mt-0 md:h-[calc(100svh-8rem)] md:overflow-hidden md:rounded-[1.2rem] md:border-x">
       <div className="shrink-0 border-b border-white/9 bg-[#080b10] px-2.5 py-2 sm:px-4 sm:py-3">
         <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3">
           <button aria-label="Previous period" className="flex size-9 items-center justify-center rounded-full bg-white/[0.035] text-slate-300 transition active:scale-95 active:bg-white/[0.08]" onClick={() => navigate(-1)} title="Previous" type="button"><ChevronLeft size={18} /></button>
@@ -239,7 +239,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
       </div>
 
       <div
-        className="calendar-gesture-surface min-h-0 flex-1 overflow-hidden"
+        className="calendar-gesture-surface h-[44rem] min-h-0 flex-none overflow-hidden md:h-auto md:flex-1"
         data-swipe-lock
         onClickCapture={(event) => {
           if (!suppressClick.current) return;
@@ -386,7 +386,7 @@ function SelectedDayAppointments({ compact = false, dateKey, day, items }: { com
   return <section aria-label={`Appointments for ${label}`} className={`shrink-0 border-t border-white/8 bg-[#0b1017] ${compact ? "max-h-44" : "flex min-h-64 flex-col p-4"}`}>
     <header className={`flex items-center gap-2 ${compact ? "px-3 py-2" : "mb-3"}`}><div className="min-w-0 flex-1"><h2 className="truncate text-xs font-semibold text-slate-100 sm:text-sm">{label}</h2><p className="text-[10px] text-slate-500">{items.length} {items.length === 1 ? "appointment" : "appointments"}</p></div><Link aria-label="Add appointment on selected day" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400" href={`/appointments/new?date=${dateKey}`} title="Add appointment"><Plus size={15}/></Link></header>
     {items.length ? <div className={`${compact ? "max-h-28 border-t border-white/6" : "grid flex-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3"} overflow-auto`}>
-      {items.map((item) => <Link className={`flex min-w-0 items-center gap-3 transition hover:bg-white/[0.05] ${compact ? "border-b border-white/6 px-3 py-2 last:border-b-0" : "min-h-20 rounded-xl border border-white/8 bg-white/[0.025] p-4"}`} href={item.href} key={item.id}><span className={`flex size-10 shrink-0 items-center justify-center rounded-lg border text-[10px] font-semibold ${eventColors[item.colorIndex % eventColors.length]}`}>{item.time}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-white">{item.customer}</strong><span className="mt-1 block truncate text-xs text-slate-500">{item.service}</span></span><StatusBadge status={item.status}/></Link>)}
+      {items.map((item) => <Link className={`flex min-w-0 items-start gap-3 transition hover:bg-white/[0.05] ${compact ? "border-b border-white/6 px-3 py-2 last:border-b-0" : "min-h-24 rounded-xl border border-white/8 bg-white/[0.025] p-4"}`} href={item.href} key={item.id}><span aria-hidden="true" className={`mt-1.5 size-2.5 shrink-0 rounded-full ${["bg-teal-300", "bg-sky-300", "bg-violet-300", "bg-rose-300"][item.colorIndex % 4]}`}/><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-white" dir="auto">{item.customer}</strong><span className="mt-1 block truncate text-xs text-slate-400" dir="auto">{item.service}</span><span className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-500"><Clock3 size={12}/>{item.time}</span></span><StatusBadge status={item.status}/></Link>)}
     </div> : <p className={`${compact ? "border-t border-white/6 px-3 py-3" : "flex min-h-48 flex-1 items-center justify-center rounded-xl border border-dashed border-white/8 px-4 py-5 text-center"} text-xs text-slate-500`}>No appointments assigned to this date.</p>}
   </section>;
 }
