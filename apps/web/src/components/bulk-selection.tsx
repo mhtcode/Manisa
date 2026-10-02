@@ -53,8 +53,7 @@ export function SelectableLink({ id, href, className, children, reserveSelection
   const context = useContext(SelectionContext);
   if (!context?.active) return <Link className={className} href={href}>{children}</Link>;
   const checked = context.selected.has(id);
-  if (!reserveSelectionSpace) return <div className="grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start"><SelectionCheckbox centered={false} checked={checked} onClick={() => context.toggle(id)} positioned={false}/><div className={className}>{children}</div></div>;
-  return <div className="relative min-w-0"><SelectionCheckbox centered checked={checked} onClick={() => context.toggle(id)}/><div className={`${className} !pl-12`}>{children}</div></div>;
+  return <div className="relative min-w-0"><SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/><div aria-label={checked ? "Deselect item" : "Select item"} aria-pressed={checked} className={`${className} block w-full cursor-pointer text-start ${reserveSelectionSpace ? "!pl-12" : ""} ${checked ? "ring-2 ring-blue-400/55" : ""}`} onClick={() => context.toggle(id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); context.toggle(id); } }} role="button" tabIndex={0}>{children}</div></div>;
 }
 
 export function SelectableItem({ id, className = "", children, reserveSelectionSpace = false }: { id: string; className?: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {

@@ -217,6 +217,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
           <div className="min-w-0 text-center sm:text-start">
             <p className="hidden text-[10px] font-semibold uppercase tracking-[.16em] text-teal-300/65 sm:block">Studio calendar</p>
             <h1 className="truncate text-base font-bold tracking-[-.025em] text-white sm:mt-0.5 sm:text-lg">{currentTitle}</h1>
+            <p className="mt-0.5 text-[10px] font-medium text-slate-500">{scopedItems.length} appointments</p>
           </div>
           <div className="flex items-center gap-1.5">
             <button aria-label="Today" className="flex size-9 items-center justify-center rounded-full bg-white/[0.035] text-teal-300 transition active:scale-95 active:bg-white/[0.08]" onClick={goToday} title="Today" type="button"><CircleDot size={17}/></button>
@@ -275,22 +276,18 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
         {view === "agenda" && <Agenda days={days} items={scopedItems} />}
       </div>
 
-      <div className="flex shrink-0 items-center justify-between border-t border-white/8 px-3 py-2 text-[10px] text-slate-600 sm:px-4">
-        <span>{scopedItems.length} scheduled</span>
-        <span className="flex items-center gap-1.5"><Clock3 size={13} /><span className="hidden sm:inline">Times shown in Toronto</span><span className="sm:hidden">Toronto time</span></span>
-      </div>
     </section>
   );
 }
 
 function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: CalendarDay[]; itemsByDay: Map<string, CalendarItem[]>; slotHeight: number; visibleKeys: string[] }) {
   const visibleDays = visibleKeys.map((key) => days.find((day) => day.key === key)).filter((day): day is CalendarDay => Boolean(day));
-  const minWidth = visibleDays.length === 1 ? 520 : visibleDays.length <= 3 ? 660 : 920;
+  const minWidth = visibleDays.length === 1 ? "100%" : visibleDays.length <= 3 ? 660 : 920;
 
   return (
     <div className="calendar-time-grid h-full overflow-auto">
       <div style={{ minWidth }}>
-        <div className="sticky top-0 z-20 grid border-b border-white/8 bg-[#0c121a]/95 backdrop-blur-xl" style={{ gridTemplateColumns: `4.5rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
+        <div className="sticky top-0 z-20 grid border-b border-white/8 bg-[#0c121a]/95 backdrop-blur-xl" style={{ gridTemplateColumns: `3.75rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
           <div className="border-e border-white/8" />
           {visibleDays.map((day) => (
             <div className={`border-e border-white/8 px-3 py-3 text-center last:border-e-0 ${day.isToday ? "bg-teal-300/[0.045]" : ""}`} key={day.key}>
@@ -299,7 +296,7 @@ function TimeGrid({ days, itemsByDay, slotHeight, visibleKeys }: { days: Calenda
             </div>
           ))}
         </div>
-        <div className="grid" style={{ gridTemplateColumns: `4.5rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
+        <div className="grid" style={{ gridTemplateColumns: `3.75rem repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
           <div className="relative border-e border-white/8" style={{ height: hours.length * slotHeight }}>
             {hours.map((hour, index) => <span className="absolute end-3 -translate-y-1/2 text-[10px] text-slate-600" key={hour} style={{ top: index * slotHeight }}>{hour === 12 ? "12 PM" : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}</span>)}
           </div>
@@ -338,15 +335,11 @@ function MonthGrid({ days, itemsByDay, onCreate, selectedKey, setSelectedKey, sl
           {days.map((day) => {
             const dayItems = itemsByDay.get(day.key) ?? [];
             const selected = day.key === selectedKey;
-            const visibleItems = slotHeight <= 52 ? 1 : 2;
             return <button aria-label={`${day.weekday}, ${day.monthLabel} ${day.dayNumber}, ${dayItems.length} appointments. Double click to add an appointment.`} className={`min-h-0 min-w-0 touch-manipulation overflow-hidden rounded-md border p-1 text-start transition active:scale-[.98] ${!day.isCurrentMonth ? "border-transparent bg-[#0c1015] opacity-35" : "border-white/[0.035] bg-[#12171d]"} ${selected ? "border-teal-300/45 bg-teal-300/[0.075] shadow-[inset_0_0_0_1px_rgba(94,234,212,.12)]" : ""}`} key={day.key} onClick={() => setSelectedKey(day.key)} onDoubleClick={() => onCreate(day.key)} type="button">
               <span className="flex items-center justify-center">
                 <span className={`flex size-6 items-center justify-center rounded-full text-[11px] font-bold ${day.isToday ? "bg-teal-300 text-slate-950" : selected ? "bg-white/10 text-teal-200" : "text-slate-200"}`}>{day.dayNumber}</span>
               </span>
-              <span className="mt-1 block space-y-0.5">
-                {dayItems.slice(0, visibleItems).map((item) => <span className={`block truncate rounded-[4px] border px-1 py-0.5 text-[8px] font-medium leading-[11px] ${eventColors[item.colorIndex % eventColors.length]}`} key={item.id}><strong>{item.time}</strong> {item.customer}</span>)}
-                {dayItems.length > visibleItems && <span className="block truncate px-0.5 text-[8px] font-semibold text-slate-500">+{dayItems.length - visibleItems}</span>}
-              </span>
+              {dayItems.length > 0 && <span aria-hidden="true" className="mt-1 flex flex-wrap justify-center gap-0.5">{dayItems.slice(0, 5).map((item) => <span className={`size-1.5 rounded-full ${["bg-teal-300", "bg-sky-300", "bg-violet-300", "bg-rose-300"][item.colorIndex % 4]}`} key={item.id}/>)}{dayItems.length > 5 && <span className="text-[7px] font-bold leading-2 text-slate-500">+{dayItems.length - 5}</span>}</span>}
             </button>;
           })}
         </div>
@@ -383,9 +376,9 @@ function MonthGrid({ days, itemsByDay, onCreate, selectedKey, setSelectedKey, sl
 
 function SelectedDayAppointments({ compact = false, dateKey, day, items }: { compact?: boolean; dateKey: string; day?: CalendarDay; items: CalendarItem[] }) {
   const label = day ? `${day.weekday}, ${day.monthLabel} ${day.dayNumber}` : dateKey;
-  return <section aria-label={`Appointments for ${label}`} className={`shrink-0 border-t border-white/8 bg-[#0b1017] ${compact ? "max-h-44" : "flex min-h-64 flex-col p-4"}`}>
+  return <section aria-label={`Appointments for ${label}`} className={`shrink-0 border-t border-white/8 bg-[#0b1017] ${compact ? "flex h-[15rem] min-h-0 flex-col" : "flex min-h-64 flex-col p-4"}`}>
     <header className={`flex items-center gap-2 ${compact ? "px-3 py-2" : "mb-3"}`}><div className="min-w-0 flex-1"><h2 className="truncate text-xs font-semibold text-slate-100 sm:text-sm">{label}</h2><p className="text-[10px] text-slate-500">{items.length} {items.length === 1 ? "appointment" : "appointments"}</p></div><Link aria-label="Add appointment on selected day" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-400" href={`/appointments/new?date=${dateKey}`} title="Add appointment"><Plus size={15}/></Link></header>
-    {items.length ? <div className={`${compact ? "max-h-28 border-t border-white/6" : "grid flex-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3"} overflow-auto`}>
+    {items.length ? <div className={`${compact ? "min-h-0 flex-1 border-t border-white/6" : "grid flex-1 content-start gap-3 sm:grid-cols-2 xl:grid-cols-3"} overflow-y-auto overscroll-contain [scrollbar-width:thin]`}>
       {items.map((item) => <Link className={`flex min-w-0 items-start gap-3 transition hover:bg-white/[0.05] ${compact ? "border-b border-white/6 px-3 py-2 last:border-b-0" : "min-h-24 rounded-xl border border-white/8 bg-white/[0.025] p-4"}`} href={item.href} key={item.id}><span aria-hidden="true" className={`mt-1.5 size-2.5 shrink-0 rounded-full ${["bg-teal-300", "bg-sky-300", "bg-violet-300", "bg-rose-300"][item.colorIndex % 4]}`}/><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-white" dir="auto">{item.customer}</strong><span className="mt-1 block truncate text-xs text-slate-400" dir="auto">{item.service}</span><span className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-slate-500"><Clock3 size={12}/>{item.time}</span></span><StatusBadge status={item.status}/></Link>)}
     </div> : <p className={`${compact ? "border-t border-white/6 px-3 py-3" : "flex min-h-48 flex-1 items-center justify-center rounded-xl border border-dashed border-white/8 px-4 py-5 text-center"} text-xs text-slate-500`}>No appointments assigned to this date.</p>}
   </section>;

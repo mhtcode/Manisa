@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, CheckCircle2, ChevronLeft, ChevronRight, X } from "lucide-react";
 
 export type WizardStep = { label: string; shortLabel?: string };
 
@@ -48,9 +48,9 @@ export function WizardNavigation({ current, count, canContinue = true, busy = fa
 }) {
   const last = current === count - 1;
   return <div className="mt-7 flex min-w-0 items-center gap-2 border-t border-white/8 pt-5">
-    {current === 0 ? <Link className="button-secondary" href={cancelHref}>Cancel</Link> : <button className="button-secondary" onClick={onBack} type="button"><ChevronLeft className="rtl:rotate-180" size={17}/>Back</button>}
+    {current === 0 ? <Link aria-label="Cancel" className="icon-button" href={cancelHref} title="Cancel"><X size={18}/></Link> : <button aria-label="Back" className="icon-button" onClick={onBack} title="Back" type="button"><ChevronLeft className="rtl:rotate-180" size={18}/></button>}
     {last
-      ? <button className="button ms-auto" disabled={!canContinue || busy} type="submit">{busy ? (busyLabel || "Saving…") : submitLabel}</button>
-      : <button className="button ms-auto" disabled={!canContinue} onClick={onNext} type="button">Next<ChevronRight className="rtl:rotate-180" size={17}/></button>}
+      ? <button aria-label={submitLabel} className="icon-button ms-auto bg-blue-500/20 text-blue-100" disabled={!canContinue || busy} title={busy ? (busyLabel || "Saving…") : submitLabel} type="submit"><Check size={18}/></button>
+      : <button aria-label="Next" className="icon-button ms-auto" disabled={!canContinue} onClick={onNext} title="Next" type="button"><ChevronRight className="rtl:rotate-180" size={18}/></button>}
   </div>;
 }

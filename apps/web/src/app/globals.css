@@ -235,8 +235,8 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
 .public-footer-bottom a { color: #d8e2ee; font-weight: 700; }
 .public-orb { position: absolute; z-index: -1; border-radius: 9999px; filter: blur(16px); animation: public-float 10s ease-in-out infinite; }
 .public-motion-ready [data-public-reveal] { opacity: 0; transform: translateY(78px) scale(.97); transform-origin: 50% 0; transition: opacity .78s cubic-bezier(.22,1,.36,1), transform .9s cubic-bezier(.22,1,.36,1), box-shadow .9s ease; will-change: transform, opacity; }
-html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.public-reveal-visible) { transform: translateY(-64px) scale(.975); transform-origin: 50% 100%; }
 .public-motion-ready [data-public-reveal].public-reveal-visible,.public-motion-ready [data-public-reveal]:target { opacity: 1; transform: none; }
+.public-motion-ready [data-public-reveal].public-reveal-visible { will-change: auto; }
 .public-motion-ready .public-stack-section[data-public-reveal].public-reveal-visible { box-shadow: 0 -42px 92px rgba(8,3,2,.36), inset 0 1px rgba(255,255,255,.13); }
 @media (prefers-reduced-motion: reduce) { .public-motion-ready [data-public-reveal] { opacity: 1; transform: none; } }
 @media (min-width: 768px) {
@@ -265,7 +265,7 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
 @media (max-width: 639px) {
   html:has(.public-site) { scroll-behavior: smooth; }
   .public-header { padding: .45rem; }
-  .public-nav-shell { flex-wrap: nowrap; justify-content: flex-start; gap: .25rem; overflow-x: auto; padding: .3rem; scrollbar-width: none; }
+  .public-nav-shell { flex-wrap: nowrap; justify-content: flex-start; gap: .25rem; overflow-x: auto; padding: .3rem; border-radius: .65rem; scrollbar-width: none; }
   .public-nav-shell::-webkit-scrollbar { display: none; }
   .public-brand { gap: .35rem; }
   .public-brand img { width: 2.15rem; height: 2.15rem; }
@@ -298,10 +298,11 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
   .public-lightbox-previous { inset-inline-start: calc(50% - 3.1rem); }
   .public-lightbox-next { inset-inline-end: calc(50% - 3.1rem); }
   .public-final-cta { border-radius: 1.8rem; padding: 1.4rem; }
+  .public-motion-ready [data-public-reveal] { opacity: 1; transform: none; transition: none; will-change: auto; }
 }
 @media (max-width: 560px) {
   .public-header { padding: .25rem; }
-  .public-nav-shell { width: 100%; gap: .1rem; overflow: hidden; padding: .2rem; }
+  .public-nav-shell { width: 100%; gap: .1rem; overflow: hidden; padding: .2rem; border: 0; border-radius: .45rem; box-shadow: 0 8px 24px rgba(24,12,10,.16); }
   .public-brand { flex: none; gap: 0; padding: 0 .1rem; }
   .public-brand img { width: 1.8rem; height: 1.8rem; }
   .public-brand span { display: none; }
@@ -313,6 +314,9 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
   .public-nav-actions .public-control svg { width: .82rem; height: .82rem; }
   .public-nav-actions .public-login { min-height: 1.9rem; gap: .2rem; padding-inline: .45rem; font-size: .62rem; }
   .public-nav-actions .public-login svg { width: .75rem; height: .75rem; }
+  .public-nav-actions .public-control,.public-nav-actions .public-login { border: 0; border-radius: .35rem; background: transparent; box-shadow: none; }
+  .public-nav-actions .public-login { color: var(--public-accent) !important; }
+  .public-top-links a,.public-top-links a:hover,.public-top-links a[data-active] { border: 0; border-radius: .3rem; background: transparent; }
 }
 .app-background { overflow-x: clip; background-image: radial-gradient(circle at 70% 0%, rgba(59,130,246,.07), transparent 30rem); }
 .appointment-cta { color: #eff6ff !important; }
@@ -344,6 +348,7 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
 @media (prefers-reduced-motion: reduce) { .page-transition-surface { animation: none; } }
 .calendar-gesture-surface { touch-action: pan-x pan-y; overscroll-behavior: contain; }
 .calendar-time-grid { touch-action: pan-x pan-y; overscroll-behavior: auto; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
+@media (max-width: 767px) { .calendar-time-grid { scrollbar-width: thin; } }
 
 @media (min-width: 1024px) {
   .app-background { transition: padding-inline-start .24s ease; }
