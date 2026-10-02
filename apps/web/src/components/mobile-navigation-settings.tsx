@@ -40,7 +40,7 @@ export function MobileNavigationSettings({ initialOrder }: { initialOrder: Mobil
   }
 
   return <form action={save} className="panel overflow-hidden">
-    <div className="panel-header"><div><h2 className="font-semibold text-white">Mobile navigation</h2><p className="mt-1 text-xs text-slate-400">Choose and reorder four direct destinations.</p></div><span className="badge border-blue-400/20 bg-blue-500/8 text-blue-200">4 slots</span></div>
+    <div className="panel-header"><h2 className="font-semibold text-white">Mobile navigation</h2></div>
     <div className="space-y-2 p-4 sm:p-5">
       {items.map((item, index) => <div className="flex min-w-0 items-center gap-1.5 rounded-xl border border-white/9 bg-white/[0.025] p-2 sm:gap-2" key={`${item}-${index}`}>
         <GripVertical className="hidden shrink-0 text-slate-600 sm:block" size={17}/>

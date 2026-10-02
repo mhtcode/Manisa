@@ -2,7 +2,6 @@ import type { Prisma } from "@prisma/client";
 /* eslint-disable @next/next/no-img-element -- protected media uses intrinsic proportions */
 import Link from "next/link";
 import { CalendarDays, Camera, ChevronDown, Filter, Images, Scissors, UserRound } from "lucide-react";
-import { PageHeading } from "@/components/page-heading";
 import { BulkSelection, BulkSelectionControls, SelectableLink } from "@/components/bulk-selection";
 import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { requireBusinessPermission } from "@/lib/auth";
@@ -49,11 +48,10 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
   if (hasMore && last) nextParams.set("cursor", encodeCursor(last));
 
   return <>
-    <PageHeading backHref={query.from === "settings" ? "/settings" : undefined} title="Gallery" description="Each finalized visit is one album. Open an album to manage its photos."/>
     <details className="group panel mb-5 overflow-hidden">
-      <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 [&::-webkit-details-marker]:hidden">
-        <span className="icon-button pointer-events-none size-9"><Filter size={15}/></span>
-        <span className="min-w-0 flex-1"><strong className="block text-sm">Gallery filters</strong><span className="block truncate text-xs text-slate-400">{customerId || serviceId ? "Filters are active" : "All customers and services"}</span></span>
+      <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-4 [&::-webkit-details-marker]:hidden">
+        <Filter className="shrink-0 text-blue-300" size={17}/>
+        <strong className="min-w-0 flex-1 text-sm">Filters{customerId || serviceId ? " · active" : ""}</strong>
         <ChevronDown className="text-slate-400 transition group-open:rotate-180" size={18}/>
       </summary>
       <form className="grid gap-3 border-t border-white/10 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" method="get">

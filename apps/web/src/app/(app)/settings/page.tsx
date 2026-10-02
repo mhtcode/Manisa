@@ -14,7 +14,7 @@ const groups = [
       ["/appointments", "Appointments", "Schedule, confirm, finalize, and review visits", CalendarClock],
       ["/customers", "Customers", "Profiles, visit history, preferences, and insights", UsersRound],
       ["/settings/referrals", "Customer referrals", "Filter and explore the complete referral graph", GitFork],
-      ["/services", "Services & categories", "Organize categories, pricing, duration, colors, and performance", SwatchBook],
+      ["/services", "Services", "Organize categories, pricing, duration, colors, and performance", SwatchBook],
       ["/gallery", "Gallery", "Organize visit photos and choose featured work", Images],
     ],
   },
@@ -23,7 +23,7 @@ const groups = [
     items: [
       ["/settings/financial", "Financial", "Payments, methods, balances, and collections", WalletCards],
       ["/settings/reviews", "Customer reviews", "Approve ratings and comments before they appear publicly", MessageSquareQuote],
-      ["/settings/business", "Business, security & navigation", "Studio profile, account security, notifications, and mobile navigation", ShieldCheck],
+      ["/settings/business", "Business & security", "Studio profile, account security, notifications, and mobile navigation", ShieldCheck],
       ["/settings/online-booking", "Online booking", "Publish the exact start times customers can request", CalendarClock],
       ["/settings/data-transfer", "Data transfer", "Import records and create secure business exports", ArrowLeftRight],
       ["/settings/integrations", "Connected services", "Google Calendar and Instagram connections", CalendarSync],

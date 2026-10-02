@@ -14,7 +14,8 @@ type WorkPoint = { name: string; hours: number; revenue: number; visits: number 
 
 const colors = ["#60A5FA", "#A78BFA", "#22D3EE", "#34D399", "#F59E0B", "#FB7185"];
 const axis = { fontSize: 10, fill: "#94a3b8" };
-const tooltip = { background: "#0b1320", border: "1px solid rgba(96,165,250,.28)", borderRadius: 12 };
+const tooltip = { background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 12, color: "#0f172a", boxShadow: "0 12px 30px rgba(0,0,0,.28)" };
+const tooltipText = { color: "#0f172a" };
 const money = (value: number) => new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(value);
 const metricValue = (metric: Metric, value: number) => metric === "revenue" ? money(value) : metric === "hours" ? `${value.toFixed(1)}h` : String(value);
 
@@ -53,7 +54,7 @@ export function ReportCharts({ trend, previousTrend, services, outcomes, payment
 }
 
 function Donut({ data, moneyValues = false, offset = 0 }: { data: ValuePoint[]; moneyValues?: boolean; offset?: number }) {
-  return <div className="chart-canvas h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="72%" paddingAngle={3}>{data.map((point, index) => <Cell fill={colors[(index + offset) % colors.length]} key={point.name}/>)}</Pie><Tooltip contentStyle={tooltip} formatter={moneyValues ? (value) => money(Number(value)) : undefined}/><Legend wrapperStyle={{ fontSize: 10 }}/></PieChart></ResponsiveContainer></div>;
+  return <div className="chart-canvas h-56"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius="45%" outerRadius="72%" paddingAngle={3}>{data.map((point, index) => <Cell fill={colors[(index + offset) % colors.length]} key={point.name}/>)}</Pie><Tooltip contentStyle={tooltip} itemStyle={tooltipText} labelStyle={tooltipText} formatter={moneyValues ? (value) => money(Number(value)) : undefined}/><Legend wrapperStyle={{ fontSize: 10 }}/></PieChart></ResponsiveContainer></div>;
 }
 
 function MiniBar({ data, color }: { data: ValuePoint[]; color: string }) {

@@ -5,5 +5,5 @@ import { parseMobileNavigation } from "@/lib/mobile-navigation";
 
 export default async function NavigationSettingsPage() {
   const user = await requireUser();
-  return <><PageHeading backHref="/settings/business" title="Mobile navigation" description="Choose and order the four destinations shown on phones."/><MobileNavigationSettings initialOrder={parseMobileNavigation(user.settings?.mobileNavOrder)}/></>;
+  return <><PageHeading backHref="/settings/business" title="Mobile navigation"/><MobileNavigationSettings initialOrder={parseMobileNavigation(user.settings?.mobileNavOrder)}/></>;
 }

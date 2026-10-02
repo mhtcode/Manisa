@@ -314,8 +314,11 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
   .public-nav-actions .public-control svg { width: .82rem; height: .82rem; }
   .public-nav-actions .public-login { min-height: 1.9rem; gap: .2rem; padding-inline: .45rem; font-size: .62rem; }
   .public-nav-actions .public-login svg { width: .75rem; height: .75rem; }
-  .public-nav-actions .public-control,.public-nav-actions .public-login { border: 0; border-radius: .35rem; background: transparent; box-shadow: none; }
-  .public-nav-actions .public-login { color: var(--public-accent) !important; }
+  .public-nav-actions .public-control { border: 0; border-radius: .35rem; background: transparent; box-shadow: none; }
+  .public-nav-actions .public-control:hover { border: 0; background: transparent; box-shadow: none; transform: none; }
+  .public-nav-actions .public-control svg { transition: color 160ms ease,transform 160ms ease; }
+  .public-nav-actions .public-control:hover svg { color: var(--public-accent); transform: scale(1.15); }
+  .public-nav-actions .public-login { border: 0; border-radius: .45rem; color: #fff !important; background: var(--public-button); box-shadow: 0 5px 14px color-mix(in srgb,var(--public-button) 28%,transparent); }
   .public-top-links a,.public-top-links a:hover,.public-top-links a[data-active] { border: 0; border-radius: .3rem; background: transparent; }
 }
 .app-background { overflow-x: clip; background-image: radial-gradient(circle at 70% 0%, rgba(59,130,246,.07), transparent 30rem); }
@@ -346,8 +349,9 @@ input:not([type="checkbox"]):not([type="radio"]):focus-visible, textarea:focus-v
 .page-transition-surface { animation: page-enter 220ms cubic-bezier(.22,1,.36,1); }
 @keyframes page-enter { from { opacity: .65; transform: translateY(5px) scale(.997); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .page-transition-surface { animation: none; } }
-.calendar-gesture-surface { touch-action: pan-x pan-y; overscroll-behavior: contain; }
-.calendar-time-grid { touch-action: pan-x pan-y; overscroll-behavior: auto; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
+.calendar-gesture-surface { touch-action: pan-x pan-y pinch-zoom; overscroll-behavior: contain; }
+.calendar-time-grid { touch-action: pan-x pan-y pinch-zoom; overscroll-behavior: auto; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
+.wizard-cancel { border-color: #d32738 !important; color: #d32738 !important; background: #531818 !important; }
 @media (max-width: 767px) { .calendar-time-grid { scrollbar-width: thin; } }
 
 @media (min-width: 1024px) {

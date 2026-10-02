@@ -44,9 +44,9 @@ export function BulkSelectionControls() {
   return useContext(SelectionContext)?.controls ?? null;
 }
 
-function SelectionCheckbox({ checked, onClick, centered, positioned = true }: { checked: boolean; onClick(): void; centered: boolean; positioned?: boolean }) {
+function SelectionCheckbox({ checked, onClick, centered }: { checked: boolean; onClick(): void; centered: boolean }) {
   const Icon = checked ? SquareCheckBig : Square;
-  return <button aria-label="Toggle selection" aria-pressed={checked} className={`${positioned ? `absolute left-2 z-20 ${centered ? "top-1/2 -translate-y-1/2" : "top-2"}` : centered ? "self-center" : "mt-2"} flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white ${checked ? "text-blue-300" : ""}`} onClick={onClick} type="button"><Icon size={20}/></button>;
+  return <button aria-label="Toggle selection" aria-pressed={checked} className={`absolute left-2 z-20 flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/15 bg-slate-950/70 text-slate-300 shadow-[0_8px_24px_rgba(0,0,0,.5)] backdrop-blur-md transition hover:border-blue-300/35 hover:bg-slate-900/85 hover:text-white ${centered ? "top-1/2 -translate-y-1/2" : "top-2"} ${checked ? "border-blue-300/45 bg-blue-500/20 text-blue-200" : ""}`} onClick={(event) => { event.stopPropagation(); onClick(); }} type="button"><Icon size={20}/></button>;
 }
 
 export function SelectableLink({ id, href, className, children, reserveSelectionSpace = true }: { id: string; href: string; className: string; children: React.ReactNode; reserveSelectionSpace?: boolean }) {
@@ -60,6 +60,5 @@ export function SelectableItem({ id, className = "", children, reserveSelectionS
   const context = useContext(SelectionContext);
   const checked = context?.selected.has(id) || false;
   if (!context?.active) return <div className={className}>{children}</div>;
-  if (!reserveSelectionSpace) return <div className={`${className} grid min-w-0 grid-cols-[2.5rem_minmax(0,1fr)] items-start`}><SelectionCheckbox centered={false} checked={checked} onClick={() => context.toggle(id)} positioned={false}/><div className="min-w-0">{children}</div></div>;
-  return <div className={`${className} relative pl-11`}><SelectionCheckbox centered checked={checked} onClick={() => context.toggle(id)}/>{children}</div>;
+  return <div aria-label={checked ? "Deselect item" : "Select item"} aria-pressed={checked} className={`${className} relative min-w-0 cursor-pointer ${reserveSelectionSpace ? "pl-11" : ""} ${checked ? "rounded-2xl ring-2 ring-blue-400/55" : ""}`} onClickCapture={(event) => { if ((event.target as HTMLElement).closest('button[aria-label="Toggle selection"]')) return; event.preventDefault(); event.stopPropagation(); context.toggle(id); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); context.toggle(id); } }} role="button" tabIndex={0}><SelectionCheckbox centered={reserveSelectionSpace} checked={checked} onClick={() => context.toggle(id)}/>{children}</div>;
 }

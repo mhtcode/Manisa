@@ -146,20 +146,20 @@ export function AppointmentForm({ action, customers, services, appointment, init
 
         <section className={step === 1 ? "block" : "hidden"}>
           <div className="mb-5 flex items-center gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-300/10 text-violet-300"><Sparkles size={19} /></span><h2 className="font-semibold text-white">Choose one or more services</h2></div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {serviceGroups.map((group) => {
               const selectedInGroup = group.services.filter((service) => serviceIds.includes(service.id)).length;
-              return <details className="group overflow-hidden rounded-2xl border border-white/8 bg-white/[0.018]" key={group.id}>
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 transition hover:bg-white/[0.035] [&::-webkit-details-marker]:hidden">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.04]"><CategoryIcon name={group.icon} size={17}/></span>
+              return <details className="group overflow-hidden rounded-xl bg-white/[0.025]" key={group.id}>
+              <summary className="flex cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.05]"><CategoryIcon name={group.icon} size={16}/></span>
                 <span className="min-w-0 flex-1"><strong className="block truncate text-sm text-slate-200" dir="auto">{group.name}</strong><span className="mt-0.5 block text-xs text-slate-500">{group.services.length} services{selectedInGroup ? ` · ${selectedInGroup} selected` : ""}</span></span>
                 <ChevronDown className="shrink-0 text-slate-500 transition group-open:rotate-180" size={18}/>
               </summary>
-              <div className="grid gap-2 border-t border-white/8 p-3 sm:grid-cols-2">
+              <div className="grid gap-1.5 bg-black/10 p-2 sm:grid-cols-2">
                 {group.services.map((service) => {
                   const selected = serviceIds.includes(service.id);
-                  return <div className={`overflow-hidden rounded-2xl border transition ${selected ? "border-teal-300/35 bg-teal-300/[0.075]" : "border-white/8 bg-white/[0.02] hover:border-white/15 hover:bg-white/[0.04]"}`} key={service.id}>
-                    <button aria-pressed={selected} className="flex w-full items-center gap-3 p-3.5 text-start active:scale-[.99]" onClick={() => toggleService(service.id)} type="button"><span className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><CategoryIcon name={service.category.icon} size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-white" dir="auto">{service.name}</span><span className="mt-1 block text-xs text-slate-500">{service.duration} min · {money(service.price, service.currency)}</span></span><span className={`flex size-5 items-center justify-center rounded-full border ${selected ? "border-teal-300 bg-teal-300 text-slate-950" : "border-white/15 text-transparent"}`}><Check size={13} strokeWidth={3} /></span></button>
+                  return <div className={`overflow-hidden rounded-xl transition ${selected ? "bg-teal-300/[0.075] ring-1 ring-teal-300/30" : "bg-white/[0.025] hover:bg-white/[0.05]"}`} key={service.id}>
+                    <button aria-pressed={selected} className="flex w-full items-center gap-2.5 p-2.5 text-start active:scale-[.99]" onClick={() => toggleService(service.id)} type="button"><span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${selected ? "bg-teal-300/15 text-teal-300" : "bg-white/[0.05] text-slate-500"}`}><CategoryIcon name={service.category.icon} size={16} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-white" dir="auto">{service.name}</span><span className="mt-0.5 block text-[11px] text-slate-500">{service.duration} min · {money(service.price, service.currency)}</span></span><span className={`flex size-5 items-center justify-center rounded-full border ${selected ? "border-teal-300 bg-teal-300 text-slate-950" : "border-white/15 text-transparent"}`}><Check size={13} strokeWidth={3} /></span></button>
                     {selected && service.supportsColor && <div className="flex items-center gap-2 border-t border-white/8 px-3.5 py-3">
                       <input aria-label={`Choose color for ${service.name}`} className="h-8 w-10 cursor-pointer rounded-lg border border-white/10 bg-transparent p-0.5" name={`serviceColor_${service.id}`} onChange={(event) => setServiceColors((colors) => ({ ...colors, [service.id]: event.target.value.toUpperCase() }))} type="color" value={serviceColors[service.id] || "#D36B85"} />
                       <span className="min-w-0 flex-1 text-xs text-slate-400">Chosen color</span>

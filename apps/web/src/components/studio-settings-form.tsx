@@ -65,7 +65,7 @@ export function StudioSettingsForm({ settings, section }: { settings: SettingsVa
         <div className="flex min-h-16 items-center gap-3 px-4 py-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-300"><Icon size={17}/></span>
           <span className="min-w-0 flex-1"><strong className="block text-sm font-semibold">{title}</strong><span className="mt-0.5 block truncate text-xs text-slate-500">{sectionSummary(key, settings)}</span></span>
-          <button aria-label={`Modify ${title}`} className="icon-button size-9" onClick={() => { setSaved(false); setEditing(key); }} title="Modify" type="button"><Pencil size={15}/></button>
+          <button aria-label={`Modify ${title}`} className="inline-flex size-9 items-center justify-center rounded-lg text-fuchsia-300 transition hover:bg-fuchsia-300/10 hover:text-fuchsia-100" onClick={() => { setSaved(false); setEditing(key); }} title="Modify" type="button"><Pencil size={16}/></button>
         </div>
         <fieldset aria-disabled={!isEditing} className={`border-t border-white/7 p-4 transition sm:p-5 ${isEditing ? "" : "pointer-events-none opacity-55"}`} disabled={!isEditing || pending}>
           {key === "identity" && <div className="grid gap-4 sm:grid-cols-2">

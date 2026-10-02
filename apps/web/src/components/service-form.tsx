@@ -17,7 +17,7 @@ type ServiceValue = {
 type CategoryOption = { id: string; name: string; active: boolean };
 const steps = [{ label: "Details" }, { label: "Price & time", shortLabel: "Pricing" }, { label: "Options" }];
 
-export function ServiceForm({ action, categories, service }: { action: (data: FormData) => void | Promise<void | { error?: string; success?: string; redirectTo?: string }>; categories: CategoryOption[]; service?: ServiceValue }) {
+export function ServiceForm({ action, categories, service, initialCategoryId }: { action: (data: FormData) => void | Promise<void | { error?: string; success?: string; redirectTo?: string }>; categories: CategoryOption[]; service?: ServiceValue; initialCategoryId?: string }) {
   const [step, setStep] = useState(0);
   const [name, setName] = useState(service?.name || "");
   const [duration, setDuration] = useState(String(service?.defaultDurationMinutes || ""));
@@ -38,7 +38,7 @@ export function ServiceForm({ action, categories, service }: { action: (data: Fo
     <WizardProgress current={step} steps={steps}/>
     <section className={step === 0 ? "grid gap-5" : "hidden"}>
       <div><label className="label" htmlFor="name">Service name *</label><input className="field" dir="auto" id="name" name="name" onChange={(event) => setName(event.target.value)} required value={name}/></div>
-      <div><label className="label" htmlFor="categoryId">Category *</label><select className="field" id="categoryId" name="categoryId" defaultValue={service?.categoryId || categories.find((category) => category.active)?.id} required>{categories.map((category) => <option disabled={!category.active && category.id !== service?.categoryId} key={category.id} value={category.id}>{category.name}{category.active ? "" : " (archived)"}</option>)}</select></div>
+      <div><label className="label" htmlFor="categoryId">Category *</label><select className="field" id="categoryId" name="categoryId" defaultValue={service?.categoryId || initialCategoryId || categories.find((category) => category.active)?.id} required>{categories.map((category) => <option disabled={!category.active && category.id !== service?.categoryId} key={category.id} value={category.id}>{category.name}{category.active ? "" : " (archived)"}</option>)}</select></div>
       <div><label className="label" htmlFor="description">Description</label><textarea className="field min-h-28" dir="auto" id="description" name="description" defaultValue={service?.description || ""}/></div>
     </section>
     <section className={step === 1 ? "grid gap-5 sm:grid-cols-2" : "hidden"}>
