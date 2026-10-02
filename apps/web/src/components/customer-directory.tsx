@@ -4,6 +4,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { CalendarClock, Phone, Search, UserRound, X } from "lucide-react";
 import { BulkSelection, BulkSelectionControls, SelectableLink } from "@/components/bulk-selection";
+import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { bulkMoveToTrash } from "@/server/actions/trash";
 
 type CustomerRecord = {
@@ -25,7 +26,7 @@ export function CustomerDirectory({ customers, initialQuery = "", mode = "list" 
 
   return <BulkSelection action={bulkMoveToTrash.bind(null, "customer")} allIds={filtered.map((item) => item.id)} integrated>
     <section className="panel overflow-hidden">
-      <div className="panel-header justify-start"><BulkSelectionControls/></div>
+      <div className="panel-header"><BulkSelectionControls/><ViewModeToggle initialMode={mode} page="customers"/></div>
     <div className="flex items-center gap-3 border-b border-white/8 p-3 transition focus-within:bg-[#0f151d]">
       <Search className="ms-1 shrink-0 text-slate-500" size={19}/>
       <input aria-label="Search customers" autoComplete="off" className="h-9 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-slate-500" dir="auto" onChange={(event) => setQuery(event.target.value)} placeholder="Type a name, phone, or email…" value={query}/>

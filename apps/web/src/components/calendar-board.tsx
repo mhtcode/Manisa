@@ -239,7 +239,7 @@ export function CalendarBoard({ anchorKey, days, initialView, items, monthTitle,
       </div>
 
       <div
-        className="calendar-gesture-surface h-[44rem] min-h-0 flex-none overflow-hidden md:h-auto md:flex-1"
+        className="calendar-gesture-surface h-[clamp(35rem,calc(100svh-10rem),52rem)] min-h-0 flex-none overflow-hidden md:h-auto md:flex-1"
         data-swipe-lock
         onClickCapture={(event) => {
           if (!suppressClick.current) return;

@@ -349,15 +349,26 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
   .app-background { transition: padding-inline-start .24s ease; }
   body[data-desktop-sidebar="open"] .app-background { padding-inline-start: 21rem; }
   .desktop-fold-sidebar { animation: desktop-sidebar-in .2s ease-out; }
+  body[data-desktop-sidebar="open"] .app-header-brand { display: none; }
+  .desktop-sidebar-brand { animation: desktop-brand-in .32s .04s cubic-bezier(.22,1,.36,1) both; }
 }
 
 @keyframes desktop-sidebar-in {
   from { transform: translateX(-1.25rem); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-body:has(.studio-calendar-board) { overflow: hidden; }
-body:has(.studio-calendar-board) .app-background { height: 100svh; overflow: hidden; }
-body:has(.studio-calendar-board) main { padding-bottom: 0; }
+@keyframes desktop-brand-in {
+  from { transform: translateX(-.65rem); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@media (min-width: 768px) {
+  body:has(.studio-calendar-board) { overflow: hidden; }
+  body:has(.studio-calendar-board) .app-background { height: 100svh; overflow: hidden; }
+  body:has(.studio-calendar-board) main { padding-bottom: 0; }
+}
+@media (max-width: 767px) {
+  body:has(.studio-calendar-board) main { padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+}
 .category-collapse-header { display: flex; width: 100%; min-width: 0; align-items: center; gap: .75rem; padding: .9rem 1rem; background: linear-gradient(180deg, #090d14, #0a1019); text-align: start; transition: background 160ms ease; }
 .category-collapse-header:hover { background: linear-gradient(180deg, #0b111b, #0c1420); }
 .view-toggle, .metric-switch { display: inline-flex; flex: none; align-items: center; gap: 2px; border: 1px solid rgba(96,165,250,.18); border-radius: .75rem; padding: 2px; background: rgba(8,17,31,.72); }

@@ -2,7 +2,6 @@ import Link from "next/link";
 import { UserPlus } from "lucide-react";
 import { CustomerDirectory } from "@/components/customer-directory";
 import { PageHeading } from "@/components/page-heading";
-import { ViewModeToggle } from "@/components/view-mode-toggle";
 import { requireBusinessPermission } from "@/lib/auth";
 import { customerName } from "@/lib/format";
 import { collectionView } from "@/lib/preferences";
@@ -19,5 +18,5 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   ]);
   const latestVisits = new Map<string, Date>();
   deliveredAppointments.forEach((appointment) => { if (!latestVisits.has(appointment.customerId)) latestVisits.set(appointment.customerId, appointment.startAt); });
-  return <><PageHeading backHref={params.from === "settings" ? "/settings" : undefined} title="Customers" description="Search profiles and open a complete relationship report." actions={<><ViewModeToggle initialMode={view} page="customers"/><Link aria-label="New customer" className="icon-button" href="/customers/new" title="New customer"><UserPlus size={18}/></Link></>}/><CustomerDirectory initialQuery={q} mode={view} customers={customers.map((customer) => ({ id: customer.id, avatarId: customer.profilePhotos[0]?.id || null, name: customerName(customer), phone: customer.phone, latestVisit: latestVisits.get(customer.id)?.toISOString() || null }))}/></>;
+  return <><PageHeading backHref={params.from === "settings" ? "/settings" : undefined} title="Customers" description="Search profiles and open a complete relationship report." actions={<Link aria-label="New customer" className="icon-button" href="/customers/new" title="New customer"><UserPlus size={18}/></Link>}/><CustomerDirectory initialQuery={q} mode={view} customers={customers.map((customer) => ({ id: customer.id, avatarId: customer.profilePhotos[0]?.id || null, name: customerName(customer), phone: customer.phone, latestVisit: latestVisits.get(customer.id)?.toISOString() || null }))}/></>;
 }
