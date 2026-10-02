@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeftRight, BookOpenCheck, CalendarCheck2, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Images, Menu, MessageSquareQuote, Network, PlugZap, Settings, ShieldCheck, SwatchBook, Trash2, UserRoundCog, UsersRound, X } from "lucide-react";
+import { ArrowLeftRight, BookOpenCheck, CalendarCheck2, CalendarDays, ChartNoAxesCombined, CircleDollarSign, Images, MessageSquareQuote, Network, PanelLeftClose, PanelLeftOpen, PlugZap, Settings, ShieldCheck, SwatchBook, Trash2, UserRoundCog, UsersRound, X } from "lucide-react";
 import type { AppLocale } from "@/lib/i18n";
 import { getMessages } from "@/lib/i18n";
 import { defaultMobileNavigation, mobileNavigationHrefs, type MobileNavigationKey } from "@/lib/mobile-navigation";
@@ -50,15 +50,16 @@ export function DesktopNavigation({ locale, permissions, pendingReviewCount = 0 
 
 export function MobileNavigationDrawer({ locale, permissions, pendingReviewCount = 0 }: { locale: AppLocale; permissions: BusinessPermission[]; pendingReviewCount?: number }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    document.body.dataset.desktopSidebar = open ? "open" : "closed";
+    return () => { delete document.body.dataset.desktopSidebar; };
+  }, [open]);
   return <>
-    <button aria-expanded={open} aria-label={open ? "Close navigation" : "Open navigation"} className="header-profile large-navigation-trigger size-10 rounded-full p-0" onClick={() => setOpen((value) => !value)} type="button">{open ? <X size={18}/> : <Menu size={18}/>}</button>
-    {open && typeof document !== "undefined" ? createPortal(<div className="fixed inset-0 z-[70] hidden lg:block" data-swipe-lock>
-      <button aria-label="Close navigation" className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setOpen(false)} type="button"/>
-      <aside className="absolute inset-y-0 start-0 flex w-[min(86vw,21rem)] flex-col border-e border-blue-300/15 bg-[#080d15]/96 p-4 shadow-[1.5rem_0_4rem_rgba(0,0,0,.45)] backdrop-blur-2xl">
-        <div className="flex items-center justify-between"><p className="font-semibold text-white">{locale === "fa" ? "پیمایش" : "Navigation"}</p><button aria-label="Close navigation" className="icon-button" onClick={() => setOpen(false)} type="button"><X size={18}/></button></div>
-        <div onClick={(event) => { if ((event.target as Element).closest("a[href]")) setOpen(false); }} className="min-h-0 flex-1 overflow-hidden"><DesktopNavigation locale={locale} pendingReviewCount={pendingReviewCount} permissions={permissions}/></div>
-      </aside>
-    </div>, document.body) : null}
+    <button aria-expanded={open} aria-label={open ? "Fold navigation" : "Unfold navigation"} className="header-profile large-navigation-trigger size-10 rounded-full p-0" onClick={() => setOpen((value) => !value)} title={open ? "Fold navigation" : "Unfold navigation"} type="button">{open ? <PanelLeftClose size={19}/> : <PanelLeftOpen size={19}/>}</button>
+    {open && typeof document !== "undefined" ? createPortal(<aside aria-label="Sidebar navigation" className="desktop-fold-sidebar fixed inset-y-0 start-0 z-[60] hidden w-[21rem] flex-col border-e border-blue-300/15 bg-[#080d15]/96 p-4 shadow-[1.5rem_0_4rem_rgba(0,0,0,.38)] backdrop-blur-2xl lg:flex" data-swipe-lock>
+        <div className="flex items-center justify-between"><p className="font-semibold text-white">{locale === "fa" ? "پیمایش" : "Navigation"}</p><button aria-label="Fold navigation" className="icon-button" onClick={() => setOpen(false)} title="Fold navigation" type="button"><X size={18}/></button></div>
+        <div className="min-h-0 flex-1 overflow-hidden"><DesktopNavigation locale={locale} pendingReviewCount={pendingReviewCount} permissions={permissions}/></div>
+      </aside>, document.body) : null}
   </>;
 }
 

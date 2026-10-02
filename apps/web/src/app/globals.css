@@ -343,6 +343,18 @@ html[data-public-scroll="up"].public-motion-ready [data-public-reveal]:not(.publ
 @keyframes page-enter { from { opacity: .65; transform: translateY(5px) scale(.997); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .page-transition-surface { animation: none; } }
 .calendar-gesture-surface { touch-action: pan-x pan-y; overscroll-behavior: contain; }
+.calendar-time-grid { touch-action: pan-x pan-y; overscroll-behavior: auto; scrollbar-gutter: stable both-edges; -webkit-overflow-scrolling: touch; }
+
+@media (min-width: 1024px) {
+  .app-background { transition: padding-inline-start .24s ease; }
+  body[data-desktop-sidebar="open"] .app-background { padding-inline-start: 21rem; }
+  .desktop-fold-sidebar { animation: desktop-sidebar-in .2s ease-out; }
+}
+
+@keyframes desktop-sidebar-in {
+  from { transform: translateX(-1.25rem); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
 body:has(.studio-calendar-board) { overflow: hidden; }
 body:has(.studio-calendar-board) .app-background { height: 100svh; overflow: hidden; }
 body:has(.studio-calendar-board) main { padding-bottom: 0; }

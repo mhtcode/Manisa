@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { CheckCheck, CheckSquare2, RotateCcw, Square, SquareCheckBig, Trash2, X } from "lucide-react";
 
 const SelectionContext = createContext<{ active: boolean; selected: Set<string>; toggle(id: string): void } | null>(null);
 const controlClass = "inline-flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-35";
+const subscribeToClient = () => () => {};
 
 function SelectionAction({ action, ids, label, confirmMessage, danger = false, onComplete, children }: { action: (data: FormData) => void | Promise<void>; ids: Set<string>; label: string; confirmMessage: string; danger?: boolean; onComplete(): void; children: React.ReactNode }) {
   const [completed, setCompleted] = useState(0);
@@ -16,24 +18,28 @@ function SelectionAction({ action, ids, label, confirmMessage, danger = false, o
   </form>;
 }
 
-export function BulkSelection({ action, secondaryAction, allIds, children, locale = "en", primary = "trash", embedded = false }: { action: (data: FormData) => void | Promise<void>; secondaryAction?: (data: FormData) => void | Promise<void>; allIds: string[]; children: React.ReactNode; locale?: "en" | "fa"; primary?: "trash" | "restore"; embedded?: boolean }) {
+export function BulkSelection({ action, secondaryAction, allIds, children, locale = "en", primary = "trash", embedded = false, controlsTargetId }: { action: (data: FormData) => void | Promise<void>; secondaryAction?: (data: FormData) => void | Promise<void>; allIds: string[]; children: React.ReactNode; locale?: "en" | "fa"; primary?: "trash" | "restore"; embedded?: boolean; controlsTargetId?: string }) {
   const [active, setActive] = useState(false);
   const [selected, setSelected] = useState(new Set<string>());
   const t = locale === "fa" ? { select: "انتخاب", all: "انتخاب همه", clear: "پاک کردن", trash: "انتقال به زباله‌دان", restore: "بازیابی", permanent: "حذف دائمی", confirm: "موارد انتخاب‌شده به زباله‌دان منتقل شوند؟", confirmRestore: "موارد انتخاب‌شده بازیابی شوند؟", confirmPermanent: "برای همیشه حذف شوند؟ این کار قابل بازگشت نیست." } : { select: "Select", all: "Select all", clear: "Clear selection", trash: "Move to Trash", restore: "Restore", permanent: "Delete permanently", confirm: "Move selected items to Trash?", confirmRestore: "Restore selected items?", confirmPermanent: "Permanently delete selected items? This cannot be undone." };
   const toggle = (id: string) => setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const close = useCallback(() => { setActive(false); setSelected(new Set()); }, []);
   const allSelected = allIds.length > 0 && selected.size === allIds.length;
+  const mounted = useSyncExternalStore(subscribeToClient, () => true, () => false);
+  const controlsTarget = mounted && controlsTargetId ? document.getElementById(controlsTargetId) : null;
+
+  const controls = <div className={`${embedded || controlsTargetId ? "flex" : "mb-3 flex"} justify-start`} dir="ltr">
+    {active ? <div className="inline-flex max-w-full items-center gap-0.5 rounded-xl bg-[#0b1423]/95 p-1 shadow-2xl backdrop-blur-xl">
+      <button aria-label={t.clear} className={controlClass} onClick={close} title={t.clear} type="button"><X size={17}/></button>
+      <span aria-live="polite" className="min-w-7 text-center text-sm font-bold text-blue-200">{selected.size}</span>
+      <button aria-label={t.all} aria-pressed={allSelected} className={controlClass} onClick={() => setSelected(allSelected ? new Set() : new Set(allIds))} title={t.all} type="button"><CheckCheck size={18}/></button>
+      <SelectionAction action={action} confirmMessage={`${primary === "restore" ? t.confirmRestore : t.confirm} (${selected.size})`} ids={selected} label={primary === "restore" ? t.restore : t.trash} onComplete={close}>{primary === "restore" ? <RotateCcw size={16}/> : <Trash2 size={16}/>}</SelectionAction>
+      {secondaryAction && <SelectionAction action={secondaryAction} confirmMessage={`${t.confirmPermanent} (${selected.size})`} danger ids={selected} label={t.permanent} onComplete={close}><Trash2 size={16}/></SelectionAction>}
+    </div> : <button aria-label={t.select} className={controlClass} onClick={() => setActive(true)} title={t.select} type="button"><CheckSquare2 size={18}/></button>}
+  </div>;
 
   return <SelectionContext.Provider value={{ active, selected, toggle }}>
-    <div className={`${embedded ? "flex border-b border-white/8 px-4 py-2" : "mb-3 flex"} justify-start`} dir="ltr">
-      {active ? <div className="inline-flex max-w-full items-center gap-0.5 rounded-xl bg-[#0b1423]/95 p-1 shadow-2xl backdrop-blur-xl">
-        <button aria-label={t.clear} className={controlClass} onClick={close} title={t.clear} type="button"><X size={17}/></button>
-        <span aria-live="polite" className="min-w-7 text-center text-sm font-bold text-blue-200">{selected.size}</span>
-        <button aria-label={t.all} aria-pressed={allSelected} className={controlClass} onClick={() => setSelected(allSelected ? new Set() : new Set(allIds))} title={t.all} type="button"><CheckCheck size={18}/></button>
-        <SelectionAction action={action} confirmMessage={`${primary === "restore" ? t.confirmRestore : t.confirm} (${selected.size})`} ids={selected} label={primary === "restore" ? t.restore : t.trash} onComplete={close}>{primary === "restore" ? <RotateCcw size={16}/> : <Trash2 size={16}/>}</SelectionAction>
-        {secondaryAction && <SelectionAction action={secondaryAction} confirmMessage={`${t.confirmPermanent} (${selected.size})`} danger ids={selected} label={t.permanent} onComplete={close}><Trash2 size={16}/></SelectionAction>}
-      </div> : <button aria-label={t.select} className={controlClass} onClick={() => setActive(true)} title={t.select} type="button"><CheckSquare2 size={18}/></button>}
-    </div>
+    {controlsTargetId ? controlsTarget && createPortal(controls, controlsTarget) : <div className={embedded ? "border-b border-white/8 px-4 py-2" : ""}>{controls}</div>}
     {children}
   </SelectionContext.Provider>;
 }

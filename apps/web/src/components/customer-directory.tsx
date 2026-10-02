@@ -23,21 +23,19 @@ export function CustomerDirectory({ customers, initialQuery = "", mode = "list" 
     return customers.filter((customer) => [customer.name, customer.phone].some((value) => value?.toLocaleLowerCase().includes(needle)));
   }, [customers, deferredQuery]);
 
-  return <>
-    <div className="panel mb-4 flex items-center gap-3 p-3 transition focus-within:border-white/20 focus-within:bg-[#0f151d] focus-within:shadow-[0_0_0_3px_rgba(148,163,184,.05)]">
+  return <BulkSelection action={bulkMoveToTrash.bind(null, "customer")} allIds={filtered.map((item) => item.id)} controlsTargetId="customer-selection-controls">
+    <section className="panel overflow-hidden">
+      <div className="panel-header"><div><h2 className="font-semibold text-white">Customer directory</h2><p className="mt-1 text-xs text-slate-500">{filtered.length} {filtered.length === 1 ? "result" : "results"}</p></div><div id="customer-selection-controls"/></div>
+    <div className="flex items-center gap-3 border-b border-white/8 p-3 transition focus-within:bg-[#0f151d]">
       <Search className="ms-1 shrink-0 text-slate-500" size={19}/>
       <input aria-label="Search customers" autoComplete="off" className="h-9 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-slate-500" dir="auto" onChange={(event) => setQuery(event.target.value)} placeholder="Type a name, phone, or email…" value={query}/>
       {query && <button aria-label="Clear search" className="icon-button size-8" onClick={() => setQuery("")} title="Clear search" type="button"><X size={16}/></button>}
-      <span className="hidden rounded-lg bg-white/[0.045] px-2.5 py-1.5 text-sm text-slate-400 sm:block">{filtered.length} {filtered.length === 1 ? "result" : "results"}</span>
     </div>
-    <BulkSelection action={bulkMoveToTrash.bind(null, "customer")} allIds={filtered.map((item) => item.id)}>
-      <section className="panel overflow-hidden">
         {filtered.length ? <div className={mode === "grid" ? "grid gap-2.5 p-2.5 sm:grid-cols-2 xl:grid-cols-3" : "divide-y divide-white/8"}>
           {filtered.map((customer) => <CustomerLink customer={customer} key={customer.id} mode={mode}/>)}
         </div> : <div className="empty"><Search className="mb-3 text-slate-500" size={26}/><p>No customers match “<span dir="auto">{query}</span>”.</p><button className="button-secondary mt-4" onClick={() => setQuery("")} type="button">Clear search</button></div>}
-      </section>
-    </BulkSelection>
-  </>;
+    </section>
+  </BulkSelection>;
 }
 
 function CustomerLink({ customer, mode }: { customer: CustomerRecord; mode: "grid" | "list" }) {
